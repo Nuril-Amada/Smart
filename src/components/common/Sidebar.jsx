@@ -46,7 +46,7 @@ const menu = [
       {
         name: "Advance",
         icon: <FaChartBar />,
-        path: "/advance",
+        path: "/Advance",
       },
     ],
   },

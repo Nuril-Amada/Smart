@@ -7,6 +7,7 @@ import MainLayout from "./layouts/MainLayout";
 import Dashboard from "./pages/Dashboard";
 import CetakCek from "./pages/CetakCek";
 import BuatCekBaru from "./pages/BuatCekBaru";
+import Settlement from "./pages/Settlement";
 
 function App() {
   return (
