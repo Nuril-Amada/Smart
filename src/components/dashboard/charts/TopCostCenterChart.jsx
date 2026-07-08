@@ -83,11 +83,11 @@ export default function TopCostCenterChart({
               formatter={(value) => formatRupiah(value)}
             />
 
-            <ReferenceLine
+            {/* <ReferenceLine
               y={average}
               stroke="#ef4444"
               strokeDasharray="5 5"
-            />
+            /> */}
 
             <Bar
               dataKey="total"

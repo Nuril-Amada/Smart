@@ -73,12 +73,12 @@ export default function GLAccountChart({ data = [] }) {
               formatter={(value) => formatRupiah(value)}
             />
 
-            <ReferenceLine
+            {/* <ReferenceLine
               y={average}
               stroke="#ef4444"
               strokeWidth={2}
               strokeDasharray="5 5"
-            />
+            /> */}
 
             <Bar
               dataKey="total"

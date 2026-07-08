@@ -91,8 +91,8 @@ export default function SettlementTrendChart() {
     }, []);
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 className="font-semibold text-gray-700 mb-5">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5" style={{ marginLeft: "20px" }}>
+            <h2 className="font-semibold text-gray-700 text-center mb-5" style={{ marginTop: "10px" }}>
                 Settlement Trend (Monthly)
             </h2>
 
@@ -121,10 +121,11 @@ export default function SettlementTrendChart() {
                                 dataKey="month"
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fill: "#9CA3AF", fontSize: 12 }}
+                                tick={{ fill: "#9CA3AF", fontSize: 10 }}
                                 angle={-45}
                                 textAnchor="end"
                                 height={50}
+                                interval={0}
                             />
 
                             <YAxis

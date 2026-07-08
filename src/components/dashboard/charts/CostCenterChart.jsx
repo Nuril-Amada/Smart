@@ -71,12 +71,12 @@ export default function CostCenterChart({ data = [] }) {
               formatter={(value) => formatRupiah(value)}
             />
 
-            <ReferenceLine
+            {/* <ReferenceLine
               y={average}
               stroke="#ef4444"
               strokeWidth={2}
               strokeDasharray="3 3"
-            />
+            /> */}
 
             <Bar
               dataKey="total"

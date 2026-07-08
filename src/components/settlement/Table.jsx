@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   FaEye,
   FaUpload,
@@ -132,6 +132,12 @@ function formatDate(isoDate) {
   }).format(new Date(isoDate));
 }
 
+function formatDisplayDate(isoDate) {
+  if (!isoDate) return "";
+  const [year, month, day] = isoDate.split("-");
+  return `${day}/${month}/${year}`;
+}
+
 function Badge({ text, styleMap }) {
   return (
     <span
@@ -171,7 +177,46 @@ export default function RecentSettlementTable() {
   const [filterType, setFilterType] = useState("All Type");
   const [filterEmployee, setFilterEmployee] = useState("All Employee");
   const [filterPayment, setFilterPayment] = useState("All Payment");
-  const [dateRange, setDateRange] = useState("01/07/2026 - 31/07/2026");
+
+  // Filter tanggal — diganti dari string statis jadi 2 state date beneran
+  const [startDate, setStartDate] = useState("2026-07-01");
+  const [endDate, setEndDate] = useState("2026-07-31");
+  const [tempStart, setTempStart] = useState(startDate);
+  const [tempEnd, setTempEnd] = useState(endDate);
+  const [dateOpen, setDateOpen] = useState(false);
+  const dateWrapperRef = useRef(null);
+
+  // Tutup popover kalender kalau klik di luar area-nya
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (dateWrapperRef.current && !dateWrapperRef.current.contains(e.target)) {
+        setDateOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleApplyDate = () => {
+    setStartDate(tempStart);
+    setEndDate(tempEnd);
+    setDateOpen(false);
+    setPage(1); // reset ke halaman 1 setiap filter berubah
+  };
+
+  const handleClearDate = () => {
+    setTempStart("");
+    setTempEnd("");
+    setStartDate("");
+    setEndDate("");
+    setDateOpen(false);
+    setPage(1);
+  };
+
+  const dateRangeText =
+    startDate && endDate
+      ? `${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}`
+      : "Pilih Tanggal";
 
   useEffect(() => {
     let isMounted = true;
@@ -183,7 +228,7 @@ export default function RecentSettlementTable() {
 
         const result = await fetchSettlements({
           page,
-          filters: { filterType, filterEmployee, filterPayment, dateRange },
+          filters: { filterType, filterEmployee, filterPayment, startDate, endDate },
         });
 
         if (isMounted) {
@@ -204,22 +249,23 @@ export default function RecentSettlementTable() {
       isMounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page]);
+  }, [page, startDate, endDate]);
 
   const totalPages = Math.max(1, Math.ceil(total / perPage));
   const startEntry = total === 0 ? 0 : (page - 1) * perPage + 1;
   const endEntry = Math.min(page * perPage, total);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5" style={{ marginRight: "20px" }}>
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-4 mb-5">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-500">Type</label>
+          <label className="text-xs font-medium text-gray-500 text-center" style={{ marginTop: "10px" }}>Type</label>
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
-            className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[140px] focus:outline-none focus:ring-2 focus:ring-blue-200"
+            className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[140px] focus:outline-none focus:ring-2 focus:ring-blue-200 
+            " style={{ marginLeft: "20px" }}
           >
             <option>All Type</option>
             <option>Advance</option>
@@ -228,7 +274,7 @@ export default function RecentSettlementTable() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-500">Employee</label>
+          <label className="text-xs font-medium text-gray-500 text-center">Employee</label>
           <select
             value={filterEmployee}
             onChange={(e) => setFilterEmployee(e.target.value)}
@@ -242,11 +288,12 @@ export default function RecentSettlementTable() {
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-500">Payment</label>
+          <label className="text-xs font-medium text-gray-500 text-center">Payment</label>
           <select
             value={filterPayment}
             onChange={(e) => setFilterPayment(e.target.value)}
             className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[140px] focus:outline-none focus:ring-2 focus:ring-blue-200"
+
           >
             <option>All Payment</option>
             <option>Check</option>
@@ -254,25 +301,83 @@ export default function RecentSettlementTable() {
           </select>
         </div>
 
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-500">Date Range</label>
+        {/* Date Range — sekarang fungsional & connect ke kalender native */}
+        <div className="flex flex-col gap-1 relative" ref={dateWrapperRef}>
+          <label className="text-xs font-medium text-gray-500 text-center">Date Range</label>
           <button
             type="button"
-            className="flex items-center justify-between gap-3 border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[220px] hover:border-gray-300"
+            onClick={() => {
+              setTempStart(startDate);
+              setTempEnd(endDate);
+              setDateOpen((prev) => !prev);
+            }}
+            className="flex items-center justify-between gap-3 border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[220px] hover:border-gray-300" style={{ marginLeft: "20px", marginBottom: "10px" }}
           >
-            {dateRange}
+            <span className={startDate && endDate ? "" : "text-gray-400"}>
+              {dateRangeText}
+            </span>
             <FaCalendarAlt className="text-gray-400" />
           </button>
+
+          {dateOpen && (
+            <div className="absolute top-full mt-2 left-5 z-20 bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-72" style={{ padding: "5px 12px" }}>
+              <div className="flex flex-col gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Dari Tanggal
+                  </label>
+                  <input
+                    type="date"
+                    value={tempStart}
+                    max={tempEnd || undefined}
+                    onChange={(e) => setTempStart(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Sampai Tanggal
+                  </label>
+                  <input
+                    type="date"
+                    value={tempEnd}
+                    min={tempStart || undefined}
+                    onChange={(e) => setTempEnd(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
+                </div>
+
+                <div className="flex justify-between gap-2 mt-2">
+                  <button
+                    type="button"
+                    onClick={handleClearDate}
+                    className="flex-1 border border-gray-300 rounded-lg text-sm py-2 text-gray-600 hover:bg-gray-50"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApplyDate}
+                    disabled={!tempStart || !tempEnd}
+                    className="flex-1 bg-gray-600 hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm py-2"
+                  >
+                    Terapkan
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex-1" />
 
-        <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+        <button className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors" style={{ marginBottom: "10px", padding: "5px 12px" }}>
           <FaUpload className="text-xs" />
           Upload Excel
         </button>
 
-        <button className="border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors">
+        <button className="border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors" style={{ marginRight: "20px", marginBottom: "10px", padding: "5px 12px" }}>
           Manual Input
         </button>
       </div>
