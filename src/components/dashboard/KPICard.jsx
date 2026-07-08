@@ -48,9 +48,9 @@ export default function KPICard({ data = {} }) {
             {/* Garis Atas */}
             <div className={`${item.bg} h-2`}></div>
 
-            <div className="p-6 text-center min-h-[70px] flex flex-col justify-center">
+            <div className="p-6 text-center min-h-[70px] flex flex-col justify-center gap-2">
 
-              <p className="text-sm text-gray-500 font-medium -mt-2">
+              <p className="text-sm text-gray-500 font-medium">
                 {item.title}
               </p>
 
