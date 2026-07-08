@@ -91,15 +91,15 @@ export default function SettlementTrendChart() {
     }, []);
 
     return (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 max-w-sm" style={{ marginLeft: "20px" }} >
-            <h2 className="font-semibold text-gray-700 text-center mb-5">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <h2 className="font-semibold text-gray-700 mb-5">
                 Settlement Trend (Monthly)
             </h2>
 
             {loading && <ChartSkeleton />}
 
             {!loading && error && (
-                <div className="h-56 flex items-center justify-center text-center text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl">
+                <div className="h-72 flex items-center justify-center text-center text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl">
                     Gagal memuat data trend: {error}
                 </div>
             )}
@@ -109,7 +109,7 @@ export default function SettlementTrendChart() {
                     <ResponsiveContainer width="100%" height="100%">
                         <LineChart
                             data={data}
-                            margin={{ top: 10, right: 10, left: -10, bottom: 0 }}
+                            margin={{ top: 10, right: 10, left: -10, bottom: 10 }}
                         >
                             <CartesianGrid
                                 strokeDasharray="3 3"
@@ -122,6 +122,9 @@ export default function SettlementTrendChart() {
                                 axisLine={false}
                                 tickLine={false}
                                 tick={{ fill: "#9CA3AF", fontSize: 12 }}
+                                angle={-45}
+                                textAnchor="end"
+                                height={50}
                             />
 
                             <YAxis

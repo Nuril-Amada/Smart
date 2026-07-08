@@ -20,7 +20,7 @@ export default function TrendChart({ data, startDate, endDate, tanggalAwal, setT
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 relative" style={{ marginRight: "20px", marginBottom: "20px" }}>
 
       <div className="mb-8">
-        <h3 className="text-lg font-semibold text-gray-700 mb-2 text-center">Trend Pengeluaran</h3>
+        <h3 className="text-lg font-semibold text-gray-700 text-center mb-2" style={{ marginTop: "10px" }}>Trend Pengeluaran</h3>
         <div className="flex justify-end">
           <select value={filterPeriod} onChange={e => setFilterPeriod(e.target.value)} className="border border-gray-300 rounded px-1 py-0.5 text-xs" style={{ marginRight: "20px", marginBottom: "10px" }}>
             <option value="hari">Hari</option>

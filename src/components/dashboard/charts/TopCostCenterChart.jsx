@@ -38,7 +38,7 @@ export default function TopCostCenterChart({
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6" style={{ marginLeft: "20px", marginBottom: "20px" }}>
 
-      <h3 className="text-lg font-semibold text-center mb-6">
+      <h3 className="text-lg font-semibold text-center mb-5" style={{ marginTop: "10px" }}>
         Top 10 Pengeluaran Cost Center
       </h3>
 
@@ -55,10 +55,10 @@ export default function TopCostCenterChart({
           <BarChart
             data={data}
             margin={{
-              top: 20,
-              right: 20,
-              left: 20,
-              bottom: 40,
+              top: 15,
+              right: 15,
+              left: 15,
+              bottom: 15,
             }}
           >
 

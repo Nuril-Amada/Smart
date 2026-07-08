@@ -29,8 +29,8 @@ export default function CostCenterChart({ data = [] }) {
       className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6"
       style={{ marginRight: "20px", marginBottom: "20px" }}
     >
-      <h3 className="text-lg font-semibold text-gray-700 text-center mb-5">
-        Pengeluaran per Cost Center
+      <h3 className="text-lg font-semibold text-gray-700 text-center mb-5" style={{ marginTop: "10px" }}>
+        Pengeluaran Cost Center Tertinggi
       </h3>
 
       {data.length === 0 ? (
@@ -51,6 +51,7 @@ export default function CostCenterChart({ data = [] }) {
               left: 15,
               right: 15,
               bottom: 15,
+              top: 15,
             }}
           >
 

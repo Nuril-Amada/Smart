@@ -211,7 +211,7 @@ export default function RecentSettlementTable() {
   const endEntry = Math.min(page * perPage, total);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5">
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-4 mb-5">
         <div className="flex flex-col gap-1">
