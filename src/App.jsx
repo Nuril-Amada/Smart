@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import CetakCek from "./pages/CetakCek";
 import BuatCekBaru from "./pages/BuatCekBaru";
 import Settlement from "./pages/Settlement";
+import Advance from "./pages/Advance";
 
 function App() {
   return (
@@ -24,6 +25,9 @@ function App() {
 
         {/* Settlement */}
         <Route path="/Settlement" element={<MainLayout><Settlement /></MainLayout>} />
+
+        {/* Advance */}
+        <Route path="/Advance" element={<MainLayout><Advance /></MainLayout>} />
 
       </Routes>
     </BrowserRouter>
