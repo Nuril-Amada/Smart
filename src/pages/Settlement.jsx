@@ -1,6 +1,5 @@
 import SummaryCard from "../components/settlement/SummaryCard";
-import SettlementPieChart from "../components/settlement/PieChart";
-import SettlementBarChart from "../components/settlement/BarChart";
+import SettlementTrendChart from "../components/settlement/TrendChart";
 import RecentSettlementTable from "../components/settlement/Table";
 
 export default function Settlement() {
@@ -11,16 +10,18 @@ export default function Settlement() {
             <SummaryCard />
 
             {/* Chart */}
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {/* Table */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
-                <SettlementPieChart />
+                <div className="xl:col-span-4">
+                    <SettlementTrendChart />
+                </div>
 
-                <SettlementBarChart />
+                <div className="xl:col-span-8 min-w-0">
+                    <RecentSettlementTable />
+                </div>
 
             </div>
-
-            {/* Table */}
-            <RecentSettlementTable />
 
         </div>
     );

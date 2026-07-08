@@ -4,28 +4,28 @@ const cards = [
   {
     title: "Total Pengeluaran",
     key: "totalPengeluaran",
-    bg: "bg-blue-800",
+    bg: "bg-gray-600",
     currency: true,
   },
   {
     title: "Jumlah Transaksi",
     key: "jumlahTransaksi",
-    bg: "bg-blue-800",
+    bg: "bg-gray-600",
   },
   {
     title: "Total GL Account",
     key: "totalGLAccount",
-    bg: "bg-blue-800",
+    bg: "bg-gray-600",
   },
   {
     title: "Total Cost Center",
     key: "totalCostCenter",
-    bg: "bg-blue-800",
+    bg: "bg-gray-600",
   },
   {
     title: "Rata-rata Pengeluaran",
     key: "rataPengeluaran",
-    bg: "bg-blue-800",
+    bg: "bg-gray-600",
     currency: true,
   },
 ];
@@ -48,30 +48,28 @@ export default function KPICard({ data = {} }) {
             {/* Garis Atas */}
             <div className={`${item.bg} h-2`}></div>
 
-            <div className="p-5 text-center">
+            <div className="p-6 text-center min-h-[70px] flex flex-col justify-center">
 
-              <p className="text-sm text-gray-500 font-medium">
+              <p className="text-sm text-gray-500 font-medium -mt-2">
                 {item.title}
               </p>
 
-              <h2 className="text-2xl font-bold text-gray-800 mt-3">
-
+              <h2 className="text-lg font-bold text-gray-800">
                 {value !== undefined && value !== null
                   ? item.currency
                     ? formatRupiah(value)
                     : value
                   : "-"}
-
               </h2>
 
             </div>
 
-          </div>
+          </div >
 
         );
 
       })}
 
-    </div>
+    </div >
   );
 }

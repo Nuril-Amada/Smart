@@ -56,7 +56,7 @@ export default function FilterDashboard({
             {/* Filter */}
             <button
               onClick={handleFilter}
-              className="bg-blue-900 hover:bg-blue-800 text-white rounded-lg transition"
+              className="bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition"
               style={{ padding: "5px 15px" }}
             >
               Filter
@@ -75,13 +75,13 @@ export default function FilterDashboard({
           {/* Right Side: Actions (Import File and Export Report) */}
           <div className="flex flex-wrap gap-3 items-end">
             <button
-              className="border border-blue-900 text-blue-900 font-medium rounded-lg hover:bg-blue-50 transition"
+              className="border border-gray-600 text-gray-500 font-medium rounded-lg hover:bg-gray-50 transition"
               style={{ padding: "5px 15px" }}
             >
               Import File
             </button>
             <button
-              className="bg-blue-900 hover:bg-blue-800 text-white font-medium rounded-lg transition"
+              className="bg-gray-600 hover:bg-gray-500 text-white font-medium rounded-lg transition"
               style={{ padding: "5px 15px" }}
             >
               Export Report
