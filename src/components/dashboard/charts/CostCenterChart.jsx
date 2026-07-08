@@ -29,9 +29,13 @@ export default function CostCenterChart({ data = [] }) {
       className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6"
       style={{ marginRight: "20px", marginBottom: "20px" }}
     >
-      <h3 className="text-lg font-semibold text-gray-700 text-center mb-5" style={{ marginTop: "10px" }}>
+      <h3 className="text-lg font-semibold text-gray-700 text-center" style={{ marginTop: "10px" }}>
         Pengeluaran Cost Center Tertinggi
       </h3>
+
+      <p className="text-sm font-normal text-gray-600 text-center mb-2" style={{ marginTop: "5px" }}>
+        Jumlah Pengeluaran: {formatRupiah(maxValue)}
+      </p>
 
       {data.length === 0 ? (
 
