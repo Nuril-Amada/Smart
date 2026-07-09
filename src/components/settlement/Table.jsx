@@ -4,6 +4,7 @@ import {
   FaCalendarAlt,
   FaChevronLeft,
   FaChevronRight,
+  FaTimes,
 } from "react-icons/fa";
 
 // ======================================================================
@@ -112,6 +113,25 @@ async function fetchSettlements() {
   };
 }
 
+// ======================================================================
+// Nanti kalau backend FastAPI sudah siap, tinggal ganti isi function ini:
+//
+//   async function submitManualInput(formData) {
+//     const res = await fetch(`${API_BASE_URL}/api/settlement/manual`, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify(formData),
+//     });
+//     if (!res.ok) throw new Error("Gagal menyimpan data");
+//     return res.json();
+//   }
+// ======================================================================
+async function submitManualInput(formData) {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+  console.log("Submit manual input:", formData);
+  return { success: true };
+}
+
 function formatRupiah(value) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
@@ -150,6 +170,16 @@ function TableSkeleton() {
   );
 }
 
+const initialForm = {
+  tanggal: "",
+  no_ppc: "",
+  nama_user: "",
+  email: "",
+  cost_center: "",
+  keterangan: "",
+  total_amount: "",
+};
+
 export default function RecentSettlementTable() {
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
@@ -169,6 +199,12 @@ export default function RecentSettlementTable() {
   const [tempEnd, setTempEnd] = useState(endDate);
   const [dateOpen, setDateOpen] = useState(false);
   const dateWrapperRef = useRef(null);
+
+  // Modal Manual Input — sekarang inline, gak pakai file/komponen terpisah
+  const [manualInputOpen, setManualInputOpen] = useState(false);
+  const [manualForm, setManualForm] = useState(initialForm);
+  const [manualSubmitting, setManualSubmitting] = useState(false);
+  const [manualError, setManualError] = useState(null);
 
   // Tutup popover kalender kalau klik di luar area-nya
   useEffect(() => {
@@ -202,38 +238,74 @@ export default function RecentSettlementTable() {
       ? `${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}`
       : "Pilih Tanggal";
 
+  async function loadData() {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const result = await fetchSettlements({
+        page,
+        filters: { filterUser, filterCostCenter, startDate, endDate },
+      });
+
+      setRows(result.data);
+      setTotal(result.total);
+      setPerPage(result.per_page);
+    } catch (err) {
+      setError(err.message || "Terjadi kesalahan saat mengambil data");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     let isMounted = true;
 
-    async function loadData() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const result = await fetchSettlements({
-          page,
-          filters: { filterUser, filterCostCenter, startDate, endDate },
-        });
-
-        if (isMounted) {
-          setRows(result.data);
-          setTotal(result.total);
-          setPerPage(result.per_page);
-        }
-      } catch (err) {
-        if (isMounted) setError(err.message || "Terjadi kesalahan saat mengambil data");
-      } finally {
-        if (isMounted) setLoading(false);
-      }
+    async function run() {
+      if (!isMounted) return;
+      await loadData();
     }
 
-    loadData();
+    run();
 
     return () => {
       isMounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, startDate, endDate]);
+
+  // Handler untuk form Manual Input
+  const handleManualChange = (e) => {
+    const { name, value } = e.target;
+    setManualForm((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleManualClose = () => {
+    setManualForm(initialForm);
+    setManualError(null);
+    setManualInputOpen(false);
+  };
+
+  const handleManualSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      setManualSubmitting(true);
+      setManualError(null);
+
+      await submitManualInput({
+        ...manualForm,
+        total_amount: Number(manualForm.total_amount),
+      });
+
+      handleManualClose();
+      loadData(); // refresh tabel setelah berhasil simpan
+    } catch (err) {
+      setManualError(err.message || "Gagal menyimpan data");
+    } finally {
+      setManualSubmitting(false);
+    }
+  };
 
   const totalPages = Math.max(1, Math.ceil(total / perPage));
   const startEntry = total === 0 ? 0 : (page - 1) * perPage + 1;
@@ -289,7 +361,7 @@ export default function RecentSettlementTable() {
             <span className={startDate && endDate ? "" : "text-gray-400"}>
               {dateRangeText}
             </span>
-            <FaCalendarAlt className="text-gray-400" />
+            <FaCalendarAlt className="absolute right-2 text-gray-400" />
           </button>
 
           {dateOpen && (
@@ -350,7 +422,13 @@ export default function RecentSettlementTable() {
           Upload Excel
         </button>
 
-        <button className="border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors" style={{ marginRight: "20px", marginBottom: "10px", padding: "5px 12px" }}>
+        {/* Manual Input — sekarang buka modal (inline, di file yang sama) */}
+        <button
+          type="button"
+          onClick={() => setManualInputOpen(true)}
+          className="border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          style={{ marginRight: "20px", marginBottom: "10px", padding: "5px 12px" }}
+        >
           Manual Input
         </button>
       </div>
@@ -448,6 +526,147 @@ export default function RecentSettlementTable() {
             >
               <FaChevronRight className="text-xs" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Manual Input — inline, tanpa file terpisah */}
+      {manualInputOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white rounded-2xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200" style={{ marginRight: "20px" }}>
+              <h3 className="text-lg font-semibold text-gray-700" style={{ marginLeft: "20px" }}>Manual Input</h3>
+              <button
+                type="button"
+                onClick={handleManualClose}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <FaTimes />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleManualSubmit} className="px-6 py-5 flex flex-col gap-4" style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px" }}>
+
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Tanggal</label>
+                <input
+                  type="date"
+                  name="tanggal"
+                  value={manualForm.tanggal}
+                  onChange={handleManualChange}
+                  required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">No PPC</label>
+                <input
+                  type="text"
+                  name="no_ppc"
+                  value={manualForm.no_ppc}
+                  onChange={handleManualChange}
+                  placeholder="PPC-0001"
+                  required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Nama User</label>
+                <input
+                  type="text"
+                  name="nama_user"
+                  value={manualForm.nama_user}
+                  onChange={handleManualChange}
+                  placeholder="Andi Pratama"
+                  required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  value={manualForm.email}
+                  onChange={handleManualChange}
+                  placeholder="nama@company.com"
+                  required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Cost Center</label>
+                <input
+                  type="text"
+                  name="cost_center"
+                  value={manualForm.cost_center}
+                  onChange={handleManualChange}
+                  placeholder="Marketing"
+                  required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Keterangan</label>
+                <textarea
+                  name="keterangan"
+                  value={manualForm.keterangan}
+                  onChange={handleManualChange}
+                  rows={3}
+                  placeholder="Contoh: Reimbursement transport dinas"
+                  required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none resize-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Total Amount</label>
+                <input
+                  type="number"
+                  name="total_amount"
+                  value={manualForm.total_amount}
+                  onChange={handleManualChange}
+                  placeholder="0"
+                  min="0"
+                  required
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                />
+              </div>
+
+              {manualError && (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  {manualError}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex justify-end gap-2 mt-2 pt-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={handleManualClose}
+                  disabled={manualSubmitting}
+                  className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "1px 15px", marginRight: "5px" }}
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={manualSubmitting}
+                  className="bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "1px 10px" }}
+                >
+                  {manualSubmitting ? "Menyimpan..." : "Simpan"}
+                </button>
+              </div>
+
+            </form>
           </div>
         </div>
       )}
