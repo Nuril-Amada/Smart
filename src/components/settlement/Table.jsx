@@ -320,7 +320,7 @@ export default function RecentSettlementTable() {
           </button>
 
           {dateOpen && (
-            <div className="absolute top-full mt-2 left-5 z-20 bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-72" style={{ padding: "5px 12px" }}>
+            <div className="absolute top-full mt-2 left-5 z-20 bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-72" style={{ padding: "5px 15px" }}>
               <div className="flex flex-col gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -383,19 +383,19 @@ export default function RecentSettlementTable() {
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+      <div className="overflow-x-auto" style={{ marginLeft: "10px", marginRight: "10px" }}>
+        <table className="w-full text-sm border border-gray-300">
           <thead>
-            <tr className="text-left text-gray-500 text-xs uppercase tracking-wide border-b border-gray-100">
-              <th className="p-3 font-medium">Type</th>
-              <th className="p-3 font-medium">Employee</th>
-              <th className="p-3 font-medium">Request No</th>
-              <th className="p-3 font-medium">Amount</th>
-              <th className="p-3 font-medium">Payment</th>
-              <th className="p-3 font-medium">SAP Doc No</th>
-              <th className="p-3 font-medium">Date</th>
-              <th className="p-3 font-medium">Source</th>
-              <th className="p-3 font-medium text-center">Action</th>
+            <tr className="text-left text-gray-500 text-xs uppercase tracking-wide bg-gray-50">
+              <th className="p-3 font-medium border border-gray-300">Type</th>
+              <th className="p-3 font-medium border border-gray-300">Employee</th>
+              <th className="p-3 font-medium border border-gray-300">Request No</th>
+              <th className="p-3 font-medium border border-gray-300">Amount</th>
+              <th className="p-3 font-medium border border-gray-300">Payment</th>
+              <th className="p-3 font-medium border border-gray-300">SAP Doc No</th>
+              <th className="p-3 font-medium border border-gray-300">Date</th>
+              <th className="p-3 font-medium border border-gray-300">Source</th>
+              <th className="p-3 font-medium text-center border border-gray-300">Action</th>
             </tr>
           </thead>
 
@@ -406,27 +406,27 @@ export default function RecentSettlementTable() {
               {rows.map((row, index) => (
                 <tr
                   key={index}
-                  className="border-b border-gray-100 hover:bg-gray-50"
+                  className="hover:bg-gray-50"
                 >
-                  <td className="p-3">
+                  <td className="p-3 border border-gray-300">
                     <Badge text={row.type} styleMap={TYPE_STYLE} />
                   </td>
-                  <td className="p-3 text-gray-700">{row.employee}</td>
-                  <td className="p-3 text-gray-700">{row.request_no}</td>
-                  <td className="p-3 text-gray-700 whitespace-nowrap">
+                  <td className="p-3 text-gray-700 border border-gray-300">{row.employee}</td>
+                  <td className="p-3 text-gray-700 border border-gray-300">{row.request_no}</td>
+                  <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
                     {formatRupiah(row.amount)}
                   </td>
-                  <td className="p-3">
+                  <td className="p-3 border border-gray-300">
                     <Badge text={row.payment} styleMap={PAYMENT_STYLE} />
                   </td>
-                  <td className="p-3 text-gray-700">{row.sap_doc_no}</td>
-                  <td className="p-3 text-gray-700 whitespace-nowrap">
+                  <td className="p-3 text-gray-700 border border-gray-300">{row.sap_doc_no}</td>
+                  <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
                     {formatDate(row.date)}
                   </td>
-                  <td className="p-3">
+                  <td className="p-3 border border-gray-300">
                     <Badge text={row.source} styleMap={SOURCE_STYLE} />
                   </td>
-                  <td className="p-3 text-center">
+                  <td className="p-3 text-center border border-gray-300">
                     <button className="text-blue-600 hover:text-blue-800">
                       <FaEye />
                     </button>

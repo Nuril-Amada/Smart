@@ -13,11 +13,6 @@ const cards = [
     bg: "bg-gray-600",
   },
   {
-    title: "Total GL Account",
-    key: "totalGLAccount",
-    bg: "bg-gray-600",
-  },
-  {
     title: "Total Cost Center",
     key: "totalCostCenter",
     bg: "bg-gray-600",
@@ -32,7 +27,7 @@ const cards = [
 
 export default function KPICard({ data = {} }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-6" style={{ marginBottom: "15px", paddingLeft: "20px", paddingRight: "20px" }}>
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6" style={{ marginBottom: "15px", paddingLeft: "20px", paddingRight: "20px" }}>
 
       {cards.map((item) => {
 
