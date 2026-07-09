@@ -364,7 +364,7 @@ export default function WaitingAdvanceTable() {
                 </div>
 
                 {/* New Request */}
-                <button className="flex items-center gap-2 bg-gray-600 hover:bg-blue-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors" style={{ marginBottom: "10px", marginRight: "20px", padding: "5px 10px" }}>
+                <button className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors" style={{ marginBottom: "10px", marginRight: "20px", padding: "5px 10px" }}>
                     <FaPlus className="text-xs" />
                     New Request
                 </button>
