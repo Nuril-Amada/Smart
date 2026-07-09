@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  FaEye,
   FaUpload,
   FaCalendarAlt,
   FaChevronLeft,
@@ -23,20 +22,19 @@ import {
 // {
 //   "data": [
 //     {
-//       "type": "Advance",
-//       "employee": "Andi Pratama",
-//       "request_no": "ADV001",
-//       "amount": 3500000,
-//       "payment": "Check",
-//       "sap_doc_no": "5100000012",
-//       "date": "2026-07-09",
-//       "source": "Upload Excel"
+//       "tanggal": "2026-07-09",
+//       "no_ppc": "PPC-0001",
+//       "nama_user": "Andi Pratama",
+//       "email": "andi.pratama@company.com",
+//       "cost_center": "Marketing",
+//       "keterangan": "Reimbursement transport dinas",
+//       "total_amount": 3500000
 //     },
 //     ...
 //   ],
 //   "total": 215,
 //   "page": 1,
-//   "per_page": 5
+//   "per_page": 7
 // }
 // ======================================================================
 async function fetchSettlements() {
@@ -45,76 +43,74 @@ async function fetchSettlements() {
   return {
     data: [
       {
-        type: "Advance",
-        employee: "Andi Pratama",
-        request_no: "ADV001",
-        amount: 3500000,
-        payment: "Check",
-        sap_doc_no: "5100000012",
-        date: "2026-07-09",
-        source: "Upload Excel",
+        tanggal: "2026-07-09",
+        no_ppc: "PPC-0001",
+        nama_user: "Andi Pratama",
+        email: "andi.pratama@company.com",
+        cost_center: "Marketing",
+        keterangan: "Reimbursement transport dinas",
+        total_amount: 3500000,
       },
       {
-        type: "Advance",
-        employee: "Yoga Saputra",
-        request_no: "ADV005",
-        amount: 900000,
-        payment: "Petty Cash",
-        sap_doc_no: "5100000015",
-        date: "2026-07-09",
-        source: "Manual Input",
+        tanggal: "2026-07-09",
+        no_ppc: "PPC-0002",
+        nama_user: "Yoga Saputra",
+        email: "yoga.saputra@company.com",
+        cost_center: "IT",
+        keterangan: "Advance pembelian perlengkapan",
+        total_amount: 900000,
       },
       {
-        type: "Reimbursement",
-        employee: "Rina Marlina",
-        request_no: "-",
-        amount: 850000,
-        payment: "Petty Cash",
-        sap_doc_no: "5100000018",
-        date: "2026-07-10",
-        source: "Upload Excel",
+        tanggal: "2026-07-10",
+        no_ppc: "PPC-0003",
+        nama_user: "Rina Marlina",
+        email: "rina.marlina@company.com",
+        cost_center: "Finance",
+        keterangan: "Reimbursement konsumsi rapat",
+        total_amount: 850000,
       },
       {
-        type: "Reimbursement",
-        employee: "Budi Santoso",
-        request_no: "-",
-        amount: 2400000,
-        payment: "Check",
-        sap_doc_no: "5100000020",
-        date: "2026-07-10",
-        source: "Upload Excel",
+        tanggal: "2026-07-10",
+        no_ppc: "PPC-0004",
+        nama_user: "Budi Santoso",
+        email: "budi.santoso@company.com",
+        cost_center: "HR",
+        keterangan: "Reimbursement pelatihan karyawan",
+        total_amount: 2400000,
       },
       {
-        type: "Advance",
-        employee: "Sinta Dewi",
-        request_no: "ADV004",
-        amount: 2200000,
-        payment: "Check",
-        sap_doc_no: "5100000021",
-        date: "2026-07-10",
-        source: "Upload Excel",
+        tanggal: "2026-07-10",
+        no_ppc: "PPC-0005",
+        nama_user: "Sinta Dewi",
+        email: "sinta.dewi@company.com",
+        cost_center: "Operations",
+        keterangan: "Advance operasional cabang",
+        total_amount: 2200000,
+      },
+      {
+        tanggal: "2026-07-11",
+        no_ppc: "PPC-0006",
+        nama_user: "Doni Kurniawan",
+        email: "doni.kurniawan@company.com",
+        cost_center: "Marketing",
+        keterangan: "Reimbursement cetak brosur",
+        total_amount: 1250000,
+      },
+      {
+        tanggal: "2026-07-11",
+        no_ppc: "PPC-0007",
+        nama_user: "Lestari Wulandari",
+        email: "lestari.wulandari@company.com",
+        cost_center: "Finance",
+        keterangan: "Advance perjalanan dinas",
+        total_amount: 4100000,
       },
     ],
     total: 215,
     page: 1,
-    per_page: 5,
+    per_page: 7,
   };
 }
-
-const TYPE_STYLE = {
-  Advance: "bg-green-100 text-green-700",
-  Reimbursement: "bg-purple-100 text-purple-700",
-};
-
-const PAYMENT_STYLE = {
-  Check: "bg-blue-100 text-blue-700",
-  "Petty Cash": "bg-green-100 text-green-700",
-};
-
-const SOURCE_STYLE = {
-  "Upload Excel": "bg-blue-100 text-blue-700",
-  "Manual Input": "bg-orange-100 text-orange-700",
-};
 
 function formatRupiah(value) {
   return new Intl.NumberFormat("id-ID", {
@@ -138,25 +134,14 @@ function formatDisplayDate(isoDate) {
   return `${day}/${month}/${year}`;
 }
 
-function Badge({ text, styleMap }) {
-  return (
-    <span
-      className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap ${styleMap[text] || "bg-gray-100 text-gray-600"
-        }`}
-    >
-      {text}
-    </span>
-  );
-}
-
 function TableSkeleton() {
   return (
     <tbody>
-      {Array.from({ length: 5 }).map((_, i) => (
+      {Array.from({ length: 7 }).map((_, i) => (
         <tr key={i} className="border-b border-gray-100 animate-pulse">
-          {Array.from({ length: 8 }).map((_, j) => (
+          {Array.from({ length: 7 }).map((_, j) => (
             <td key={j} className="p-3">
-              <div className="h-4 bg-gray-200 rounded w-20" />
+              <div className="h-4 bg-gray-200 rounded w-20 mx-auto" />
             </td>
           ))}
         </tr>
@@ -168,17 +153,16 @@ function TableSkeleton() {
 export default function RecentSettlementTable() {
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
-  const [perPage, setPerPage] = useState(5);
+  const [perPage, setPerPage] = useState(7);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // Filter state — nanti dikirim sebagai query param ke API
-  const [filterType, setFilterType] = useState("All Type");
-  const [filterEmployee, setFilterEmployee] = useState("All Employee");
-  const [filterPayment, setFilterPayment] = useState("All Payment");
+  const [filterUser, setFilterUser] = useState("All User");
+  const [filterCostCenter, setFilterCostCenter] = useState("All Cost Center");
 
-  // Filter tanggal — diganti dari string statis jadi 2 state date beneran
+  // Filter tanggal
   const [startDate, setStartDate] = useState("2026-07-01");
   const [endDate, setEndDate] = useState("2026-07-31");
   const [tempStart, setTempStart] = useState(startDate);
@@ -201,7 +185,7 @@ export default function RecentSettlementTable() {
     setStartDate(tempStart);
     setEndDate(tempEnd);
     setDateOpen(false);
-    setPage(1); // reset ke halaman 1 setiap filter berubah
+    setPage(1);
   };
 
   const handleClearDate = () => {
@@ -228,7 +212,7 @@ export default function RecentSettlementTable() {
 
         const result = await fetchSettlements({
           page,
-          filters: { filterType, filterEmployee, filterPayment, startDate, endDate },
+          filters: { filterUser, filterCostCenter, startDate, endDate },
         });
 
         if (isMounted) {
@@ -256,52 +240,40 @@ export default function RecentSettlementTable() {
   const endEntry = Math.min(page * perPage, total);
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5" style={{ marginRight: "20px" }}>
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5" style={{ marginRight: "20px", marginLeft: "20px" }}>
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-4 mb-5">
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-500 text-center" style={{ marginTop: "10px" }}>Type</label>
+          <label className="text-xs font-medium text-gray-500 text-center" style={{ marginTop: "10px" }}>Nama User</label>
           <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[140px] focus:outline-none focus:ring-2 focus:ring-blue-200 
-            " style={{ marginLeft: "20px" }}
-          >
-            <option>All Type</option>
-            <option>Advance</option>
-            <option>Reimbursement</option>
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-500 text-center">Employee</label>
-          <select
-            value={filterEmployee}
-            onChange={(e) => setFilterEmployee(e.target.value)}
+            value={filterUser}
+            onChange={(e) => setFilterUser(e.target.value)}
             className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-blue-200"
+            style={{ marginLeft: "20px", marginBottom: "10px" }}
           >
-            <option>All Employee</option>
-            {[...new Set(rows.map((r) => r.employee))].map((name) => (
+            <option>All User</option>
+            {[...new Set(rows.map((r) => r.nama_user))].map((name) => (
               <option key={name}>{name}</option>
             ))}
           </select>
         </div>
 
         <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium text-gray-500 text-center">Payment</label>
+          <label className="text-xs font-medium text-gray-500 text-center">Cost Center</label>
           <select
-            value={filterPayment}
-            onChange={(e) => setFilterPayment(e.target.value)}
-            className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[140px] focus:outline-none focus:ring-2 focus:ring-blue-200"
-
+            value={filterCostCenter}
+            onChange={(e) => setFilterCostCenter(e.target.value)}
+            className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-blue-200"
+            style={{ marginBottom: "10px" }}
           >
-            <option>All Payment</option>
-            <option>Check</option>
-            <option>Petty Cash</option>
+            <option>All Cost Center</option>
+            {[...new Set(rows.map((r) => r.cost_center))].map((name) => (
+              <option key={name}>{name}</option>
+            ))}
           </select>
         </div>
 
-        {/* Date Range — sekarang fungsional & connect ke kalender native */}
+        {/* Date Range — fungsional & connect ke kalender native */}
         <div className="flex flex-col gap-1 relative" ref={dateWrapperRef}>
           <label className="text-xs font-medium text-gray-500 text-center">Date Range</label>
           <button
@@ -311,7 +283,8 @@ export default function RecentSettlementTable() {
               setTempEnd(endDate);
               setDateOpen((prev) => !prev);
             }}
-            className="flex items-center justify-between gap-3 border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[220px] hover:border-gray-300" style={{ marginLeft: "20px", marginBottom: "10px" }}
+            className="flex items-center justify-between gap-3 border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[220px] hover:border-gray-300"
+            style={{ marginBottom: "10px" }}
           >
             <span className={startDate && endDate ? "" : "text-gray-400"}>
               {dateRangeText}
@@ -320,7 +293,7 @@ export default function RecentSettlementTable() {
           </button>
 
           {dateOpen && (
-            <div className="absolute top-full mt-2 left-5 z-20 bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-72" style={{ padding: "5px 15px" }}>
+            <div className="absolute top-full mt-2 left-0 z-20 bg-white border border-gray-200 rounded-xl shadow-lg w-72" style={{ padding: "12px 15px" }}>
               <div className="flex flex-col gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -382,20 +355,18 @@ export default function RecentSettlementTable() {
         </button>
       </div>
 
-      {/* Table */}
+      {/* Table — 7 kolom: Tanggal, No PPC, Nama User, Email, Cost Center, Keterangan, Total Amount */}
       <div className="overflow-x-auto" style={{ marginLeft: "10px", marginRight: "10px" }}>
-        <table className="w-full text-sm border border-gray-300">
+        <table className="w-full text-sm border border-gray-300 text-center">
           <thead>
-            <tr className="text-left text-gray-500 text-xs uppercase tracking-wide bg-gray-50">
-              <th className="p-3 font-medium border border-gray-300">Type</th>
-              <th className="p-3 font-medium border border-gray-300">Employee</th>
-              <th className="p-3 font-medium border border-gray-300">Request No</th>
-              <th className="p-3 font-medium border border-gray-300">Amount</th>
-              <th className="p-3 font-medium border border-gray-300">Payment</th>
-              <th className="p-3 font-medium border border-gray-300">SAP Doc No</th>
-              <th className="p-3 font-medium border border-gray-300">Date</th>
-              <th className="p-3 font-medium border border-gray-300">Source</th>
-              <th className="p-3 font-medium text-center border border-gray-300">Action</th>
+            <tr className="text-xs uppercase tracking-wide bg-gray-50">
+              <th className="p-3 font-medium border border-gray-300 text-center">Tanggal</th>
+              <th className="p-3 font-medium border border-gray-300 text-center">No PPC</th>
+              <th className="p-3 font-medium border border-gray-300 text-center">Nama User</th>
+              <th className="p-3 font-medium border border-gray-300 text-center">Email</th>
+              <th className="p-3 font-medium border border-gray-300 text-center">Cost Center</th>
+              <th className="p-3 font-medium border border-gray-300 text-center">Keterangan</th>
+              <th className="p-3 font-medium border border-gray-300 text-center">Total Amount</th>
             </tr>
           </thead>
 
@@ -404,32 +375,17 @@ export default function RecentSettlementTable() {
           {!loading && !error && (
             <tbody>
               {rows.map((row, index) => (
-                <tr
-                  key={index}
-                  className="hover:bg-gray-50"
-                >
-                  <td className="p-3 border border-gray-300">
-                    <Badge text={row.type} styleMap={TYPE_STYLE} />
-                  </td>
-                  <td className="p-3 text-gray-700 border border-gray-300">{row.employee}</td>
-                  <td className="p-3 text-gray-700 border border-gray-300">{row.request_no}</td>
+                <tr key={index} className="hover:bg-gray-50">
                   <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
-                    {formatRupiah(row.amount)}
+                    {formatDate(row.tanggal)}
                   </td>
-                  <td className="p-3 border border-gray-300">
-                    <Badge text={row.payment} styleMap={PAYMENT_STYLE} />
-                  </td>
-                  <td className="p-3 text-gray-700 border border-gray-300">{row.sap_doc_no}</td>
+                  <td className="p-3 text-gray-700 border border-gray-300">{row.no_ppc}</td>
+                  <td className="p-3 text-gray-700 border border-gray-300">{row.nama_user}</td>
+                  <td className="p-3 text-gray-700 border border-gray-300">{row.email}</td>
+                  <td className="p-3 text-gray-700 border border-gray-300">{row.cost_center}</td>
+                  <td className="p-3 text-gray-700 border border-gray-300">{row.keterangan}</td>
                   <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
-                    {formatDate(row.date)}
-                  </td>
-                  <td className="p-3 border border-gray-300">
-                    <Badge text={row.source} styleMap={SOURCE_STYLE} />
-                  </td>
-                  <td className="p-3 text-center border border-gray-300">
-                    <button className="text-blue-600 hover:text-blue-800">
-                      <FaEye />
-                    </button>
+                    {formatRupiah(row.total_amount)}
                   </td>
                 </tr>
               ))}
@@ -446,7 +402,7 @@ export default function RecentSettlementTable() {
 
       {/* Pagination */}
       {!loading && !error && (
-        <div className="flex items-center justify-between mt-4 text-sm text-gray-500">
+        <div className="flex items-center justify-between mt-4 text-sm text-gray-500" style={{ marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}>
           <span>
             Showing {startEntry} to {endEntry} of {total} entries
           </span>
@@ -465,7 +421,7 @@ export default function RecentSettlementTable() {
                 key={p}
                 onClick={() => setPage(p)}
                 className={`w-8 h-8 flex items-center justify-center rounded-md text-sm ${page === p
-                  ? "bg-blue-600 text-white"
+                  ? "bg-gray-600 text-white"
                   : "border border-gray-200 text-gray-600 hover:bg-gray-50"
                   }`}
               >
@@ -478,7 +434,7 @@ export default function RecentSettlementTable() {
             <button
               onClick={() => setPage(totalPages)}
               className={`w-8 h-8 flex items-center justify-center rounded-md text-sm ${page === totalPages
-                ? "bg-blue-600 text-white"
+                ? "bg-gray-600 text-white"
                 : "border border-gray-200 text-gray-600 hover:bg-gray-50"
                 }`}
             >

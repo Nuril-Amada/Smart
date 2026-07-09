@@ -36,15 +36,6 @@ const cards = [
         icon: <FaReceipt />,
         subtitle: "Transactions",
     },
-    {
-        title: "This Month Settlement",
-        key: "this_month",
-        border: "border-gray-300",
-        iconBg: "bg-gray-100",
-        iconColor: "text-gray-600",
-        icon: <FaCalendarAlt />,
-        subtitle: "Transactions",
-    },
 ];
 
 // ======================================================================
@@ -66,7 +57,7 @@ const cards = [
 export default function SummaryCard({ data = {} }) {
     return (
         <div
-            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 m-5"
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 m-5"
             style={{ marginBottom: "20px", marginTop: "20px", paddingLeft: "20px", paddingRight: "20px" }}
         >
             {cards.map((item) => {

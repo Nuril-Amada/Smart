@@ -27,7 +27,7 @@ export default function Settlement() {
             {/* Chart & Table */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
-                <div className="xl:col-span-8 min-w-0">
+                <div className="xl:col-span-12 min-w-0">
                     <RecentSettlementTable />
                 </div>
 

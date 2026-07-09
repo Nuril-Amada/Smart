@@ -2,11 +2,8 @@ import { NavLink } from "react-router-dom";
 import {
   FaHome,
   FaMoneyCheckAlt,
-  FaExchangeAlt,
-  FaWallet,
   FaHistory,
   FaChartBar,
-  FaFileImport,
   FaFileExport,
 } from "react-icons/fa";
 
@@ -25,7 +22,7 @@ const menu = [
   },
 
   {
-    title: "PEMBAYARAN",
+    title: "",
     items: [
       {
         name: "Cetak Cek",
@@ -36,7 +33,7 @@ const menu = [
   },
 
   {
-    title: "RIWAYAT & LAPORAN",
+    title: "",
     items: [
       {
         name: "Settlement",
@@ -52,7 +49,7 @@ const menu = [
   },
 
   {
-    title: "EXPORT",
+    title: "",
     items: [
       {
         name: "Export",
