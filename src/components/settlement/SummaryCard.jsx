@@ -68,7 +68,7 @@ export default function SummaryCard({ data = {} }) {
                         key={item.key}
                         className={`bg-white rounded-xl border ${item.border} shadow-sm p-6 hover:shadow-md transition-all duration-300`}
                     >
-                        <div className="flex items-center gap-2" style={{ paddingLeft: "5px" }}>
+                        <div className="flex items-center gap-2" style={{ marginLeft: "10px", marginTop: "10px", marginBottom: "10px" }}>
                             {/* Icon */}
                             <div
                                 className={`w-12 h-12 rounded-full flex items-center justify-center text-xl ${item.iconBg} ${item.iconColor}`}

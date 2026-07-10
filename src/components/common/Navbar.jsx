@@ -14,8 +14,8 @@ export default function Navbar() {
     "/": "Dashboard",
     "/CetakCek": "Cetak Cek",
     "/CetakCekBaru": "Buat Cek Baru",
-    "/Settlement": "Settlement",
-    "/Advance": "Advance",
+    "/Settlement": "Dashboard Settlement",
+    "/Advance": "Dashboard Advance",
     "/Export": "Export SAP",
   };
 
@@ -32,11 +32,6 @@ export default function Navbar() {
       {/* RIGHT SIDE - Notification & User */}
       <div className="flex items-center gap-6" style={{ marginRight: "30px" }}>   {/* ← Tambah jarak & geser sedikit ke kiri */}
 
-        {/* Notification */}
-        <button className="text-xl text-gray-600 hover:text-gray-800 transition">
-          <FaBell />
-        </button>
-
         {/* User Profile */}
         <div className="flex items-center gap-3">
           <FaUserCircle className="text-3xl text-gray-500" />
@@ -49,8 +44,6 @@ export default function Navbar() {
               PT SMART Tbk.
             </p>
           </div>
-
-          <FaChevronDown className="text-gray-500 text-sm" />
         </div>
 
       </div>

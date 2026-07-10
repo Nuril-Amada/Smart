@@ -1,16 +1,21 @@
-import { useEffect, useRef, useState } from "react";
-import {
-  FaUpload,
-  FaCalendarAlt,
-  FaChevronLeft,
-  FaChevronRight,
-  FaTimes,
-} from "react-icons/fa";
+import { useEffect, useState } from "react";
+import { FaTimes, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
 // ======================================================================
-// DUMMY DATA — GANTI BAGIAN INI SAJA NANTI KALAU BACKEND SUDAH SIAP.
+// TEMPLATE FETCH — GANTI ISI FUNCTION INI KALAU BACKEND SUDAH SIAP.
 //
-// Contoh nanti tinggal ganti isi function ini jadi:
+// PENTING: endpoint GET ini nantinya me-return data GABUNGAN dari 2 sumber
+// (digabungkan oleh backend, bukan frontend):
+//   1. Baris dari tabel Advance yang statusnya sudah "Settled"
+//      → source: "Advance"
+//   2. Baris yang diinput manual lewat form di halaman ini
+//      → source: "Reimbursement"
+//
+// Frontend TIDAK PERLU tahu atau memproses penggabungan ini — cukup
+// tampilkan apa pun yang dikembalikan endpoint /api/settlement,
+// termasuk field "source" yang sudah ditentukan backend.
+//
+// Ganti isi function ini jadi:
 //
 //   async function fetchSettlements({ page, filters }) {
 //     const params = new URLSearchParams({ page, ...filters });
@@ -29,7 +34,8 @@ import {
 //       "email": "andi.pratama@company.com",
 //       "cost_center": "Marketing",
 //       "keterangan": "Reimbursement transport dinas",
-//       "total_amount": 3500000
+//       "total_amount": 3500000,
+//       "source": "Reimbursement"   // "Advance" | "Reimbursement"
 //     },
 //     ...
 //   ],
@@ -37,100 +43,52 @@ import {
 //   "page": 1,
 //   "per_page": 7
 // }
+//
+// Untuk sekarang (belum ada backend), function ini sengaja return
+// data kosong — supaya tabel tampil sebagai template kosong, bukan
+// data pura-pura.
 // ======================================================================
 async function fetchSettlements() {
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await new Promise((resolve) => setTimeout(resolve, 300));
 
   return {
-    data: [
-      {
-        tanggal: "2026-07-09",
-        no_ppc: "PPC-0001",
-        nama_user: "Andi Pratama",
-        email: "andi.pratama@company.com",
-        cost_center: "Marketing",
-        keterangan: "Reimbursement transport dinas",
-        total_amount: 3500000,
-      },
-      {
-        tanggal: "2026-07-09",
-        no_ppc: "PPC-0002",
-        nama_user: "Yoga Saputra",
-        email: "yoga.saputra@company.com",
-        cost_center: "IT",
-        keterangan: "Advance pembelian perlengkapan",
-        total_amount: 900000,
-      },
-      {
-        tanggal: "2026-07-10",
-        no_ppc: "PPC-0003",
-        nama_user: "Rina Marlina",
-        email: "rina.marlina@company.com",
-        cost_center: "Finance",
-        keterangan: "Reimbursement konsumsi rapat",
-        total_amount: 850000,
-      },
-      {
-        tanggal: "2026-07-10",
-        no_ppc: "PPC-0004",
-        nama_user: "Budi Santoso",
-        email: "budi.santoso@company.com",
-        cost_center: "HR",
-        keterangan: "Reimbursement pelatihan karyawan",
-        total_amount: 2400000,
-      },
-      {
-        tanggal: "2026-07-10",
-        no_ppc: "PPC-0005",
-        nama_user: "Sinta Dewi",
-        email: "sinta.dewi@company.com",
-        cost_center: "Operations",
-        keterangan: "Advance operasional cabang",
-        total_amount: 2200000,
-      },
-      {
-        tanggal: "2026-07-11",
-        no_ppc: "PPC-0006",
-        nama_user: "Doni Kurniawan",
-        email: "doni.kurniawan@company.com",
-        cost_center: "Marketing",
-        keterangan: "Reimbursement cetak brosur",
-        total_amount: 1250000,
-      },
-      {
-        tanggal: "2026-07-11",
-        no_ppc: "PPC-0007",
-        nama_user: "Lestari Wulandari",
-        email: "lestari.wulandari@company.com",
-        cost_center: "Finance",
-        keterangan: "Advance perjalanan dinas",
-        total_amount: 4100000,
-      },
-    ],
-    total: 215,
+    data: [],
+    total: 0,
     page: 1,
     per_page: 7,
   };
 }
 
 // ======================================================================
-// Nanti kalau backend FastAPI sudah siap, tinggal ganti isi function ini:
+// PENTING — LOGIC BISNIS SOURCE:
 //
-//   async function submitManualInput(formData) {
-//     const res = await fetch(`${API_BASE_URL}/api/settlement/manual`, {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify(formData),
-//     });
-//     if (!res.ok) throw new Error("Gagal menyimpan data");
-//     return res.json();
-//   }
+// Kolom "source" di tabel ini menandakan asal data settlement:
+//   - "Advance"       → masuk OTOMATIS dari fitur Advance, begitu status
+//                        advance itu berubah jadi "Settled" di sana.
+//                        Baris dengan source ini TIDAK dibuat lewat form
+//                        Manual Input di halaman ini.
+//   - "Reimbursement" → dibuat lewat form "Manual Input" di halaman ini,
+//                        karena reimbursement tidak melalui alur Advance.
+//
+// Makanya form Manual Input di bawah TIDAK punya pilihan dropdown Source
+// — nilainya di-hardcode "Reimbursement", karena satu-satunya jalan data
+// sampai ke form ini ya lewat input manual reimbursement.
+//
+// Nanti di backend, endpoint POST manual input HARUS otomatis set
+// source = "Reimbursement" (jangan percaya nilai dari client), dan baris
+// dengan source "Advance" hanya boleh muncul dari proses settle otomatis
+// di endpoint Advance, bukan dari endpoint manual input ini.
 // ======================================================================
 async function submitManualInput(formData) {
   await new Promise((resolve) => setTimeout(resolve, 500));
   console.log("Submit manual input:", formData);
   return { success: true };
 }
+
+const SOURCE_STYLE = {
+  Advance: "bg-green-100 text-green-700",
+  Reimbursement: "bg-purple-100 text-purple-700",
+};
 
 function formatRupiah(value) {
   return new Intl.NumberFormat("id-ID", {
@@ -148,18 +106,12 @@ function formatDate(isoDate) {
   }).format(new Date(isoDate));
 }
 
-function formatDisplayDate(isoDate) {
-  if (!isoDate) return "";
-  const [year, month, day] = isoDate.split("-");
-  return `${day}/${month}/${year}`;
-}
-
 function TableSkeleton() {
   return (
     <tbody>
       {Array.from({ length: 7 }).map((_, i) => (
         <tr key={i} className="border-b border-gray-100 animate-pulse">
-          {Array.from({ length: 7 }).map((_, j) => (
+          {Array.from({ length: 8 }).map((_, j) => (
             <td key={j} className="p-3">
               <div className="h-4 bg-gray-200 rounded w-20 mx-auto" />
             </td>
@@ -178,6 +130,7 @@ const initialForm = {
   cost_center: "",
   keterangan: "",
   total_amount: "",
+  source: "Reimbursement", // fixed — manual input selalu untuk Reimbursement
 };
 
 export default function RecentSettlementTable() {
@@ -192,51 +145,11 @@ export default function RecentSettlementTable() {
   const [filterUser, setFilterUser] = useState("All User");
   const [filterCostCenter, setFilterCostCenter] = useState("All Cost Center");
 
-  // Filter tanggal
-  const [startDate, setStartDate] = useState("2026-07-01");
-  const [endDate, setEndDate] = useState("2026-07-31");
-  const [tempStart, setTempStart] = useState(startDate);
-  const [tempEnd, setTempEnd] = useState(endDate);
-  const [dateOpen, setDateOpen] = useState(false);
-  const dateWrapperRef = useRef(null);
-
-  // Modal Manual Input — sekarang inline, gak pakai file/komponen terpisah
+  // Modal Manual Input — inline, gak pakai file/komponen terpisah
   const [manualInputOpen, setManualInputOpen] = useState(false);
   const [manualForm, setManualForm] = useState(initialForm);
   const [manualSubmitting, setManualSubmitting] = useState(false);
   const [manualError, setManualError] = useState(null);
-
-  // Tutup popover kalender kalau klik di luar area-nya
-  useEffect(() => {
-    function handleClickOutside(e) {
-      if (dateWrapperRef.current && !dateWrapperRef.current.contains(e.target)) {
-        setDateOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const handleApplyDate = () => {
-    setStartDate(tempStart);
-    setEndDate(tempEnd);
-    setDateOpen(false);
-    setPage(1);
-  };
-
-  const handleClearDate = () => {
-    setTempStart("");
-    setTempEnd("");
-    setStartDate("");
-    setEndDate("");
-    setDateOpen(false);
-    setPage(1);
-  };
-
-  const dateRangeText =
-    startDate && endDate
-      ? `${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}`
-      : "Pilih Tanggal";
 
   async function loadData() {
     try {
@@ -245,7 +158,7 @@ export default function RecentSettlementTable() {
 
       const result = await fetchSettlements({
         page,
-        filters: { filterUser, filterCostCenter, startDate, endDate },
+        filters: { filterUser, filterCostCenter },
       });
 
       setRows(result.data);
@@ -272,7 +185,7 @@ export default function RecentSettlementTable() {
       isMounted = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, startDate, endDate]);
+  }, [page]);
 
   // Handler untuk form Manual Input
   const handleManualChange = (e) => {
@@ -345,95 +258,20 @@ export default function RecentSettlementTable() {
           </select>
         </div>
 
-        {/* Date Range — fungsional & connect ke kalender native */}
-        <div className="flex flex-col gap-1 relative" ref={dateWrapperRef}>
-          <label className="text-xs font-medium text-gray-500 text-center">Date Range</label>
-          <button
-            type="button"
-            onClick={() => {
-              setTempStart(startDate);
-              setTempEnd(endDate);
-              setDateOpen((prev) => !prev);
-            }}
-            className="flex items-center justify-between gap-3 border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[220px] hover:border-gray-300"
-            style={{ marginBottom: "10px" }}
-          >
-            <span className={startDate && endDate ? "" : "text-gray-400"}>
-              {dateRangeText}
-            </span>
-            <FaCalendarAlt className="absolute right-2 text-gray-400" />
-          </button>
-
-          {dateOpen && (
-            <div className="absolute top-full mt-2 left-0 z-20 bg-white border border-gray-200 rounded-xl shadow-lg w-72" style={{ padding: "12px 15px" }}>
-              <div className="flex flex-col gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
-                    Dari Tanggal
-                  </label>
-                  <input
-                    type="date"
-                    value={tempStart}
-                    max={tempEnd || undefined}
-                    onChange={(e) => setTempStart(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
-                    Sampai Tanggal
-                  </label>
-                  <input
-                    type="date"
-                    value={tempEnd}
-                    min={tempStart || undefined}
-                    onChange={(e) => setTempEnd(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                  />
-                </div>
-
-                <div className="flex justify-between gap-2 mt-2">
-                  <button
-                    type="button"
-                    onClick={handleClearDate}
-                    className="flex-1 border border-gray-300 rounded-lg text-sm py-2 text-gray-600 hover:bg-gray-50"
-                  >
-                    Reset
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleApplyDate}
-                    disabled={!tempStart || !tempEnd}
-                    className="flex-1 bg-gray-600 hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm py-2"
-                  >
-                    Terapkan
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-
         <div className="flex-1" />
 
-        <button className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors" style={{ marginBottom: "10px", padding: "5px 12px" }}>
-          <FaUpload className="text-xs" />
-          Upload Excel
-        </button>
-
-        {/* Manual Input — sekarang buka modal (inline, di file yang sama) */}
+        {/* Manual Input — buka modal (inline, di file yang sama) */}
         <button
           type="button"
           onClick={() => setManualInputOpen(true)}
           className="border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           style={{ marginRight: "20px", marginBottom: "10px", padding: "5px 12px" }}
         >
-          Manual Input
+          Input Reimbuse
         </button>
       </div>
 
-      {/* Table — 7 kolom: Tanggal, No PPC, Nama User, Email, Cost Center, Keterangan, Total Amount */}
+      {/* Table — 8 kolom: Tanggal, No PPC, Nama User, Email, Cost Center, Keterangan, Total Amount, Source */}
       <div className="overflow-x-auto" style={{ marginLeft: "10px", marginRight: "10px" }}>
         <table className="w-full text-sm border border-gray-300 text-center">
           <thead>
@@ -445,12 +283,23 @@ export default function RecentSettlementTable() {
               <th className="p-3 font-medium border border-gray-300 text-center">Cost Center</th>
               <th className="p-3 font-medium border border-gray-300 text-center">Keterangan</th>
               <th className="p-3 font-medium border border-gray-300 text-center">Total Amount</th>
+              <th className="p-3 font-medium border border-gray-300 text-center">Source</th>
             </tr>
           </thead>
 
           {loading && <TableSkeleton />}
 
-          {!loading && !error && (
+          {!loading && !error && rows.length === 0 && (
+            <tbody>
+              <tr>
+                <td colSpan={8} className="p-8 text-center text-gray-400 border border-gray-300">
+                  Belum ada data settlement
+                </td>
+              </tr>
+            </tbody>
+          )}
+
+          {!loading && !error && rows.length > 0 && (
             <tbody>
               {rows.map((row, index) => (
                 <tr key={index} className="hover:bg-gray-50">
@@ -464,6 +313,14 @@ export default function RecentSettlementTable() {
                   <td className="p-3 text-gray-700 border border-gray-300">{row.keterangan}</td>
                   <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
                     {formatRupiah(row.total_amount)}
+                  </td>
+                  <td className="p-3 border border-gray-300">
+                    <span
+                      className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap ${SOURCE_STYLE[row.source] || "bg-gray-100 text-gray-600"
+                        }`}
+                    >
+                      {row.source}
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -639,6 +496,16 @@ export default function RecentSettlementTable() {
                   required
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
                 />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Source</label>
+                <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500">
+                  Reimbursement
+                  <span className="block text-xs text-gray-400 mt-0.5">
+                    Manual input hanya untuk data Reimbursement. Data Advance masuk otomatis dari fitur Advance setelah status "Settled".
+                  </span>
+                </div>
               </div>
 
               {manualError && (

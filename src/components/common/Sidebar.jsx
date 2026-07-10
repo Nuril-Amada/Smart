@@ -68,7 +68,7 @@ export default function Sidebar() {
 
       <div className="h-24 border-b border-gray-600 flex items-center">
 
-        <div className="flex items-center" style={{ marginLeft: "10px" }}>
+        <div className="flex items-center" style={{ marginLeft: "15px" }}>
 
           <img
             src={logo}
@@ -94,7 +94,7 @@ export default function Sidebar() {
 
       {/* ================= MENU ================= */}
 
-      <div className="flex-1 overflow-y-auto pt-6 pb-5">
+      <div className="flex-1 overflow-y-auto pt-6 pb-5" style={{ marginLeft: "15px" }}>
 
         {menu.map((section, index) => (
 
@@ -102,7 +102,7 @@ export default function Sidebar() {
 
             {section.title !== "" && (
 
-              <h3 className="px-6 mb-5 text-[11px] uppercase tracking-widest text-gray-400 font-semibold" style={{ marginLeft: "10px" }}>
+              <h3 className="px-6 mb-5 text-[11px] uppercase tracking-widest text-gray-400 font-semibold">
                 {section.title}
               </h3>
 

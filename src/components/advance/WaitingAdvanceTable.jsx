@@ -3,6 +3,7 @@ import {
     FaCalendarAlt,
     FaSearch,
     FaPlus,
+    FaTimes,
     FaChevronLeft,
     FaChevronRight,
 } from "react-icons/fa";
@@ -107,6 +108,25 @@ async function fetchAdvances() {
     };
 }
 
+// ======================================================================
+// Nanti kalau backend FastAPI sudah siap, tinggal ganti isi function ini:
+//
+//   async function submitNewRequest(formData) {
+//     const res = await fetch(`${API_BASE_URL}/api/advance`, {
+//       method: "POST",
+//       headers: { "Content-Type": "application/json" },
+//       body: JSON.stringify(formData),
+//     });
+//     if (!res.ok) throw new Error("Gagal menyimpan data");
+//     return res.json();
+//   }
+// ======================================================================
+async function submitNewRequest(formData) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    console.log("Submit new request:", formData);
+    return { success: true };
+}
+
 const STATUS_STYLE = {
     Active: "bg-blue-100 text-blue-700",
     "Waiting Settlement": "bg-orange-100 text-orange-700",
@@ -152,6 +172,18 @@ function TableSkeleton() {
     );
 }
 
+const initialForm = {
+    tanggal: "",
+    no_ppc: "",
+    nama_user: "",
+    email: "",
+    cost_center: "",
+    keterangan: "",
+    total_amount: "",
+    due_date: "",
+    pembayaran: "Active",
+};
+
 export default function WaitingAdvanceTable() {
     const [rows, setRows] = useState([]);
     const [total, setTotal] = useState(0);
@@ -172,6 +204,12 @@ export default function WaitingAdvanceTable() {
     const [tempEnd, setTempEnd] = useState(endDate);
     const [dateOpen, setDateOpen] = useState(false);
     const dateWrapperRef = useRef(null);
+
+    // Modal New Request — inline, tanpa file/halaman baru
+    const [requestOpen, setRequestOpen] = useState(false);
+    const [requestForm, setRequestForm] = useState(initialForm);
+    const [requestSubmitting, setRequestSubmitting] = useState(false);
+    const [requestError, setRequestError] = useState(null);
 
     useEffect(() => {
         function handleClickOutside(e) {
@@ -204,38 +242,74 @@ export default function WaitingAdvanceTable() {
             ? `${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}`
             : "Pilih Tanggal";
 
+    async function loadData() {
+        try {
+            setLoading(true);
+            setError(null);
+
+            const result = await fetchAdvances({
+                page,
+                filters: { filterUser, filterStatus, searchNoPPC, startDate, endDate },
+            });
+
+            setRows(result.data);
+            setTotal(result.total);
+            setPerPage(result.per_page);
+        } catch (err) {
+            setError(err.message || "Terjadi kesalahan saat mengambil data");
+        } finally {
+            setLoading(false);
+        }
+    }
+
     useEffect(() => {
         let isMounted = true;
 
-        async function loadData() {
-            try {
-                setLoading(true);
-                setError(null);
-
-                const result = await fetchAdvances({
-                    page,
-                    filters: { filterUser, filterStatus, searchNoPPC, startDate, endDate },
-                });
-
-                if (isMounted) {
-                    setRows(result.data);
-                    setTotal(result.total);
-                    setPerPage(result.per_page);
-                }
-            } catch (err) {
-                if (isMounted) setError(err.message || "Terjadi kesalahan saat mengambil data");
-            } finally {
-                if (isMounted) setLoading(false);
-            }
+        async function run() {
+            if (!isMounted) return;
+            await loadData();
         }
 
-        loadData();
+        run();
 
         return () => {
             isMounted = false;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [page, startDate, endDate]);
+
+    // Handler form New Request
+    const handleRequestChange = (e) => {
+        const { name, value } = e.target;
+        setRequestForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleRequestClose = () => {
+        setRequestForm(initialForm);
+        setRequestError(null);
+        setRequestOpen(false);
+    };
+
+    const handleRequestSubmit = async (e) => {
+        e.preventDefault();
+
+        try {
+            setRequestSubmitting(true);
+            setRequestError(null);
+
+            await submitNewRequest({
+                ...requestForm,
+                total_amount: Number(requestForm.total_amount),
+            });
+
+            handleRequestClose();
+            loadData(); // refresh tabel setelah berhasil simpan
+        } catch (err) {
+            setRequestError(err.message || "Gagal menyimpan data");
+        } finally {
+            setRequestSubmitting(false);
+        }
+    };
 
     const totalPages = Math.max(1, Math.ceil(total / perPage));
     const startEntry = total === 0 ? 0 : (page - 1) * perPage + 1;
@@ -289,7 +363,7 @@ export default function WaitingAdvanceTable() {
                         <span className={startDate && endDate ? "" : "text-gray-400"}>
                             {dateRangeText}
                         </span>
-                        <FaCalendarAlt className="absolute right-2 text-gray-400" />
+                        <FaCalendarAlt className="text-gray-400" />
                     </button>
 
                     {dateOpen && (
@@ -363,14 +437,19 @@ export default function WaitingAdvanceTable() {
                     </div>
                 </div>
 
-                {/* New Request */}
-                <button className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors" style={{ marginBottom: "10px", marginRight: "20px", padding: "5px 10px" }}>
+                {/* New Request — sekarang buka modal form */}
+                <button
+                    type="button"
+                    onClick={() => setRequestOpen(true)}
+                    className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+                    style={{ marginBottom: "10px", marginRight: "20px", padding: "5px 10px" }}
+                >
                     <FaPlus className="text-xs" />
                     New Request
                 </button>
             </div>
 
-            {/* Table — 9 kolom sesuai kebutuhan + Reminder & Action */}
+            {/* Table — 9 kolom sesuai kebutuhan */}
             <div className="overflow-x-auto">
                 <table className="w-full text-sm border border-gray-300 text-center" style={{ marginLeft: "10px", marginRight: "10px" }}>
                     <thead>
@@ -383,7 +462,7 @@ export default function WaitingAdvanceTable() {
                             <th className="p-3 font-medium border border-gray-300">Keterangan</th>
                             <th className="p-3 font-medium border border-gray-300">Total Amount</th>
                             <th className="p-3 font-medium border border-gray-300">Due Date</th>
-                            <th className="p-3 font-medium border border-gray-300">Pembayaran</th>
+                            <th className="p-3 font-medium border border-gray-300">Status</th>
                         </tr>
                     </thead>
 
@@ -478,6 +557,174 @@ export default function WaitingAdvanceTable() {
                         >
                             <FaChevronRight className="text-xs" />
                         </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal New Request — inline, tanpa halaman/file terpisah */}
+            {requestOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <div className="bg-white rounded-2xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+
+                        {/* Header */}
+                        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200" style={{ marginRight: "20px" }}>
+                            <h3 className="text-lg font-semibold text-gray-700" style={{ marginLeft: "20px" }}>New Request</h3>
+                            <button
+                                type="button"
+                                onClick={handleRequestClose}
+                                className="text-gray-400 hover:text-gray-600"
+                            >
+                                <FaTimes />
+                            </button>
+                        </div>
+
+                        {/* Form */}
+                        <form onSubmit={handleRequestSubmit} className="px-6 py-5 flex flex-col gap-4" style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px" }}>
+
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">Tanggal</label>
+                                <input
+                                    type="date"
+                                    name="tanggal"
+                                    value={requestForm.tanggal}
+                                    onChange={handleRequestChange}
+                                    required
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">No PPC</label>
+                                <input
+                                    type="text"
+                                    name="no_ppc"
+                                    value={requestForm.no_ppc}
+                                    onChange={handleRequestChange}
+                                    placeholder="PPC-0001"
+                                    required
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">Nama User</label>
+                                <input
+                                    type="text"
+                                    name="nama_user"
+                                    value={requestForm.nama_user}
+                                    onChange={handleRequestChange}
+                                    placeholder="Andi Pratama"
+                                    required
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">Email</label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={requestForm.email}
+                                    onChange={handleRequestChange}
+                                    placeholder="nama@company.com"
+                                    required
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">Cost Center</label>
+                                <input
+                                    type="text"
+                                    name="cost_center"
+                                    value={requestForm.cost_center}
+                                    onChange={handleRequestChange}
+                                    placeholder="Finance"
+                                    required
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">Keterangan</label>
+                                <textarea
+                                    name="keterangan"
+                                    value={requestForm.keterangan}
+                                    onChange={handleRequestChange}
+                                    rows={3}
+                                    placeholder="Contoh: Advance perjalanan dinas"
+                                    required
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none resize-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">Total Amount</label>
+                                <input
+                                    type="number"
+                                    name="total_amount"
+                                    value={requestForm.total_amount}
+                                    onChange={handleRequestChange}
+                                    placeholder="0"
+                                    min="0"
+                                    required
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">Due Date</label>
+                                <input
+                                    type="date"
+                                    name="due_date"
+                                    value={requestForm.due_date}
+                                    onChange={handleRequestChange}
+                                    required
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm text-gray-600 mb-1">Pembayaran</label>
+                                <select
+                                    name="pembayaran"
+                                    value={requestForm.pembayaran}
+                                    onChange={handleRequestChange}
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                >
+                                    <option>Active</option>
+                                    <option>Waiting Settlement</option>
+                                    <option>Settled</option>
+                                    <option>Overdue</option>
+                                </select>
+                            </div>
+
+                            {requestError && (
+                                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                    {requestError}
+                                </div>
+                            )}
+
+                            {/* Actions */}
+                            <div className="flex justify-end gap-2 mt-2 pt-4 border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={handleRequestClose}
+                                    disabled={requestSubmitting}
+                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "1px 15px", marginRight: "5px" }}
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={requestSubmitting}
+                                    className="bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "1px 10px" }}
+                                >
+                                    {requestSubmitting ? "Menyimpan..." : "Simpan"}
+                                </button>
+                            </div>
+
+                        </form>
                     </div>
                 </div>
             )}
