@@ -94,7 +94,7 @@ export default function Sidebar() {
 
       {/* ================= MENU ================= */}
 
-      <div className="flex-1 overflow-y-auto pt-6 pb-5" style={{ marginLeft: "15px" }}>
+      <div className="flex-1 overflow-y-auto pt-6 pb-5" style={{ marginLeft: "15px", marginRight: "15px" }}>
 
         {menu.map((section, index) => (
 
@@ -114,12 +114,12 @@ export default function Sidebar() {
                 key={item.name}
                 to={item.path}
                 className={({ isActive }) =>
-                  `mx-4 my-3 flex items-center h-[46px] rounded-lg px-5 transition-all duration-300
+                  `mx-4 my-3 flex items-center h-[45px] rounded-lg px-4 transition-all duration-300 
                   ${isActive
                     ? "bg-[#59616F] text-white shadow"
                     : "text-gray-200 hover:bg-[#59616F]"
                   }`
-                }
+                } style={{ marginTop: "5px", marginBottom: "5px" }}
               >
 
                 {/* ICON */}
