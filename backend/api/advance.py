@@ -97,7 +97,6 @@ def serialize_advance(adv: AdvanceRequest):
         "updated_at": adv.updated_at
     }
 
-
 # GET ALL
 @router.get("/")
 def get_all_advance(

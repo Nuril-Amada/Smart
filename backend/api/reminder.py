@@ -1,18 +1,27 @@
-import smtplib
 import logging
+import smtplib
 from datetime import date, datetime
 from email.mime.text import MIMEText
 from typing import List
-
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
 from pydantic import BaseModel
-
+from sqlalchemy.orm import Session
 from database.connection import get_db
-from database.models import AdvanceRequest, AdvanceStatus, ReminderLog, ReminderStatus
-from config import SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD
+from database.models import (
+    AdvanceRequest,
+    AdvanceStatus,
+    AdvanceType,
+    ReminderLog,
+    ReminderStatus
+)
 
-logging.basicConfig(level=logging.INFO)
+from config import (
+    SMTP_HOST,
+    SMTP_PORT,
+    SMTP_USER,
+    SMTP_PASSWORD
+)
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(
@@ -20,12 +29,12 @@ router = APIRouter(
     tags=["Email Reminder"]
 )
 
-# Pydantic Schemas for API Responses
-
+# RESPONSE SCHEMA
 class ReminderLogResponse(BaseModel):
+
     id: int
     advance_request_id: int
-    request_no: str
+    document_no: str
     employee_name: str
     email: str
     sent_at: str
@@ -34,231 +43,347 @@ class ReminderLogResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Core Logical Functions
+# SERIALIZER
+def serialize_log(log: ReminderLog):
 
+    return {
+
+        "id": log.id,
+
+        "advance_request_id":
+            log.advance_request_id,
+
+        "document_no":
+            log.advance_request.document_no
+            if log.advance_request else None,
+
+        "employee_name":
+            log.advance_request.employee.employee_name
+            if log.advance_request
+            and log.advance_request.employee
+            else None,
+
+        "email":
+            log.email,
+
+        "sent_at":
+            log.sent_at.strftime("%Y-%m-%d %H:%M:%S")
+            if log.sent_at
+            else None,
+
+        "status":
+            log.status.value
+    }
+
+# UPDATE STATUS OVERDUE
 def update_overdue_advances(db: Session) -> int:
-    """
-    Mengubah status Advance Request dari WAITING_SETTLEMENT ke OVERDUE
-    jika tanggal deadline sudah lewat dari hari ini.
-    """
+
     today = date.today()
-    overdue_requests = db.query(AdvanceRequest).filter(
-        AdvanceRequest.status == AdvanceStatus.WAITING_SETTLEMENT,
-        AdvanceRequest.deadline_date < today
-    ).all()
 
-    for req in overdue_requests:
-        req.status = AdvanceStatus.OVERDUE
+    advances = (
+        db.query(AdvanceRequest)
+        .filter(
+            AdvanceRequest.advance_type == AdvanceType.PPC,
+            AdvanceRequest.status == AdvanceStatus.ACTIVE,
+            AdvanceRequest.due_date < today
+        )
+        .all()
+    )
 
-    if overdue_requests:
+    for adv in advances:
+        adv.status = AdvanceStatus.OVERDUE
+
+    if advances:
         db.commit()
 
-    return len(overdue_requests)
+    return len(advances)
 
-def get_unsettled_overdue_advances(db: Session) -> List[AdvanceRequest]:
-    """
-    Mengambil seluruh Advance Request yang telah melewati deadline
-    dan masih membutuhkan settlement.
-    """
-    today = date.today()
+# GET OVERDUE ADVANCE PPC
+def get_overdue_advances(db: Session) -> List[AdvanceRequest]:
 
     return (
         db.query(AdvanceRequest)
         .filter(
-            AdvanceRequest.status.in_([
-                AdvanceStatus.WAITING_SETTLEMENT,
-                AdvanceStatus.OVERDUE
-            ]),
-            AdvanceRequest.deadline_date <= today
+            AdvanceRequest.advance_type == AdvanceType.PPC,
+            AdvanceRequest.status == AdvanceStatus.OVERDUE
         )
         .all()
     )
 
-def send_email_reminder(req: AdvanceRequest, db: Session) -> bool:
-    """
-    Mengirim email pengingat ke karyawan terkait.
-    Jika SMTP tidak terkonfigurasi, maka dilakukan simulasi pengiriman.
-    """
+# CEK EMAIL SUDAH TERKIRIM HARI INI
+def reminder_already_sent(
+    db: Session,
+    advance_id: int
+) -> bool:
 
-    employee = req.employee
+    log = (
+        db.query(ReminderLog)
+        .filter(
+            ReminderLog.advance_request_id == advance_id,
+            ReminderLog.status == ReminderStatus.SUCCESS
+        )
+        .first()
+    )
+
+    return log is not None
+
+# SEND EMAIL
+def send_email_reminder(
+    advance: AdvanceRequest,
+    db: Session
+) -> bool:
+
+    if reminder_already_sent(db, advance.id):
+        logger.info(
+            f"Reminder {advance.document_no} sudah dikirim."
+        )
+        return True
+
+    employee = advance.employee
 
     if not employee or not employee.employee_email:
+
         logger.warning(
-            f"Karyawan atau email tidak ditemukan untuk Request ID {req.id}"
+            f"Email employee tidak ditemukan ({advance.document_no})"
         )
+
         return False
 
-    to_email = employee.employee_email.strip()
-
     subject = (
-        f"[REMINDER] Pertanggungjawaban Petty Cash - "
-        f"Request No: {req.request_no}"
+        f"[REFCON] Reminder Settlement Advance - {advance.document_no}"
     )
 
-    body = f"""Halo {employee.employee_name},
+    body = f"""
+Halo {employee.employee_name},
 
-Ini adalah pengingat otomatis untuk menyelesaikan pertanggungjawaban (settlement) pengajuan uang muka (petty cash advance) Anda:
+Advance berikut telah melewati Due Date Settlement.
 
-Nomor Request : {req.request_no}
-Tanggal Request : {req.request_date}
-Jumlah : IDR {req.amount:,.2f}
-Tujuan : {req.purpose}
-Deadline : {req.deadline_date}
-Status : {req.status.value}
+No PPC      : {advance.document_no}
+Tanggal     : {advance.request_date}
+Amount      : Rp {advance.amount:,.0f}
+Keterangan  : {advance.purpose}
+Due Date    : {advance.due_date}
 
-Mohon segera melakukan settlement melalui aplikasi REFCON.
+Status saat ini :
+OVERDUE
 
-Terima kasih,
+Mohon segera melakukan Settlement.
 
-Admin REFCON
+Terima kasih.
+
+Finance
 """
 
-    sent_ok = False
+    success = False
 
-    logger.info(f"Mengirim reminder ke {to_email}")
+    try:
 
-    if SMTP_HOST and SMTP_USER:
-        try:
+        if SMTP_HOST and SMTP_USER:
+
             msg = MIMEText(body)
+
             msg["Subject"] = subject
             msg["From"] = SMTP_USER
-            msg["To"] = to_email
+            msg["To"] = employee.employee_email
 
-            port = int(SMTP_PORT) if SMTP_PORT else 587
+            with smtplib.SMTP(
+                SMTP_HOST,
+                int(SMTP_PORT)
+            ) as smtp:
 
-            with smtplib.SMTP(SMTP_HOST, port, timeout=10) as server:
-                server.starttls()
-                server.login(SMTP_USER, SMTP_PASSWORD or "")
-                server.sendmail(
+                smtp.starttls()
+
+                smtp.login(
                     SMTP_USER,
-                    [to_email],
-                    msg.as_string()
+                    SMTP_PASSWORD
                 )
 
-            sent_ok = True
-            logger.info(f"Email reminder berhasil dikirim ke {to_email}")
+                smtp.send_message(msg)
 
-        except Exception:
-            logger.exception(
-                f"Gagal mengirim email reminder ke {to_email}"
+            success = True
+
+        else:
+
+            logger.info(
+                "[SIMULASI EMAIL]"
             )
-            sent_ok = False
 
-    else:
-        logger.info(f"[SIMULASI EMAIL] Pengiriman ke {to_email}")
-        logger.info(f"[SIMULASI SUBJECT] {subject}")
-        logger.info(f"[SIMULASI ISI EMAIL]\n{body}")
-        sent_ok = True
+            logger.info(subject)
 
-    log_entry = ReminderLog(
-        advance_request_id=req.id,
-        email=to_email,
-        status=ReminderStatus.SUCCESS if sent_ok else ReminderStatus.FAILED,
+            logger.info(body)
+
+            success = True
+
+    except Exception as e:
+
+        logger.exception(e)
+
+        success = False
+
+    log = ReminderLog(
+
+        advance_request_id=advance.id,
+
+        email=employee.employee_email,
+
+        status=(
+            ReminderStatus.SUCCESS
+            if success
+            else ReminderStatus.FAILED
+        ),
+
         sent_at=datetime.now()
+
     )
 
-    db.add(log_entry)
+    db.add(log)
     db.commit()
+    return success
 
-    return sent_ok
+# MAIN REMINDER PROCESS
+def run_reminder_process(
+    db: Session
+):
 
-def run_reminder_process(db: Session) -> dict:
-    """
-    Menjalankan proses otomatis reminder:
-    1. Update status menjadi OVERDUE.
-    2. Mengirim email reminder.
-    3. Mengembalikan ringkasan hasil proses.
-    """
+    logger.info(
+        "Reminder Process Started"
+    )
 
-    logger.info("Reminder process dimulai.")
+    marked = update_overdue_advances(db)
 
-    total_marked_overdue = update_overdue_advances(db)
+    overdue_advances = get_overdue_advances(db)
 
-    overdue_requests = get_unsettled_overdue_advances(db)
+    success = 0
+    failed = 0
 
-    success_count = 0
-    failed_count = 0
+    for adv in overdue_advances:
 
-    for request in overdue_requests:
-
-        if send_email_reminder(request, db):
-            success_count += 1
+        if send_email_reminder(
+            adv,
+            db
+        ):
+            success += 1
         else:
-            failed_count += 1
+            failed += 1
 
     result = {
 
-        "marked_overdue": total_marked_overdue,
-        "processed_reminders": len(overdue_requests),
-        "success": success_count,
-        "failed": failed_count
+        "marked_overdue": marked,
+
+        "total_overdue":
+            len(overdue_advances),
+
+        "success":
+            success,
+
+        "failed":
+            failed
+
     }
 
-    logger.info(f"Reminder process selesai. {result}")
+    logger.info(result)
 
     return result
 
-# Route Handlers
-
+# MANUAL TRIGGER
 @router.post("/run")
-def trigger_reminders(db: Session = Depends(get_db)):
-    """
-    Memicu proses pemindaian status dan pengiriman email pengingat secara manual.
-    """
-    try:
-        result = run_reminder_process(db)
-        return {
-            "message": "Proses pengiriman reminder selesai dijalankan",
-            "details": result
-        }
-    except Exception as e:
-        logger.error(f"Error saat memicu reminder: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Terjadi kegagalan proses: {str(e)}"
-        )
-
-
-@router.get("/logs")
-def get_reminder_logs(
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
+def trigger_reminder(
     db: Session = Depends(get_db)
 ):
     """
-    Mengambil riwayat log pengiriman pengingat (dengan pagination).
+    Menjalankan proses reminder secara manual.
     """
-    query = db.query(ReminderLog).join(
-        AdvanceRequest,
-        ReminderLog.advance_request_id == AdvanceRequest.id
-    )
 
-    total = query.count()
+    try:
+
+        result = run_reminder_process(db)
+
+        return {
+
+            "message":
+                "Reminder berhasil dijalankan.",
+
+            "result":
+                result
+
+        }
+
+    except Exception as e:
+
+        logger.exception(e)
+
+        raise HTTPException(
+
+            status_code=500,
+
+            detail="Gagal menjalankan reminder."
+
+        )
+
+
+# REMINDER LOGS
+@router.get(
+    "/logs",
+    response_model=list[ReminderLogResponse]
+)
+def reminder_logs(
+    db: Session = Depends(get_db)
+):
 
     logs = (
-        query.order_by(ReminderLog.sent_at.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+
+        db.query(ReminderLog)
+
+        .order_by(
+            ReminderLog.sent_at.desc()
+        )
+
         .all()
+
     )
 
-    data = []
-    for log in logs:
-        employee_name = log.advance_request.employee.employee_name if log.advance_request.employee else "Unknown"
-        data.append({
-            "id": log.id,
-            "advance_request_id": log.advance_request_id,
-            "request_no": log.advance_request.request_no,
-            "employee_name": employee_name,
-            "email": log.email,
-            "sent_at": log.sent_at.strftime("%Y-%m-%d %H:%M:%S") if log.sent_at else None,
-            "status": log.status.value
-        })
+    return [
 
-    return {
-        "page": page,
-        "page_size": page_size,
-        "total_data": total,
-        "total_page": (total + page_size - 1) // page_size,
-        "data": data
-    }
+        serialize_log(log)
+
+        for log in logs
+
+    ]
+
+
+# REMINDER LOG DETAIL
+@router.get(
+    "/logs/{log_id}",
+    response_model=ReminderLogResponse
+)
+def reminder_log_detail(
+
+    log_id: int,
+
+    db: Session = Depends(get_db)
+
+):
+
+    log = (
+
+        db.query(ReminderLog)
+
+        .filter(
+            ReminderLog.id == log_id
+        )
+
+        .first()
+
+    )
+
+    if not log:
+
+        raise HTTPException(
+
+            status_code=404,
+
+            detail="Reminder log tidak ditemukan."
+
+        )
+
+    return serialize_log(log)
