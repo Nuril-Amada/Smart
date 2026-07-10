@@ -224,6 +224,20 @@ export default function RecentSettlementTable() {
   const startEntry = total === 0 ? 0 : (page - 1) * perPage + 1;
   const endEntry = Math.min(page * perPage, total);
 
+  // Hitung nomor halaman yang ditampilkan secara dinamis, bukan hardcode.
+  // Maksimal 3 nomor halaman ditampilkan langsung, sisanya "..." + halaman terakhir.
+  const maxVisiblePages = 3;
+  let visiblePages = [];
+
+  if (totalPages <= maxVisiblePages) {
+    visiblePages = Array.from({ length: totalPages }, (_, i) => i + 1);
+  } else {
+    visiblePages = [1, 2, 3];
+  }
+
+  const showEllipsis = totalPages > maxVisiblePages;
+  const showLastPage = totalPages > maxVisiblePages;
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5" style={{ marginRight: "20px", marginLeft: "20px" }}>
       {/* Filters */}
@@ -267,7 +281,7 @@ export default function RecentSettlementTable() {
           className="border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
           style={{ marginRight: "20px", marginBottom: "10px", padding: "5px 12px" }}
         >
-          Input Reimbuse
+          Manual Input
         </button>
       </div>
 
@@ -351,7 +365,7 @@ export default function RecentSettlementTable() {
               <FaChevronLeft className="text-xs" />
             </button>
 
-            {[1, 2, 3].map((p) => (
+            {visiblePages.map((p) => (
               <button
                 key={p}
                 onClick={() => setPage(p)}
@@ -364,17 +378,19 @@ export default function RecentSettlementTable() {
               </button>
             ))}
 
-            <span className="px-1 text-gray-400">...</span>
+            {showEllipsis && <span className="px-1 text-gray-400">...</span>}
 
-            <button
-              onClick={() => setPage(totalPages)}
-              className={`w-8 h-8 flex items-center justify-center rounded-md text-sm ${page === totalPages
-                ? "bg-gray-600 text-white"
-                : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-                }`}
-            >
-              {totalPages}
-            </button>
+            {showLastPage && (
+              <button
+                onClick={() => setPage(totalPages)}
+                className={`w-8 h-8 flex items-center justify-center rounded-md text-sm ${page === totalPages
+                  ? "bg-gray-600 text-white"
+                  : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  }`}
+              >
+                {totalPages}
+              </button>
+            )}
 
             <button
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
