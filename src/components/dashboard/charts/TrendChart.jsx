@@ -38,7 +38,7 @@ export default function TrendChart({ data, startDate, endDate, tanggalAwal, setT
           <Tooltip formatter={(value) => formatRupiah(value)} />
           {/* Average reference line */}
           {/* <ReferenceLine y={average} stroke="#ff0000" strokeWidth={2} strokeDasharray="3 3" /> */}
-          <Line type="monotone" dataKey="total" stroke="#2563eb" strokeWidth={3} dot={{ r: 5 }} />
+          <Line type="monotone" dataKey="total" stroke="#899097" strokeWidth={3} dot={{ r: 5 }} />
         </LineChart>
       </ResponsiveContainer>
     </div>

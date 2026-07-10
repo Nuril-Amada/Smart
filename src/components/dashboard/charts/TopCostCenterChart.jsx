@@ -100,8 +100,8 @@ export default function TopCostCenterChart({
                   key={index}
                   fill={
                     item.total === maxValue
-                      ? "#1d4ed8"
-                      : "#60a5fa"
+                      ? "#899097"
+                      : "#c5c3c6"
                   }
                 />
 

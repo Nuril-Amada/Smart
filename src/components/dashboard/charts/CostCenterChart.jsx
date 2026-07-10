@@ -93,8 +93,8 @@ export default function CostCenterChart({ data = [] }) {
                   key={index}
                   fill={
                     entry.total === maxValue
-                      ? "#1d4ed8"
-                      : "#60a5fa"
+                      ? "#899097"
+                      : "#c5c3c6"
                   }
                 />
 

@@ -91,8 +91,8 @@ export default function GLAccountChart({ data = [] }) {
                   key={index}
                   fill={
                     item.total === maxValue
-                      ? "#1d4ed8"
-                      : "#60a5fa"
+                      ? "#4c5c68"
+                      : "#899097"
                   }
                 />
 
