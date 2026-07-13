@@ -5,7 +5,7 @@ import {
 } from "react-icons/fa";
 
 // cards didefinisikan statis di sini (sama seperti pola KPICard.jsx),
-// jadi urutan & jumlah card SELALU tampil 4 buah, apa pun isi `data`-nya.
+// jadi urutan & jumlah card SELALU tampil 3 buah, apa pun isi `data`-nya.
 // Backend/API cukup kirim value per "key" ini, style tetap diatur di frontend.
 const cards = [
     {

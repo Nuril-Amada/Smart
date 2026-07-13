@@ -39,19 +39,12 @@ export default function BuatCekBaru() {
 
   return (
     <div className="space-y-8 px-10 pt-10">
-      {/* ================= HEADER ================= */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800">Buat Cek Baru</h1>
-        <p className="text-gray-500 mt-2">
-          Pembayaran &gt; Cetak Cek &gt; Buat Cek Baru
-        </p>
-      </div>
 
       {/* ================= INFORMASI CEK ================= */}
-      <div className="bg-white rounded-xl shadow border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold mb-6">Informasi Cek</h2>
+      <div className="bg-white rounded-xl shadow border border-gray-200 p-6" style={{ marginTop: "20px", marginLeft: "20px", marginRight: "20px", marginBottom: "20px" }}>
+        <h2 className="text-lg font-semibold mb-6" style={{ marginTop: "10px", marginLeft: "20px" }}>Informasi Cek</h2>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8" style={{ marginLeft: "20px", marginRight: "20px", marginBottom: "20px" }}>
           {/* Kolom Kiri */}
           <div className="space-y-5">
             <div>
@@ -133,7 +126,7 @@ export default function BuatCekBaru() {
                 </select>
                 <button
                   type="button"
-                  className="border border-blue-600 text-blue-600 px-5 rounded-lg hover:bg-blue-50 transition"
+                  className="border border-gray-600 text-blue-600 px-5 rounded-lg hover:bg-blue-50 transition"
                 >
                   + Vendor Baru
                 </button>
@@ -229,7 +222,7 @@ export default function BuatCekBaru() {
       </div>
 
       {/* ================= DETAIL TRANSAKSI & PREVIEW ================= */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6" style={{ marginLeft: "20px" }}>
         {/* Detail Transaksi */}
         <div className="bg-white rounded-xl shadow border border-gray-200">
           <div className="border-b px-5 py-3">
@@ -271,7 +264,7 @@ export default function BuatCekBaru() {
         </div>
 
         {/* Preview Cek */}
-        <div className="bg-white rounded-xl shadow border border-gray-200">
+        <div className="bg-white rounded-xl shadow border border-gray-200" style={{ marginRight: "20px" }}>
           <div className="border-b px-5 py-3">
             <h2 className="font-semibold text-gray-700">Preview Cek</h2>
           </div>

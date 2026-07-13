@@ -63,16 +63,21 @@ export default function CetakCek() {
   };
 
   return (
-    <div className="space-y-[15px] px-10 pt-[15px] mt-[15px]">
+    // Wrapper halaman — padding 20px di semua sisi,
+    // dan jarak antar section (vertical) juga 20px.
+    <div style={{ padding: "10px" }} className="space-y-5">
 
-      {/* Filter Card */}
-      <div className="bg-white rounded-2xl shadow border border-gray-200 mt-[15px]">
-        <div className="flex justify-between items-center border-b px-6 py-4">
+      {/* Filter Card — margin 20px di semua sisi */}
+      <div
+        className="bg-white rounded-2xl shadow border border-gray-200"
+        style={{ marginTop: "10px", marginLeft: "10px", marginRight: "10px" }}
+      >
+        <div className="flex justify-between items-center border-b px-6 py-4" style={{ marginLeft: "20px", marginTop: "10px", marginRight: "20px" }}>
           <h2 className="text-xl font-semibold text-gray-700">
             Pencarian Data Cek
           </h2>
           <button
-            className="text-blue-600 hover:underline"
+            className="text-gray-600 hover:underline"
             onClick={() => setFilterCollapsed(!filterCollapsed)}
           >
             {filterCollapsed ? "Tampilkan Filter" : "Sembunyikan Filter"}
@@ -80,7 +85,7 @@ export default function CetakCek() {
         </div>
         {!filterCollapsed && (
           <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5" style={{ marginLeft: "20px", marginRight: "20px", marginTop: "10px" }}>
               <div>
                 <label className="text-sm font-medium text-gray-600 block mb-2">
                   Dari Tanggal
@@ -145,13 +150,13 @@ export default function CetakCek() {
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-3 mt-8">
-              <button className="flex items-center gap-2 bg-blue-900 hover:bg-blue-800 text-white px-6 py-2 rounded-lg transition">
+            <div className="flex justify-end gap-3 mt-8" style={{ marginTop: "10px", marginRight: "20px", marginBottom: "20px" }}>
+              <button className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition" style={{ padding: "5px 7px" }}>
                 <FaSearch />
                 Cari
               </button>
               <button
-                className="flex items-center gap-2 border px-6 py-2 rounded-lg hover:bg-gray-100 transition"
+                className="flex items-center gap-2 border px-6 py-2 rounded-lg hover:bg-gray-100 transition" style={{ padding: "5px 7px" }}
                 onClick={() => {
                   setTanggalAwal("");
                   setTanggalAkhir("");
@@ -165,7 +170,7 @@ export default function CetakCek() {
               </button>
               <button
                 onClick={handleBuatCekBaru}
-                className="flex items-center gap-2 bg-green-700 hover:bg-green-600 text-white px-6 py-2 rounded-lg transition"
+                className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition" style={{ padding: "5px 7px" }}
               >
                 <FaPlus />
                 Buat Cek Baru
@@ -175,17 +180,20 @@ export default function CetakCek() {
         )}
       </div>
 
-      {/* Main Content */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Daftar Cek */}
-        <div className="xl:col-span-2 bg-white rounded-2xl shadow border border-gray-200">
-          <div className="flex items-center justify-between border-b px-6 py-4">
+      {/* Main Content — gap antar kolom 20px */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        {/* Daftar Cek — margin 20px di semua sisi */}
+        <div
+          className="xl:col-span-2 bg-white rounded-2xl shadow border border-gray-200"
+          style={{ marginTop: "20px", marginLeft: "10px", marginRight: "10px" }}
+        >
+          <div className="flex items-center justify-between border-b px-6 py-4" style={{ marginLeft: "20px", marginRight: "20px", marginTop: "10px" }}>
             <h2 className="text-lg font-semibold text-gray-700">Daftar Cek</h2>
             <span className="text-sm text-gray-500">
               Total Data : {dataCek.length}
             </span>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto" style={{ marginLeft: "20px", marginRight: "20px", marginTop: "10px", marginBottom: "10px" }}>
             <table className="w-full">
               <thead className="bg-gray-100">
                 <tr>
@@ -234,9 +242,6 @@ export default function CetakCek() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-center gap-2">
-                        <button className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 hover:bg-blue-200 flex items-center justify-center">
-                          <FaEye />
-                        </button>
                         <button className="w-8 h-8 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 flex items-center justify-center">
                           <FaPrint />
                         </button>
@@ -250,15 +255,15 @@ export default function CetakCek() {
               </tbody>
             </table>
           </div>
-          <div className="flex items-center justify-between border-t px-6 py-4">
+          <div className="flex items-center justify-between px-6 py-4" style={{ marginLeft: "20px", marginRight: "20px" }}>
             <span className="text-sm text-gray-500">
               Menampilkan 1 - {dataCek.length} data
             </span>
-            <div className="flex gap-2">
+            <div className="flex gap-2" style={{ padding: "5px 7px" }}>
               <button className="border rounded-lg px-4 py-2 hover:bg-gray-100">
                 Sebelumnya
               </button>
-              <button className="bg-blue-900 text-white rounded-lg px-4 py-2">
+              <button className="bg-gray-700 text-white rounded-lg px-4 py-2">
                 1
               </button>
               <button className="border rounded-lg px-4 py-2 hover:bg-gray-100">
@@ -268,22 +273,15 @@ export default function CetakCek() {
           </div>
         </div>
 
-        {/* Detail Cek */}
-        <div className="bg-white rounded-2xl shadow border border-gray-200">
-          <div className="border-b px-6 py-4 flex justify-between items-center">
+        {/* Detail Cek — margin 20px di semua sisi */}
+        <div
+          className="bg-white rounded-2xl shadow border border-gray-200"
+          style={{ marginRight: "15px", marginTop: "20px" }}
+        >
+          <div className="border-b px-6 py-4 flex justify-between items-center" style={{ marginLeft: "10px", marginRight: "10px" }}>
             <h2 className="text-lg font-semibold text-gray-700">Detail Cek</h2>
-            <div className="flex gap-2">
-              <button className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded">
-                <FaPrint />
-                Cetak Ulang
-              </button>
-              <button className="flex items-center gap-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded">
-                <FaTrash />
-                Batalkan
-              </button>
-            </div>
           </div>
-          <div className="p-6 space-y-4">
+          <div className="p-6 space-y-4" style={{ marginLeft: "10px", marginRight: "10px" }}>
             <div className="grid grid-cols-2 gap-2">
               <span className="font-medium">Nomor Cek:</span>
               <span>{selected.nomor}</span>
@@ -317,7 +315,7 @@ export default function CetakCek() {
                 <p className="text-gray-500">Preview cek akan tampil di sini</p>
               </div>
             </div>
-            <div className="pt-6 flex flex-col gap-3">
+            <div className="pt-6 flex flex-col gap-3" style={{ marginTop: "10px", marginBottom: "10px" }}>
               <button className="w-full bg-blue-900 hover:bg-blue-800 text-white py-3 rounded-lg flex justify-center items-center gap-2 transition">
                 <FaPrint />
                 Cetak Cek
