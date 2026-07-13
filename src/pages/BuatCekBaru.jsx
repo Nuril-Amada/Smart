@@ -126,7 +126,7 @@ export default function BuatCekBaru() {
                 </select>
                 <button
                   type="button"
-                  className="border border-gray-600 text-blue-600 px-5 rounded-lg hover:bg-blue-50 transition"
+                  className="border border-gray-600 text-gray-600 px-5 rounded-lg hover:bg-gray-50 transition"
                 >
                   + Vendor Baru
                 </button>
@@ -226,7 +226,7 @@ export default function BuatCekBaru() {
         {/* Detail Transaksi */}
         <div className="bg-white rounded-xl shadow border border-gray-200">
           <div className="border-b px-5 py-3">
-            <h2 className="font-semibold text-gray-700">Detail Transaksi (Opsional)</h2>
+            <h2 className="font-semibold text-gray-700" style={{ marginTop: "10px", marginLeft: "20px" }}>Detail Transaksi (Opsional)</h2>
           </div>
           <div className="p-5">
             <table className="w-full text-sm">
@@ -266,10 +266,10 @@ export default function BuatCekBaru() {
         {/* Preview Cek */}
         <div className="bg-white rounded-xl shadow border border-gray-200" style={{ marginRight: "20px" }}>
           <div className="border-b px-5 py-3">
-            <h2 className="font-semibold text-gray-700">Preview Cek</h2>
+            <h2 className="font-semibold text-gray-700" style={{ marginTop: "10px", marginLeft: "20px" }}>Preview Cek</h2>
           </div>
           <div className="p-6">
-            <div className="rounded-lg border bg-sky-50 p-6 h-[360px] flex flex-col justify-between">
+            <div className="rounded-lg border bg-sky-50 p-6 h-[360px] flex flex-col justify-between" style={{ marginTop: "10px", marginBottom: "10px", marginLeft: "10px", marginRight: "10px" }}>
               <div className="flex justify-between">
                 <div>
                   <h3 className="font-bold text-lg">PT SMART Tbk</h3>
@@ -319,16 +319,16 @@ export default function BuatCekBaru() {
       </div>
 
       {/* ================= BUTTON ACTION ================= */}
-      <div className="flex justify-end gap-4 mt-8">
-        <button className="px-8 py-3 border rounded-lg hover:bg-gray-100 transition">
+      <div className="flex justify-end gap-4 mt-8" style={{ marginRight: "20px", marginTop: "10px", marginBottom: "10px" }}>
+        <button className="px-8 py-3 border rounded-lg hover:bg-gray-100 transition" style={{ padding: "5px 7px" }}>
           Batal
         </button>
-        <button className="px-8 py-3 border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition">
+        <button className="px-8 py-3 border border-gray-600 text-gray-600 rounded-lg hover:bg-gray-50 transition" style={{ padding: "5px 8px" }}>
           Simpan Draft
         </button>
         <button
           onClick={handleSimpanDanCetak}
-          className="px-8 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+          className="px-8 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition" style={{ padding: "5px 10px" }}
         >
           Simpan & Cetak
         </button>
