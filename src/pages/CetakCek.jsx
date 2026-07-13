@@ -242,7 +242,7 @@ export default function CetakCek() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex justify-center gap-2">
-                        <button className="w-8 h-8 rounded-lg bg-green-100 text-green-700 hover:bg-green-200 flex items-center justify-center">
+                        <button className="w-8 h-8 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-400 flex items-center justify-center">
                           <FaPrint />
                         </button>
                         <button className="w-8 h-8 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 flex items-center justify-center">
@@ -294,7 +294,7 @@ export default function CetakCek() {
               <span className="font-medium">Buku Cek:</span>
               <span>{selected.buku}</span>
               <span className="font-medium">Nominal:</span>
-              <span className="text-2xl font-bold text-blue-900">Rp {selected.nominal}</span>
+              <span className="text-xl font-bold text-gray-700">Rp {selected.nominal}</span>
               <span className="font-medium">Status:</span>
               <span>
                 {selected.status === "Sudah Dicetak" ? (
@@ -316,11 +316,11 @@ export default function CetakCek() {
               </div>
             </div>
             <div className="pt-6 flex flex-col gap-3" style={{ marginTop: "10px", marginBottom: "10px" }}>
-              <button className="w-full bg-blue-900 hover:bg-blue-800 text-white py-3 rounded-lg flex justify-center items-center gap-2 transition">
+              <button className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg flex justify-center items-center gap-2 transition">
                 <FaPrint />
                 Cetak Cek
               </button>
-              <button className="w-full bg-green-600 hover:bg-green-700 text-white py-3 rounded-lg flex justify-center items-center gap-2 transition">
+              <button className="w-full bg-gray-400 hover:bg-gray-500 text-white py-3 rounded-lg flex justify-center items-center gap-2 transition">
                 <FaPrint />
                 Cetak Ulang
               </button>
