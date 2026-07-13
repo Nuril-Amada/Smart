@@ -1,6 +1,5 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
-    FaCalendarAlt,
     FaSearch,
     FaPlus,
     FaTimes,
@@ -9,9 +8,33 @@ import {
 } from "react-icons/fa";
 
 // ======================================================================
-// DUMMY DATA — GANTI BAGIAN INI SAJA NANTI KALAU BACKEND SUDAH SIAP.
+// TEMPLATE FETCH — GANTI ISI FUNCTION INI KALAU BACKEND SUDAH SIAP.
 //
-// Contoh nanti tinggal ganti isi function ini jadi:
+// PENTING — LOGIC BISNIS STATUS (kolom "pembayaran"):
+//
+//   - "Active"  → default status saat request advance baru dibuat.
+//                 Berlaku selama BELUM melewati 2 hari sejak tanggal
+//                 request awal ("tanggal"). Ini murni soal waktu,
+//                 jadi idealnya dihitung di backend (scheduled job/cron)
+//                 dengan membandingkan tanggal sekarang vs "tanggal" + 2 hari.
+//
+//   - "Settled" → status berubah begitu user MENYELESAIKAN reimbursement
+//                 dari advance tersebut. Begitu status jadi "Settled",
+//                 baris ini OTOMATIS pindah/muncul juga di tabel
+//                 fitur Settlement (source: "Advance") — proses ini
+//                 dilakukan backend, frontend tabel Advance ini TIDAK
+//                 perlu melakukan apa pun untuk itu.
+//
+//   - "Overdue" → status berubah otomatis kalau sudah lewat 2 hari sejak
+//                 tanggal request TAPI belum "Settled". Begitu masuk
+//                 status ini, backend WAJIB otomatis mengirim email
+//                 reminder ke user yang bersangkutan (bukan tugas
+//                 frontend, ini side-effect di server/cron job).
+//
+//   Status "Waiting Settlement" SUDAH DIHAPUS dari sistem — tidak
+//   dipakai lagi, jangan dikirim dari backend.
+//
+// Ganti isi function ini jadi:
 //
 //   async function fetchAdvances({ page, filters }) {
 //     const params = new URLSearchParams({ page, ...filters });
@@ -19,6 +42,10 @@ import {
 //     if (!res.ok) throw new Error("Gagal mengambil data");
 //     return res.json();
 //   }
+//
+// PENTING soal search No PPC: parameter "searchNoPPC" nanti tinggal
+// dikirim sebagai query param ("search") ke endpoint FastAPI, logic-nya:
+//   WHERE no_ppc ILIKE '%' || :search || '%'
 //
 // Format response yang diharapkan dari FastAPI:
 // {
@@ -32,7 +59,7 @@ import {
 //       "keterangan": "Advance perjalanan dinas",
 //       "total_amount": 500000,
 //       "due_date": "2026-07-08",
-//       "pembayaran": "Active"   // Active | Waiting Settlement | Settled | Overdue
+//       "pembayaran": "Active"   // "Active" | "Settled" | "Overdue"
 //     },
 //     ...
 //   ],
@@ -40,69 +67,17 @@ import {
 //   "page": 1,
 //   "per_page": 5
 // }
+//
+// Untuk sekarang (belum ada backend), function ini sengaja return
+// data kosong — supaya tabel tampil sebagai template kosong, bukan
+// data pura-pura.
 // ======================================================================
 async function fetchAdvances() {
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
     return {
-        data: [
-            {
-                tanggal: "2026-07-01",
-                no_ppc: "PPC-0001",
-                nama_user: "Andi Pratama",
-                email: "andi.pratama@company.com",
-                cost_center: "Finance",
-                keterangan: "Advance perjalanan dinas",
-                total_amount: 500000,
-                due_date: "2026-07-08",
-                pembayaran: "Active",
-            },
-            {
-                tanggal: "2026-07-02",
-                no_ppc: "PPC-0002",
-                nama_user: "Budi Santoso",
-                email: "budi.santoso@company.com",
-                cost_center: "Project",
-                keterangan: "Advance pembelian material",
-                total_amount: 3500000,
-                due_date: "2026-07-10",
-                pembayaran: "Waiting Settlement",
-            },
-            {
-                tanggal: "2026-06-28",
-                no_ppc: "PPC-0003",
-                nama_user: "Rina Marlina",
-                email: "rina.marlina@company.com",
-                cost_center: "Marketing",
-                keterangan: "Advance cetak materi promosi",
-                total_amount: 900000,
-                due_date: "2026-07-05",
-                pembayaran: "Settled",
-            },
-            {
-                tanggal: "2026-06-20",
-                no_ppc: "PPC-0004",
-                nama_user: "Sinta Dewi",
-                email: "sinta.dewi@company.com",
-                cost_center: "Finance",
-                keterangan: "Advance operasional kantor cabang",
-                total_amount: 2200000,
-                due_date: "2026-06-30",
-                pembayaran: "Overdue",
-            },
-            {
-                tanggal: "2026-07-01",
-                no_ppc: "PPC-0005",
-                nama_user: "Yoga Saputra",
-                email: "yoga.saputra@company.com",
-                cost_center: "Operation",
-                keterangan: "Advance konsumsi rapat lapangan",
-                total_amount: 750000,
-                due_date: "2026-07-02",
-                pembayaran: "Active",
-            },
-        ],
-        total: 110,
+        data: [],
+        total: 0,
         page: 1,
         per_page: 5,
     };
@@ -120,6 +95,10 @@ async function fetchAdvances() {
 //     if (!res.ok) throw new Error("Gagal menyimpan data");
 //     return res.json();
 //   }
+//
+// Catatan: field "pembayaran" saat request baru dibuat HARUS di-set
+// backend jadi "Active" secara default — jangan percaya nilai dari
+// client untuk status awal ini juga.
 // ======================================================================
 async function submitNewRequest(formData) {
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -129,7 +108,6 @@ async function submitNewRequest(formData) {
 
 const STATUS_STYLE = {
     Active: "bg-blue-100 text-blue-700",
-    "Waiting Settlement": "bg-orange-100 text-orange-700",
     Settled: "bg-green-100 text-green-700",
     Overdue: "bg-red-100 text-red-700",
 };
@@ -148,12 +126,6 @@ function formatDate(isoDate) {
         month: "short",
         year: "numeric",
     }).format(new Date(isoDate));
-}
-
-function formatDisplayDate(isoDate) {
-    if (!isoDate) return "";
-    const [year, month, day] = isoDate.split("-");
-    return `${day}/${month}/${year}`;
 }
 
 function TableSkeleton() {
@@ -195,52 +167,28 @@ export default function WaitingAdvanceTable() {
     // Filter state
     const [filterUser, setFilterUser] = useState("All Employee");
     const [filterStatus, setFilterStatus] = useState("All Status");
+
+    // Search No PPC — dipisah jadi input (langsung, biar responsif diketik)
+    // dan versi debounced (yang beneran dipakai buat fetch/filter data).
+    const [searchInput, setSearchInput] = useState("");
     const [searchNoPPC, setSearchNoPPC] = useState("");
 
-    // Filter Due Date Range
-    const [startDate, setStartDate] = useState("2026-07-01");
-    const [endDate, setEndDate] = useState("2026-07-31");
-    const [tempStart, setTempStart] = useState(startDate);
-    const [tempEnd, setTempEnd] = useState(endDate);
-    const [dateOpen, setDateOpen] = useState(false);
-    const dateWrapperRef = useRef(null);
+    // Debounce: tunggu user berhenti ngetik 400ms sebelum fetch,
+    // biar gak nge-fetch/nge-hit API tiap 1 huruf diketik.
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            setSearchNoPPC(searchInput);
+            setPage(1);
+        }, 400);
+
+        return () => clearTimeout(timeout);
+    }, [searchInput]);
 
     // Modal New Request — inline, tanpa file/halaman baru
     const [requestOpen, setRequestOpen] = useState(false);
     const [requestForm, setRequestForm] = useState(initialForm);
     const [requestSubmitting, setRequestSubmitting] = useState(false);
     const [requestError, setRequestError] = useState(null);
-
-    useEffect(() => {
-        function handleClickOutside(e) {
-            if (dateWrapperRef.current && !dateWrapperRef.current.contains(e.target)) {
-                setDateOpen(false);
-            }
-        }
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
-
-    const handleApplyDate = () => {
-        setStartDate(tempStart);
-        setEndDate(tempEnd);
-        setDateOpen(false);
-        setPage(1);
-    };
-
-    const handleClearDate = () => {
-        setTempStart("");
-        setTempEnd("");
-        setStartDate("");
-        setEndDate("");
-        setDateOpen(false);
-        setPage(1);
-    };
-
-    const dateRangeText =
-        startDate && endDate
-            ? `${formatDisplayDate(startDate)} - ${formatDisplayDate(endDate)}`
-            : "Pilih Tanggal";
 
     async function loadData() {
         try {
@@ -249,7 +197,7 @@ export default function WaitingAdvanceTable() {
 
             const result = await fetchAdvances({
                 page,
-                filters: { filterUser, filterStatus, searchNoPPC, startDate, endDate },
+                filters: { filterUser, filterStatus, searchNoPPC },
             });
 
             setRows(result.data);
@@ -276,7 +224,7 @@ export default function WaitingAdvanceTable() {
             isMounted = false;
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page, startDate, endDate]);
+    }, [page, filterUser, filterStatus, searchNoPPC]);
 
     // Handler form New Request
     const handleRequestChange = (e) => {
@@ -315,6 +263,15 @@ export default function WaitingAdvanceTable() {
     const startEntry = total === 0 ? 0 : (page - 1) * perPage + 1;
     const endEntry = Math.min(page * perPage, total);
 
+    // Nomor halaman pagination dihitung dinamis, bukan hardcode.
+    const maxVisiblePages = 3;
+    const visiblePages =
+        totalPages <= maxVisiblePages
+            ? Array.from({ length: totalPages }, (_, i) => i + 1)
+            : [1, 2, 3];
+    const showEllipsis = totalPages > maxVisiblePages;
+    const showLastPage = totalPages > maxVisiblePages;
+
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5" style={{ marginRight: "20px", marginLeft: "20px" }}>
             {/* Filters */}
@@ -323,7 +280,10 @@ export default function WaitingAdvanceTable() {
                     <label className="text-xs font-medium text-gray-500 text-center">Nama User</label>
                     <select
                         value={filterUser}
-                        onChange={(e) => setFilterUser(e.target.value)}
+                        onChange={(e) => {
+                            setFilterUser(e.target.value);
+                            setPage(1);
+                        }}
                         className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-blue-200" style={{ marginLeft: "20px", marginBottom: "10px" }}
                     >
                         <option>All Employee</option>
@@ -334,87 +294,20 @@ export default function WaitingAdvanceTable() {
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500 text-center">Pembayaran</label>
+                    <label className="text-xs font-medium text-gray-500 text-center">Status</label>
                     <select
                         value={filterStatus}
-                        onChange={(e) => setFilterStatus(e.target.value)}
+                        onChange={(e) => {
+                            setFilterStatus(e.target.value);
+                            setPage(1);
+                        }}
                         className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-blue-200" style={{ marginBottom: "10px" }}
                     >
                         <option>All Status</option>
                         <option>Active</option>
-                        <option>Waiting Settlement</option>
                         <option>Settled</option>
                         <option>Overdue</option>
                     </select>
-                </div>
-
-                {/* Due Date Range */}
-                <div className="flex flex-col gap-1 relative" ref={dateWrapperRef}>
-                    <label className="text-xs font-medium text-gray-500 text-center">Due Date Range</label>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setTempStart(startDate);
-                            setTempEnd(endDate);
-                            setDateOpen((prev) => !prev);
-                        }}
-                        className="flex items-center justify-between gap-3 border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[220px] hover:border-gray-300" style={{ marginBottom: "10px" }}
-                    >
-                        <span className={startDate && endDate ? "" : "text-gray-400"}>
-                            {dateRangeText}
-                        </span>
-                        <FaCalendarAlt className="text-gray-400" />
-                    </button>
-
-                    {dateOpen && (
-                        <div className="absolute top-full mt-2 left-0 z-20 bg-white border border-gray-200 rounded-xl shadow-lg w-72 p-4">
-                            <div className="flex flex-col gap-3">
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                                        Dari Tanggal
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={tempStart}
-                                        max={tempEnd || undefined}
-                                        onChange={(e) => setTempStart(e.target.value)}
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                                        Sampai Tanggal
-                                    </label>
-                                    <input
-                                        type="date"
-                                        value={tempEnd}
-                                        min={tempStart || undefined}
-                                        onChange={(e) => setTempEnd(e.target.value)}
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                                    />
-                                </div>
-
-                                <div className="flex justify-between gap-2 mt-2">
-                                    <button
-                                        type="button"
-                                        onClick={handleClearDate}
-                                        className="flex-1 border border-gray-300 rounded-lg text-sm py-2 text-gray-600 hover:bg-gray-50"
-                                    >
-                                        Reset
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={handleApplyDate}
-                                        disabled={!tempStart || !tempEnd}
-                                        className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg text-sm py-2"
-                                    >
-                                        Terapkan
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
                 </div>
 
                 <div className="flex-1" />
@@ -425,11 +318,8 @@ export default function WaitingAdvanceTable() {
                     <div className="relative">
                         <input
                             type="text"
-                            value={searchNoPPC}
-                            onChange={(e) => {
-                                setSearchNoPPC(e.target.value);
-                                setPage(1);
-                            }}
+                            value={searchInput}
+                            onChange={(e) => setSearchInput(e.target.value)}
                             placeholder="Search No PPC..."
                             className="border border-gray-200 rounded-lg text-sm pl-3 pr-9 py-2 text-gray-700 w-56 focus:outline-none focus:ring-2 focus:ring-blue-200" style={{ marginBottom: "10px", padding: "5px 10px" }}
                         />
@@ -437,7 +327,7 @@ export default function WaitingAdvanceTable() {
                     </div>
                 </div>
 
-                {/* New Request — sekarang buka modal form */}
+                {/* New Request — buka modal form */}
                 <button
                     type="button"
                     onClick={() => setRequestOpen(true)}
@@ -449,7 +339,7 @@ export default function WaitingAdvanceTable() {
                 </button>
             </div>
 
-            {/* Table — 9 kolom sesuai kebutuhan */}
+            {/* Table — 9 kolom: Tanggal, No PPC, Nama User, Email, Cost Center, Keterangan, Total Amount, Due Date, Status */}
             <div className="overflow-x-auto">
                 <table className="w-full text-sm border border-gray-300 text-center" style={{ marginLeft: "10px", marginRight: "10px" }}>
                     <thead>
@@ -468,7 +358,19 @@ export default function WaitingAdvanceTable() {
 
                     {loading && <TableSkeleton />}
 
-                    {!loading && !error && (
+                    {!loading && !error && rows.length === 0 && (
+                        <tbody>
+                            <tr>
+                                <td colSpan={9} className="p-8 text-center text-gray-400 border border-gray-300">
+                                    {searchNoPPC
+                                        ? `Tidak ada data yang cocok dengan pencarian "${searchNoPPC}"`
+                                        : "Belum ada data advance"}
+                                </td>
+                            </tr>
+                        </tbody>
+                    )}
+
+                    {!loading && !error && rows.length > 0 && (
                         <tbody>
                             {rows.map((row, index) => (
                                 <tr key={index} className="hover:bg-gray-50">
@@ -525,7 +427,7 @@ export default function WaitingAdvanceTable() {
                             <FaChevronLeft className="text-xs" />
                         </button>
 
-                        {[1, 2, 3].map((p) => (
+                        {visiblePages.map((p) => (
                             <button
                                 key={p}
                                 onClick={() => setPage(p)}
@@ -538,17 +440,19 @@ export default function WaitingAdvanceTable() {
                             </button>
                         ))}
 
-                        <span className="px-1 text-gray-400">...</span>
+                        {showEllipsis && <span className="px-1 text-gray-400">...</span>}
 
-                        <button
-                            onClick={() => setPage(totalPages)}
-                            className={`w-8 h-8 flex items-center justify-center rounded-md text-sm ${page === totalPages
-                                ? "bg-blue-600 text-white"
-                                : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-                                }`}
-                        >
-                            {totalPages}
-                        </button>
+                        {showLastPage && (
+                            <button
+                                onClick={() => setPage(totalPages)}
+                                className={`w-8 h-8 flex items-center justify-center rounded-md text-sm ${page === totalPages
+                                    ? "bg-gray-600 text-white"
+                                    : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                    }`}
+                            >
+                                {totalPages}
+                            </button>
+                        )}
 
                         <button
                             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
@@ -685,18 +589,13 @@ export default function WaitingAdvanceTable() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-gray-600 mb-1">Pembayaran</label>
-                                <select
-                                    name="pembayaran"
-                                    value={requestForm.pembayaran}
-                                    onChange={handleRequestChange}
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                                >
-                                    <option>Active</option>
-                                    <option>Waiting Settlement</option>
-                                    <option>Settled</option>
-                                    <option>Overdue</option>
-                                </select>
+                                <label className="block text-sm text-gray-600 mb-1">Status</label>
+                                <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500">
+                                    Active
+                                    <span className="block text-xs text-gray-400 mt-0.5">
+                                        Request baru selalu dimulai dengan status Active. Status akan berubah otomatis oleh sistem (Settled saat reimbursement selesai, Overdue jika melewati 2 hari).
+                                    </span>
+                                </div>
                             </div>
 
                             {requestError && (
