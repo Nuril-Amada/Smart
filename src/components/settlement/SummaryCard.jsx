@@ -2,10 +2,12 @@ import {
     FaClipboardList,
     FaFileInvoiceDollar,
     FaReceipt,
+    FaMoneyBillWave,
 } from "react-icons/fa";
+import { formatRupiah } from "../../utils/formatCurrency";
 
 // cards didefinisikan statis di sini (sama seperti pola KPICard.jsx),
-// jadi urutan & jumlah card SELALU tampil 3 buah, apa pun isi `data`-nya.
+// jadi urutan & jumlah card SELALU tampil 4 buah, apa pun isi `data`-nya.
 // Backend/API cukup kirim value per "key" ini, style tetap diatur di frontend.
 const cards = [
     {
@@ -16,6 +18,7 @@ const cards = [
         iconColor: "text-gray-600",
         icon: <FaClipboardList />,
         subtitle: "Transactions",
+        currency: false,
     },
     {
         title: "Advance Settlement",
@@ -25,6 +28,7 @@ const cards = [
         iconColor: "text-gray-600",
         icon: <FaFileInvoiceDollar />,
         subtitle: "Transactions",
+        currency: false,
     },
     {
         title: "Reimbursement Settlement",
@@ -34,6 +38,17 @@ const cards = [
         iconColor: "text-gray-600",
         icon: <FaReceipt />,
         subtitle: "Transactions",
+        currency: false,
+    },
+    {
+        title: "Total Amount Settlement",
+        key: "totalAmount",
+        border: "border-gray-300",
+        iconBg: "bg-gray-100",
+        iconColor: "text-gray-600",
+        icon: <FaMoneyBillWave />,
+        subtitle: "Rupiah",
+        currency: true,
     },
 ];
 
@@ -56,11 +71,17 @@ const cards = [
 export default function SummaryCard({ data = {} }) {
     return (
         <div
-            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 m-5"
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 m-5"
             style={{ marginBottom: "20px", marginTop: "20px", paddingLeft: "20px", paddingRight: "20px" }}
         >
             {cards.map((item) => {
                 const value = data[item.key];
+                const displayValue =
+                    value !== undefined && value !== null
+                        ? item.currency
+                            ? formatRupiah(value)
+                            : value
+                        : "-";
 
                 return (
                     <div
@@ -82,7 +103,7 @@ export default function SummaryCard({ data = {} }) {
                                 </p>
 
                                 <h2 className="text-xl font-bold text-gray-800 leading-tight mt-1">
-                                    {value !== undefined && value !== null ? value : "-"}
+                                    {displayValue}
                                 </h2>
 
                                 <p className="text-xs text-gray-400">
