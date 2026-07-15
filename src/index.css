@@ -1,20 +1,32 @@
 @import "tailwindcss";
 
-*{
-    margin:0;
-    padding:0;
-    box-sizing:border-box;
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 html,
 body,
-#root{
-    width:100%;
-    height:100%;
+#root {
+    width: 100%;
+    height: 100%;
 }
 
-body{
-    font-family:"Segoe UI",sans-serif;
-    background:#F5F6FA;
-    overflow:hidden;
+body {
+    font-family: "Segoe UI", sans-serif;
+    background: #F5F6FA;
+    overflow: hidden;
+}
+
+/* Ubah warna highlight option yang dipilih di dropdown menjadi abu-abu */
+select option:checked,
+select option:hover {
+    background: #e5e7eb !important;
+    background-color: #e5e7eb !important;
+    color: #374151 !important;
+}
+
+select:focus {
+    accent-color: #9ca3af;
 }

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
     FaSearch,
     FaPlus,
@@ -7,106 +7,7 @@ import {
     FaChevronRight,
 } from "react-icons/fa";
 
-// ======================================================================
-// TEMPLATE FETCH — GANTI ISI FUNCTION INI KALAU BACKEND SUDAH SIAP.
-//
-// PENTING — LOGIC BISNIS STATUS (kolom "pembayaran"):
-//
-//   - "Active"  → default status saat request advance baru dibuat.
-//                 Berlaku selama BELUM melewati 2 hari sejak tanggal
-//                 request awal ("tanggal"). Ini murni soal waktu,
-//                 jadi idealnya dihitung di backend (scheduled job/cron)
-//                 dengan membandingkan tanggal sekarang vs "tanggal" + 2 hari.
-//
-//   - "Settled" → status berubah begitu user MENYELESAIKAN reimbursement
-//                 dari advance tersebut. Begitu status jadi "Settled",
-//                 baris ini OTOMATIS pindah/muncul juga di tabel
-//                 fitur Settlement (source: "Advance") — proses ini
-//                 dilakukan backend, frontend tabel Advance ini TIDAK
-//                 perlu melakukan apa pun untuk itu.
-//
-//   - "Overdue" → status berubah otomatis kalau sudah lewat 2 hari sejak
-//                 tanggal request TAPI belum "Settled". Begitu masuk
-//                 status ini, backend WAJIB otomatis mengirim email
-//                 reminder ke user yang bersangkutan (bukan tugas
-//                 frontend, ini side-effect di server/cron job).
-//
-//   Status "Waiting Settlement" SUDAH DIHAPUS dari sistem — tidak
-//   dipakai lagi, jangan dikirim dari backend.
-//
-// Ganti isi function ini jadi:
-//
-//   async function fetchAdvances({ page, filters }) {
-//     const params = new URLSearchParams({ page, ...filters });
-//     const res = await fetch(`${API_BASE_URL}/api/advance?${params}`);
-//     if (!res.ok) throw new Error("Gagal mengambil data");
-//     return res.json();
-//   }
-//
-// PENTING soal search No PPC: parameter "searchNoPPC" nanti tinggal
-// dikirim sebagai query param ("search") ke endpoint FastAPI, logic-nya:
-//   WHERE no_ppc ILIKE '%' || :search || '%'
-//
-// Format response yang diharapkan dari FastAPI:
-// {
-//   "data": [
-//     {
-//       "tanggal": "2026-07-08",
-//       "no_ppc": "PPC-0001",
-//       "nama_user": "Andi Pratama",
-//       "email": "andi.pratama@company.com",
-//       "cost_center": "Finance",
-//       "keterangan": "Advance perjalanan dinas",
-//       "total_amount": 500000,
-//       "due_date": "2026-07-08",
-//       "pembayaran": "Active"   // "Active" | "Settled" | "Overdue"
-//     },
-//     ...
-//   ],
-//   "total": 110,
-//   "page": 1,
-//   "per_page": 5
-// }
-//
-// Untuk sekarang (belum ada backend), function ini sengaja return
-// data kosong — supaya tabel tampil sebagai template kosong, bukan
-// data pura-pura.
-// ======================================================================
-async function fetchAdvances() {
-    await new Promise((resolve) => setTimeout(resolve, 300));
-
-    return {
-        data: [],
-        total: 0,
-        page: 1,
-        per_page: 5,
-    };
-}
-
-// ======================================================================
-// Nanti kalau backend FastAPI sudah siap, tinggal ganti isi function ini:
-//
-//   async function submitNewRequest(formData) {
-//     const res = await fetch(`${API_BASE_URL}/api/advance`, {
-//       method: "POST",
-//       headers: { "Content-Type": "application/json" },
-//       body: JSON.stringify(formData),
-//     });
-//     if (!res.ok) throw new Error("Gagal menyimpan data");
-//     return res.json();
-//   }
-//
-// Catatan: field "pembayaran" saat request baru dibuat HARUS di-set
-// backend jadi "Active" secara default — jangan percaya nilai dari
-// client untuk status awal ini juga.
-// ======================================================================
-async function submitNewRequest(formData) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    console.log("Submit new request:", formData);
-    return { success: true };
-}
-
-const STATUS_STYLE = {
+const SOURCE_STYLE = {
     Active: "bg-blue-100 text-blue-700",
     Settled: "bg-green-100 text-green-700",
     Overdue: "bg-red-100 text-red-700",
@@ -117,10 +18,11 @@ function formatRupiah(value) {
         style: "currency",
         currency: "IDR",
         minimumFractionDigits: 0,
-    }).format(value);
+    }).format(Number(value || 0));
 }
 
 function formatDate(isoDate) {
+    if (!isoDate) return "-";
     return new Intl.DateTimeFormat("id-ID", {
         day: "2-digit",
         month: "short",
@@ -131,10 +33,10 @@ function formatDate(isoDate) {
 function TableSkeleton() {
     return (
         <tbody>
-            {Array.from({ length: 5 }).map((_, i) => (
-                <tr key={i} className="border-b border-gray-100 animate-pulse">
-                    {Array.from({ length: 9 }).map((_, j) => (
-                        <td key={j} className="p-3">
+            {Array.from({ length: 7 }).map((_, i) => (
+                <tr key={i} className="animate-pulse">
+                    {Array.from({ length: 10 }).map((_, j) => (
+                        <td key={j} className="border p-3">
                             <div className="h-4 bg-gray-200 rounded w-16 mx-auto" />
                         </td>
                     ))}
@@ -151,80 +53,88 @@ const initialForm = {
     email: "",
     cost_center: "",
     keterangan: "",
-    total_amount: "",
+    jumlah: "",
     due_date: "",
-    pembayaran: "Active",
 };
 
-export default function WaitingAdvanceTable() {
+export default function Table({ startDate, endDate, refreshKey }) {
+    // TABLE
     const [rows, setRows] = useState([]);
-    const [total, setTotal] = useState(0);
-    const [perPage, setPerPage] = useState(5);
-    const [page, setPage] = useState(1);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    const [error, setError] = useState("");
 
-    // Filter state
-    const [filterUser, setFilterUser] = useState("All Employee");
-    const [filterStatus, setFilterStatus] = useState("All Status");
+    // PAGINATION (client-side)
+    const [page, setPage] = useState(1);
+    const perPage = 15;
 
-    // Search No PPC — dipisah jadi input (langsung, biar responsif diketik)
-    // dan versi debounced (yang beneran dipakai buat fetch/filter data).
+    // FILTER
+    const [filterUser, setFilterUser] = useState("All User");
+    const [filterCostCenter, setFilterCostCenter] = useState("All Cost Center");
+    const [filterSource, setFilterSource] = useState("All Source");
+
+    // Search No PPC — debounce, biar gak nge-fetch tiap huruf diketik
     const [searchInput, setSearchInput] = useState("");
     const [searchNoPPC, setSearchNoPPC] = useState("");
 
-    // Debounce: tunggu user berhenti ngetik 400ms sebelum fetch,
-    // biar gak nge-fetch/nge-hit API tiap 1 huruf diketik.
     useEffect(() => {
         const timeout = setTimeout(() => {
             setSearchNoPPC(searchInput);
-            setPage(1);
         }, 400);
-
         return () => clearTimeout(timeout);
     }, [searchInput]);
 
-    // Modal New Request — inline, tanpa file/halaman baru
+    // MODAL New Request
     const [requestOpen, setRequestOpen] = useState(false);
     const [requestForm, setRequestForm] = useState(initialForm);
     const [requestSubmitting, setRequestSubmitting] = useState(false);
-    const [requestError, setRequestError] = useState(null);
+    const [requestError, setRequestError] = useState("");
 
-    async function loadData() {
+    // LOAD DATA
+    const loadData = async () => {
         try {
             setLoading(true);
-            setError(null);
+            setError("");
 
-            const result = await fetchAdvances({
-                page,
-                filters: { filterUser, filterStatus, searchNoPPC },
+            const result = await getAdvanceList({
+                start_date: startDate || undefined,
+                end_date: endDate || undefined,
+                search: searchNoPPC,
             });
 
-            setRows(result.data);
-            setTotal(result.total);
-            setPerPage(result.per_page);
+            const data = result.map((item) => ({
+                tanggal: item.request_date,
+                no_ppc: item.ppc_no,
+                nama_user: item.employee_name,
+                email: item.employee_email,
+                cost_center: item.cost_center,
+                keterangan: item.description,
+                jumlah: Number(item.amount),
+                source:
+                    item.status === "SETTLED"
+                        ? "Settled"
+                        : item.status === "OVERDUE"
+                            ? "Overdue"
+                            : "Active",
+                due_date: item.due_date,
+                tgl_penyelesaian: item.settled_date,
+            }));
+
+            setRows(data);
+            setPage(1);
         } catch (err) {
-            setError(err.message || "Terjadi kesalahan saat mengambil data");
+            console.error(err);
+            setError(
+                err.response?.data?.detail || "Gagal memuat data advance."
+            );
         } finally {
             setLoading(false);
         }
-    }
+    };
 
     useEffect(() => {
-        let isMounted = true;
-
-        async function run() {
-            if (!isMounted) return;
-            await loadData();
-        }
-
-        run();
-
-        return () => {
-            isMounted = false;
-        };
+        loadData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [page, filterUser, filterStatus, searchNoPPC]);
+    }, [startDate, endDate, refreshKey, searchNoPPC]);
 
     // Handler form New Request
     const handleRequestChange = (e) => {
@@ -234,7 +144,7 @@ export default function WaitingAdvanceTable() {
 
     const handleRequestClose = () => {
         setRequestForm(initialForm);
-        setRequestError(null);
+        setRequestError("");
         setRequestOpen(false);
     };
 
@@ -243,67 +153,129 @@ export default function WaitingAdvanceTable() {
 
         try {
             setRequestSubmitting(true);
-            setRequestError(null);
+            setRequestError("");
 
-            await submitNewRequest({
-                ...requestForm,
-                total_amount: Number(requestForm.total_amount),
+            await createAdvanceRequest({
+                request_date: requestForm.tanggal,
+                ppc_no: requestForm.no_ppc,
+                employee_name: requestForm.nama_user,
+                employee_email: requestForm.email,
+                cost_center: requestForm.cost_center,
+                description: requestForm.keterangan,
+                amount: Number(requestForm.jumlah),
+                due_date: requestForm.due_date,
             });
 
             handleRequestClose();
-            loadData(); // refresh tabel setelah berhasil simpan
+            loadData();
         } catch (err) {
-            setRequestError(err.message || "Gagal menyimpan data");
+            console.error(err);
+            setRequestError(
+                err.response?.data?.detail || "Gagal menyimpan data advance."
+            );
         } finally {
             setRequestSubmitting(false);
         }
     };
 
+    // FILTER (client-side)
+    const filteredRows = useMemo(() => {
+        return rows.filter((row) => {
+            const userMatch =
+                filterUser === "All User" || row.nama_user === filterUser;
+            const ccMatch =
+                filterCostCenter === "All Cost Center" ||
+                row.cost_center === filterCostCenter;
+            const sourceMatch =
+                filterSource === "All Source" || row.source === filterSource;
+
+            return userMatch && ccMatch && sourceMatch;
+        });
+    }, [rows, filterUser, filterCostCenter, filterSource]);
+
+    // DROPDOWN OPTIONS
+    const userOptions = useMemo(
+        () => ["All User", ...new Set(rows.map((r) => r.nama_user).filter(Boolean))],
+        [rows]
+    );
+
+    const costCenterOptions = useMemo(
+        () => [
+            "All Cost Center",
+            ...new Set(rows.map((r) => r.cost_center).filter(Boolean)),
+        ],
+        [rows]
+    );
+
+    // PAGINATION
+    const total = filteredRows.length;
     const totalPages = Math.max(1, Math.ceil(total / perPage));
+    const currentRows = filteredRows.slice((page - 1) * perPage, page * perPage);
     const startEntry = total === 0 ? 0 : (page - 1) * perPage + 1;
     const endEntry = Math.min(page * perPage, total);
 
-    // Nomor halaman pagination dihitung dinamis, bukan hardcode.
-    const maxVisiblePages = 3;
-    const visiblePages =
-        totalPages <= maxVisiblePages
-            ? Array.from({ length: totalPages }, (_, i) => i + 1)
-            : [1, 2, 3];
-    const showEllipsis = totalPages > maxVisiblePages;
-    const showLastPage = totalPages > maxVisiblePages;
+    const visiblePages = [];
+    for (let i = 1; i <= totalPages; i++) visiblePages.push(i);
 
     return (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5" style={{ marginRight: "20px", marginLeft: "20px" }}>
-            {/* Filters */}
+        <div
+            className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5"
+            style={{ marginLeft: "20px", marginRight: "20px" }}
+        >
+            {/* ================= FILTER ================= */}
             <div className="flex flex-wrap items-end gap-4 mb-5">
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500 text-center">Nama User</label>
+                    <label className="text-xs font-medium text-gray-500 text-center" style={{ marginTop: "10px" }}>
+                        Nama User
+                    </label>
                     <select
                         value={filterUser}
                         onChange={(e) => {
                             setFilterUser(e.target.value);
                             setPage(1);
                         }}
-                        className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-blue-200" style={{ marginLeft: "20px", marginBottom: "10px" }}
+                        className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-200"
+                        style={{ marginLeft: "20px", marginBottom: "10px" }}
                     >
-                        <option>All Employee</option>
-                        {[...new Set(rows.map((r) => r.nama_user))].map((name) => (
-                            <option key={name}>{name}</option>
+                        {userOptions.map((item) => (
+                            <option key={item} value={item}>
+                                {item}
+                            </option>
                         ))}
                     </select>
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500 text-center">Status</label>
+                    <label className="text-xs font-medium text-gray-500 text-center">Cost Center</label>
                     <select
-                        value={filterStatus}
+                        value={filterCostCenter}
                         onChange={(e) => {
-                            setFilterStatus(e.target.value);
+                            setFilterCostCenter(e.target.value);
                             setPage(1);
                         }}
-                        className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-blue-200" style={{ marginBottom: "10px" }}
+                        className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-200"
+                        style={{ marginBottom: "10px" }}
                     >
-                        <option>All Status</option>
+                        {costCenterOptions.map((item) => (
+                            <option key={item} value={item}>
+                                {item}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                    <label className="text-xs font-medium text-gray-500 text-center">Source</label>
+                    <select
+                        value={filterSource}
+                        onChange={(e) => {
+                            setFilterSource(e.target.value);
+                            setPage(1);
+                        }}
+                        className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-200"
+                        style={{ marginBottom: "10px" }}
+                    >
+                        <option>All Source</option>
                         <option>Active</option>
                         <option>Settled</option>
                         <option>Overdue</option>
@@ -321,13 +293,13 @@ export default function WaitingAdvanceTable() {
                             value={searchInput}
                             onChange={(e) => setSearchInput(e.target.value)}
                             placeholder="Search No PPC..."
-                            className="border border-gray-200 rounded-lg text-sm pl-3 pr-9 py-2 text-gray-700 w-56 focus:outline-none focus:ring-2 focus:ring-blue-200" style={{ marginBottom: "10px", padding: "5px 10px" }}
+                            className="border border-gray-200 rounded-lg text-sm pl-3 pr-9 py-2 text-gray-700 w-56 focus:outline-none focus:ring-2 focus:ring-blue-200"
+                            style={{ marginBottom: "10px", padding: "5px 10px" }}
                         />
                         <FaSearch className="absolute right-3 top-4 -translate-y-1/2 text-gray-400 text-xs" />
                     </div>
                 </div>
 
-                {/* New Request — buka modal form */}
                 <button
                     type="button"
                     onClick={() => setRequestOpen(true)}
@@ -339,81 +311,87 @@ export default function WaitingAdvanceTable() {
                 </button>
             </div>
 
-            {/* Table — 9 kolom: Tanggal, No PPC, Nama User, Email, Cost Center, Keterangan, Total Amount, Due Date, Status */}
-            <div className="overflow-x-auto">
-                <table className="w-full text-sm border border-gray-300 text-center" style={{ marginLeft: "10px", marginRight: "10px" }}>
+            {/* ================= TABLE ================= */}
+            {/* 10 kolom: Tanggal, No PPC, Nama User, Email User, Cost Center, Keterangan, Jumlah, Source, Due Date, Tgl Penyelesaian */}
+            <div className="overflow-x-auto" style={{ marginLeft: "10px", marginRight: "10px" }}>
+                <table className="w-full text-sm border border-gray-300 text-center">
                     <thead>
                         <tr className="text-xs uppercase tracking-wide bg-gray-50">
                             <th className="p-3 font-medium border border-gray-300">Tanggal</th>
                             <th className="p-3 font-medium border border-gray-300">No PPC</th>
                             <th className="p-3 font-medium border border-gray-300">Nama User</th>
-                            <th className="p-3 font-medium border border-gray-300">Email</th>
+                            <th className="p-3 font-medium border border-gray-300">Email User</th>
                             <th className="p-3 font-medium border border-gray-300">Cost Center</th>
                             <th className="p-3 font-medium border border-gray-300">Keterangan</th>
-                            <th className="p-3 font-medium border border-gray-300">Total Amount</th>
+                            <th className="p-3 font-medium border border-gray-300">Jumlah</th>
+                            <th className="p-3 font-medium border border-gray-300">Source</th>
                             <th className="p-3 font-medium border border-gray-300">Due Date</th>
-                            <th className="p-3 font-medium border border-gray-300">Status</th>
+                            <th className="p-3 font-medium border border-gray-300">Tgl Penyelesaian</th>
                         </tr>
                     </thead>
 
                     {loading && <TableSkeleton />}
 
-                    {!loading && !error && rows.length === 0 && (
+                    {!loading && !error && currentRows.length === 0 && (
                         <tbody>
                             <tr>
-                                <td colSpan={9} className="p-8 text-center text-gray-400 border border-gray-300">
+                                <td colSpan={10} className="p-8 text-center text-gray-400 border border-gray-300">
                                     {searchNoPPC
                                         ? `Tidak ada data yang cocok dengan pencarian "${searchNoPPC}"`
-                                        : "Belum ada data advance"}
+                                        : "Belum ada data advance."}
                                 </td>
                             </tr>
                         </tbody>
                     )}
 
-                    {!loading && !error && rows.length > 0 && (
+                    {!loading && !error && currentRows.length > 0 && (
                         <tbody>
-                            {rows.map((row, index) => (
+                            {currentRows.map((row, index) => (
                                 <tr key={index} className="hover:bg-gray-50">
                                     <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
                                         {formatDate(row.tanggal)}
                                     </td>
-                                    <td className="p-3 text-gray-600 border border-gray-300">
-                                        {row.no_ppc}
-                                    </td>
+                                    <td className="p-3 text-gray-700 border border-gray-300">{row.no_ppc}</td>
                                     <td className="p-3 text-gray-700 border border-gray-300">{row.nama_user}</td>
                                     <td className="p-3 text-gray-700 border border-gray-300">{row.email}</td>
                                     <td className="p-3 text-gray-700 border border-gray-300">{row.cost_center}</td>
                                     <td className="p-3 text-gray-700 border border-gray-300">{row.keterangan}</td>
                                     <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
-                                        {formatRupiah(row.total_amount)}
+                                        {formatRupiah(row.jumlah)}
+                                    </td>
+                                    <td className="p-3 border border-gray-300">
+                                        <span
+                                            className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${SOURCE_STYLE[row.source] || "bg-gray-100 text-gray-600"
+                                                }`}
+                                        >
+                                            {row.source}
+                                        </span>
                                     </td>
                                     <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
                                         {formatDate(row.due_date)}
                                     </td>
-                                    <td className="p-3 border border-gray-300">
-                                        <span
-                                            className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_STYLE[row.pembayaran] || "bg-gray-100 text-gray-600"
-                                                }`}
-                                        >
-                                            {row.pembayaran}
-                                        </span>
+                                    <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
+                                        {formatDate(row.tgl_penyelesaian)}
                                     </td>
                                 </tr>
                             ))}
                         </tbody>
                     )}
                 </table>
-
-                {!loading && error && (
-                    <div className="text-center py-6 text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl mt-3">
-                        Gagal memuat data: {error}
-                    </div>
-                )}
             </div>
 
-            {/* Pagination */}
+            {!loading && error && (
+                <div className="text-center py-6 text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl mt-3">
+                    Gagal memuat data: {error}
+                </div>
+            )}
+
+            {/* ================= PAGINATION ================= */}
             {!loading && !error && (
-                <div className="flex items-center justify-between mt-4 text-sm text-gray-500" style={{ marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}>
+                <div
+                    className="flex items-center justify-between mt-4 text-sm text-gray-500"
+                    style={{ marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+                >
                     <span>
                         Showing {startEntry} to {endEntry} of {total} entries
                     </span>
@@ -440,20 +418,6 @@ export default function WaitingAdvanceTable() {
                             </button>
                         ))}
 
-                        {showEllipsis && <span className="px-1 text-gray-400">...</span>}
-
-                        {showLastPage && (
-                            <button
-                                onClick={() => setPage(totalPages)}
-                                className={`w-8 h-8 flex items-center justify-center rounded-md text-sm ${page === totalPages
-                                    ? "bg-gray-600 text-white"
-                                    : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-                                    }`}
-                            >
-                                {totalPages}
-                            </button>
-                        )}
-
                         <button
                             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                             disabled={page === totalPages}
@@ -465,26 +429,24 @@ export default function WaitingAdvanceTable() {
                 </div>
             )}
 
-            {/* Modal New Request — inline, tanpa halaman/file terpisah */}
+            {/* ================= MODAL New Request ================= */}
             {requestOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
                     <div className="bg-white rounded-2xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
-
-                        {/* Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200" style={{ marginRight: "20px" }}>
-                            <h3 className="text-lg font-semibold text-gray-700" style={{ marginLeft: "20px" }}>New Request</h3>
-                            <button
-                                type="button"
-                                onClick={handleRequestClose}
-                                className="text-gray-400 hover:text-gray-600"
-                            >
+                            <h3 className="text-lg font-semibold text-gray-700" style={{ marginLeft: "20px" }}>
+                                New Request
+                            </h3>
+                            <button type="button" onClick={handleRequestClose} className="text-gray-400 hover:text-gray-600">
                                 <FaTimes />
                             </button>
                         </div>
 
-                        {/* Form */}
-                        <form onSubmit={handleRequestSubmit} className="px-6 py-5 flex flex-col gap-4" style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px" }}>
-
+                        <form
+                            onSubmit={handleRequestSubmit}
+                            className="px-6 py-5 flex flex-col gap-4"
+                            style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px" }}
+                        >
                             <div>
                                 <label className="block text-sm text-gray-600 mb-1">Tanggal</label>
                                 <input
@@ -524,7 +486,7 @@ export default function WaitingAdvanceTable() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-gray-600 mb-1">Email</label>
+                                <label className="block text-sm text-gray-600 mb-1">Email User</label>
                                 <input
                                     type="email"
                                     name="email"
@@ -563,11 +525,11 @@ export default function WaitingAdvanceTable() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-gray-600 mb-1">Total Amount</label>
+                                <label className="block text-sm text-gray-600 mb-1">Jumlah</label>
                                 <input
                                     type="number"
-                                    name="total_amount"
-                                    value={requestForm.total_amount}
+                                    name="jumlah"
+                                    value={requestForm.jumlah}
                                     onChange={handleRequestChange}
                                     placeholder="0"
                                     min="0"
@@ -589,11 +551,11 @@ export default function WaitingAdvanceTable() {
                             </div>
 
                             <div>
-                                <label className="block text-sm text-gray-600 mb-1">Status</label>
+                                <label className="block text-sm text-gray-600 mb-1">Source</label>
                                 <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500">
                                     Active
                                     <span className="block text-xs text-gray-400 mt-0.5">
-                                        Request baru selalu dimulai dengan status Active. Status akan berubah otomatis oleh sistem (Settled saat reimbursement selesai, Overdue jika melewati 2 hari).
+                                        Request baru selalu dimulai dengan status Active. Berubah otomatis oleh sistem (Settled saat reimbursement selesai, Overdue jika melewati 2 hari). Tgl Penyelesaian ikut ke-isi otomatis saat status jadi Settled.
                                     </span>
                                 </div>
                             </div>
@@ -604,25 +566,25 @@ export default function WaitingAdvanceTable() {
                                 </div>
                             )}
 
-                            {/* Actions */}
                             <div className="flex justify-end gap-2 mt-2 pt-4 border-t border-gray-100">
                                 <button
                                     type="button"
                                     onClick={handleRequestClose}
                                     disabled={requestSubmitting}
-                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "1px 15px", marginRight: "5px" }}
+                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                                    style={{ padding: "1px 15px", marginRight: "5px" }}
                                 >
                                     Batal
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={requestSubmitting}
-                                    className="bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "1px 10px" }}
+                                    className="bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
+                                    style={{ padding: "1px 10px" }}
                                 >
                                     {requestSubmitting ? "Menyimpan..." : "Simpan"}
                                 </button>
                             </div>
-
                         </form>
                     </div>
                 </div>

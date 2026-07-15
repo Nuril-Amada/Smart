@@ -42,20 +42,20 @@ export default function BuatCekBaru() {
 
       {/* ================= INFORMASI CEK ================= */}
       <div className="bg-white rounded-xl shadow border border-gray-200 p-6" style={{ marginTop: "20px", marginLeft: "20px", marginRight: "20px", marginBottom: "20px" }}>
-        <h2 className="text-lg font-semibold mb-6" style={{ marginTop: "10px", marginLeft: "20px" }}>Informasi Cek</h2>
+        <h2 className="text-lg font-semibold mb-6 text-gray-700" style={{ marginTop: "10px", marginLeft: "20px" }}>Informasi Cek</h2>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8" style={{ marginLeft: "20px", marginRight: "20px", marginBottom: "20px" }}>
           {/* Kolom Kiri */}
           <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-700">
                 Bank <span className="text-red-500">*</span>
               </label>
               <select
                 name="bank"
                 value={form.bank}
                 onChange={handleChange}
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="">Pilih Bank</option>
                 <option value="Bank Mandiri">Bank Mandiri (001)</option>
@@ -66,14 +66,14 @@ export default function BuatCekBaru() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-700">
                 Buku Cek <span className="text-red-500">*</span>
               </label>
               <select
                 name="bukuCek"
                 value={form.bukuCek}
                 onChange={handleChange}
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="">Pilih Buku Cek</option>
                 <option value="Book 01">Book 01 (000001 - 000025)</option>
@@ -82,12 +82,12 @@ export default function BuatCekBaru() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Tipe Cek</label>
+              <label className="block text-sm font-medium mb-2 text-gray-700">Tipe Cek</label>
               <select
                 name="tipeCek"
                 value={form.tipeCek}
                 onChange={handleChange}
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="Cek Biasa">Cek Biasa</option>
                 <option value="Giro">Giro</option>
@@ -95,14 +95,14 @@ export default function BuatCekBaru() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-700">
                 Mata Uang <span className="text-red-500">*</span>
               </label>
               <select
                 name="mataUang"
                 value={form.mataUang}
                 onChange={handleChange}
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="IDR">IDR - Rupiah</option>
                 <option value="USD">USD - US Dollar</option>
@@ -110,7 +110,7 @@ export default function BuatCekBaru() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-700">
                 Vendor / Penerima <span className="text-red-500">*</span>
               </label>
               <div className="flex gap-3">
@@ -118,7 +118,7 @@ export default function BuatCekBaru() {
                   name="vendor"
                   value={form.vendor}
                   onChange={handleChange}
-                  className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 >
                   <option value="">Pilih Vendor</option>
                   <option value="PT SMART Tbk">PT SMART Tbk</option>
@@ -126,7 +126,7 @@ export default function BuatCekBaru() {
                 </select>
                 <button
                   type="button"
-                  className="border border-gray-600 text-gray-600 px-5 rounded-lg hover:bg-gray-50 transition"
+                  className="border border-gray-600 text-gray-600 px-5 rounded-lg hover:bg-gray-50 transition text-sm"
                 >
                   + Vendor Baru
                 </button>
@@ -134,14 +134,14 @@ export default function BuatCekBaru() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Referensi</label>
+              <label className="block text-sm font-medium mb-2 text-gray-700">Referensi</label>
               <input
                 type="text"
                 name="referensi"
                 value={form.referensi}
                 onChange={handleChange}
                 placeholder="Masukkan Referensi"
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </div>
           </div>
@@ -149,7 +149,7 @@ export default function BuatCekBaru() {
           {/* Kolom Kanan */}
           <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-700">
                 Nomor Cek <span className="text-red-500">*</span>
               </label>
               <input
@@ -157,7 +157,7 @@ export default function BuatCekBaru() {
                 name="nomorCek"
                 value={form.nomorCek}
                 onChange={handleChange}
-                className="w-full border rounded-lg px-4 py-2 bg-gray-50"
+                className="w-full border rounded-lg px-4 py-2 bg-gray-50 text-sm"
                 readOnly
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -166,7 +166,7 @@ export default function BuatCekBaru() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-700">
                 Tanggal Cek <span className="text-red-500">*</span>
               </label>
               <input
@@ -174,12 +174,12 @@ export default function BuatCekBaru() {
                 name="tanggal"
                 value={form.tanggal}
                 onChange={handleChange}
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-700">
                 Nominal <span className="text-red-500">*</span>
               </label>
               <input
@@ -188,12 +188,12 @@ export default function BuatCekBaru() {
                 value={form.nominal}
                 onChange={handleChange}
                 placeholder="0"
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">
+              <label className="block text-sm font-medium mb-2 text-gray-700">
                 Terbilang <span className="text-red-500">*</span>
               </label>
               <textarea
@@ -202,66 +202,27 @@ export default function BuatCekBaru() {
                 onChange={handleChange}
                 rows="3"
                 placeholder="Terbilang"
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">Keterangan</label>
+              <label className="block text-sm font-medium mb-2 text-gray-700">Keterangan</label>
               <textarea
                 name="keterangan"
                 value={form.keterangan}
                 onChange={handleChange}
                 rows="3"
                 placeholder="Masukkan Keterangan"
-                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               />
             </div>
           </div>
         </div>
       </div>
 
-      {/* ================= DETAIL TRANSAKSI & PREVIEW ================= */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6" style={{ marginLeft: "20px" }}>
-        {/* Detail Transaksi */}
-        <div className="bg-white rounded-xl shadow border border-gray-200">
-          <div className="border-b px-5 py-3">
-            <h2 className="font-semibold text-gray-700" style={{ marginTop: "10px", marginLeft: "20px" }}>Detail Transaksi (Opsional)</h2>
-          </div>
-          <div className="p-5">
-            <table className="w-full text-sm">
-              <thead className="border-b bg-gray-50">
-                <tr>
-                  <th className="text-left p-3">No.</th>
-                  <th className="text-left p-3">Deskripsi</th>
-                  <th className="text-left p-3">Akun</th>
-                  <th className="text-left p-3">Nominal</th>
-                  <th className="text-center p-3">Aksi</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td colSpan={5} className="py-14 text-center text-gray-400">
-                    <div className="flex flex-col items-center">
-                      <div className="text-6xl mb-3">📄</div>
-                      <p className="font-medium">Belum ada detail transaksi</p>
-                      <p className="text-sm mt-1">
-                        Tambahkan detail transaksi jika diperlukan.
-                      </p>
-                      <button className="mt-5 border border-blue-600 text-blue-600 hover:bg-blue-50 px-5 py-2 rounded-lg transition">
-                        + Tambah Detail
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-          <div className="border-t flex justify-between px-5 py-4 font-semibold">
-            <span>Total Nominal</span>
-            <span>Rp 0</span>
-          </div>
-        </div>
+      {/* ================= PREVIEW ================= */}
+      <div className="grid grid-cols-1 xl:grid-cols-1 gap-6" style={{ marginLeft: "20px" }}>
 
         {/* Preview Cek */}
         <div className="bg-white rounded-xl shadow border border-gray-200" style={{ marginRight: "20px" }}>
