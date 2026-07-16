@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   FaTimes,
   FaChevronLeft,
@@ -46,6 +46,84 @@ function TableSkeleton() {
   );
 }
 
+// AUTOCOMPLETE DROPDOWN
+function AutocompleteInput({
+  value,
+  onChange,
+  onSelect,
+  suggestions,
+  placeholder,
+  containerRef,
+  inputStyle,
+}) {
+  const [open, setOpen] = useState(false);
+  const [highlight, setHighlight] = useState(-1);
+
+  const handleChange = (e) => {
+    onChange(e.target.value);
+    setOpen(true);
+    setHighlight(-1);
+  };
+
+  const handleSelect = (val) => {
+    onSelect(val);
+    setOpen(false);
+    setHighlight(-1);
+  };
+
+  const handleKeyDown = (e) => {
+    if (!open || suggestions.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlight((h) => Math.min(h + 1, suggestions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlight((h) => Math.max(h - 1, 0));
+    } else if (e.key === "Enter") {
+      if (highlight >= 0) {
+        e.preventDefault();
+        handleSelect(suggestions[highlight]);
+      }
+    } else if (e.key === "Escape") {
+      setOpen(false);
+    }
+  };
+
+  return (
+    <div className="relative" ref={containerRef}>
+      <input
+        type="text"
+        value={value}
+        onChange={handleChange}
+        onFocus={() => setOpen(true)}
+        onKeyDown={handleKeyDown}
+        placeholder={placeholder}
+        autoComplete="off"
+        className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
+        style={inputStyle}
+      />
+
+      {open && value && suggestions.length > 0 && (
+        <ul className="absolute z-20 mt-1 w-full min-w-[160px] max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-md py-1">
+          {suggestions.map((s, i) => (
+            <li
+              key={s}
+              onMouseDown={() => handleSelect(s)}
+              className={`px-3 py-2 text-sm cursor-pointer ${i === highlight
+                  ? "bg-gray-100 text-gray-800"
+                  : "text-gray-600 hover:bg-gray-50"
+                }`}
+            >
+              {s}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // INITIAL FORM
 const initialForm = {
   settlement_date: "",
@@ -77,6 +155,9 @@ export default function Table({
   const [filterUser, setFilterUser] = useState("");
   const [filterCostCenter, setFilterCostCenter] =
     useState("");
+
+  const userInputRef = useRef(null);
+  const ccInputRef = useRef(null);
 
   // MODAL
   const [manualInputOpen, setManualInputOpen] = useState(false);
@@ -139,6 +220,47 @@ export default function Table({
     endDate,
     refreshKey,
   ]);
+
+  // CLOSE DROPDOWN ON OUTSIDE CLICK IS HANDLED VIA onMouseDown + onBlur pattern
+  // but since we use onMouseDown on options (fires before blur), no extra
+  // document listener is needed here.
+
+  // AUTOCOMPLETE SUGGESTIONS
+  const userSuggestions = useMemo(() => {
+    if (!filterUser) return [];
+
+    const q = filterUser.toLowerCase();
+    const unique = Array.from(
+      new Set(
+        rows
+          .map((r) => r.nama_user)
+          .filter(Boolean)
+      )
+    );
+
+    return unique
+      .filter((name) => name.toLowerCase().includes(q))
+      .filter((name) => name.toLowerCase() !== q)
+      .slice(0, 8);
+  }, [rows, filterUser]);
+
+  const costCenterSuggestions = useMemo(() => {
+    if (!filterCostCenter) return [];
+
+    const q = filterCostCenter.toLowerCase();
+    const unique = Array.from(
+      new Set(
+        rows
+          .map((r) => r.cost_center)
+          .filter(Boolean)
+      )
+    );
+
+    return unique
+      .filter((cc) => cc.toLowerCase().includes(q))
+      .filter((cc) => cc.toLowerCase() !== q)
+      .slice(0, 8);
+  }, [rows, filterCostCenter]);
 
   // MANUAL INPUT
   const handleManualChange = (e) => {
@@ -282,15 +404,14 @@ export default function Table({
             Nama User
           </label>
 
-          <input
-            type="text"
+          <AutocompleteInput
+            containerRef={userInputRef}
             value={filterUser}
-            onChange={(e) =>
-              setFilterUser(e.target.value)
-            }
+            onChange={setFilterUser}
+            onSelect={setFilterUser}
+            suggestions={userSuggestions}
             placeholder="Cari Nama User..."
-            className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
-            style={{ marginLeft: "20px", marginBottom: "10px" }}
+            inputStyle={{ marginLeft: "20px", marginBottom: "10px" }}
           />
 
         </div>
@@ -301,17 +422,14 @@ export default function Table({
             Cost Center
           </label>
 
-          <input
-            type="text"
+          <AutocompleteInput
+            containerRef={ccInputRef}
             value={filterCostCenter}
-            onChange={(e) =>
-              setFilterCostCenter(
-                e.target.value
-              )
-            }
+            onChange={setFilterCostCenter}
+            onSelect={setFilterCostCenter}
+            suggestions={costCenterSuggestions}
             placeholder="Cari Cost Center..."
-            className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
-            style={{ marginBottom: "10px" }}
+            inputStyle={{ marginBottom: "10px" }}
           />
 
         </div>
