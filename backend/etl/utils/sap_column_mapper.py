@@ -19,19 +19,22 @@ COLUMN_MAPPING = {
         "document no",
         "document_no",
         "document number",
-        "document_number"
+        "document_number",
+        "DocumentNo"
     ],
 
     "amount": [
         "amount in doc. curr.",
         "amount in doc curr",
         "amount_in_doc_curr",
-        "amount"
+        "amount",
+        "DC amount"
     ],
 
     "currency": [
         "curr",
-        "currency"
+        "currency",
+        "Curr."
     ],
 
     "gl_account": [
@@ -45,7 +48,8 @@ COLUMN_MAPPING = {
         "cost ctr",
         "cost_ctr",
         "cost center",
-        "cost_center"
+        "cost_center",
+        "Cost Ctr"
     ],
 
     "reference": [
@@ -55,12 +59,14 @@ COLUMN_MAPPING = {
     "transaction_type": [
         "document header text",
         "document_header_text",
+        "Document Header Text",
         "transaction type"
     ],
 
     "description": [
         "text",
         "description"
+        
     ]
 }
 

@@ -178,7 +178,8 @@ def expense_per_gl(
     return [
         {
             "gl_account": r.gl_account,
-            "gl_name": r.nama_gl_account,
+            # Fallback ke gl_account jika nama belum ada di master data
+            "gl_name": r.nama_gl_account or r.gl_account,
             "total_amount": float(r.total_amount)
         }
         for r in result
@@ -304,7 +305,8 @@ def top_cost_center(
         "details": [
             {
                 "gl_account": row.gl_account,
-                "gl_name": row.nama_gl_account,
+                # Fallback ke gl_account jika nama belum ada di master data
+                "gl_name": row.nama_gl_account or row.gl_account,
                 "total_amount": float(row.total_amount)
             }
             for row in details

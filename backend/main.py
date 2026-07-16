@@ -8,8 +8,8 @@ from api.gl_account import router as gl_router
 from api.upload import router as upload_router
 from api.reminder import router as reminder_router
 from api.export import router as export_router
-from api import dashboard_advance
-from api import dashboard_settlement
+# from api import dashboard_advance
+# from api import dashboard_settlement
 from scheduler.reminder_scheduler import (
     start_reminder_scheduler,
     stop_reminder_scheduler
@@ -20,6 +20,10 @@ app = FastAPI(
     description="Refcon Petty Cash Monitoring System",
     version="1.0.0"
 )
+
+from database.connection import Base, engine
+from database import models
+Base.metadata.create_all(bind=engine)
 
 # =========================================================
 # CORS - Izinkan React (frontend) mengakses API ini
@@ -61,5 +65,5 @@ app.include_router(gl_router)
 app.include_router(upload_router)
 app.include_router(reminder_router)
 app.include_router(export_router)
-app.include_router(dashboard_advance.router)
-app.include_router(dashboard_settlement.router)
+# app.include_router(dashboard_advance.router)
+# app.include_router(dashboard_settlement.router)

@@ -11,9 +11,11 @@ def load_gl(df, db: Session):
 
     for _, row in df.iterrows():
 
-        gl_account = str(row["gl_account"]).strip()
+        from etl.utils.normalizer import (normalize_code)
+        gl_account = normalize_code(
+            row["gl_account"]
+        )
         nama_gl_account = str(row["nama_gl_account"]).strip()
-
         existing = (
             db.query(GlAccount)
             .filter(GlAccount.gl_account == gl_account)

@@ -1,6 +1,8 @@
 from etl.utils.sap_column_mapper import map_columns
 from etl.utils.validator import validate_columns
+from etl.utils.normalizer import normalize_code
 import pandas as pd
+
 
 def transform_data(df):
 
@@ -38,6 +40,12 @@ def transform_data(df):
         df["amount"],
         errors="coerce"
     ).fillna(0)
+
+    # Normalize GL Account
+    df["gl_account"] = (
+        df["gl_account"]
+        .apply(normalize_code)
+    )
 
     # Month & Year
     df["month"] = df["posting_date"].dt.month

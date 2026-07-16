@@ -8,7 +8,8 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
-    Enum
+    Enum,
+    UniqueConstraint
 )
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -28,9 +29,6 @@ class ReminderStatus(str, PyEnum):
 class SettlementSource(str, PyEnum):
     ADVANCE = "ADVANCE"
     REIMBURSEMENT = "REIMBURSEMENT"
-class PaymentMethod(str, PyEnum):
-    PETTY_CASH = "PETTY_CASH"
-    CHECK = "CHECK"
 
 # TRANSACTIONS
 class Transaction(Base):
@@ -51,6 +49,14 @@ class Transaction(Base):
         DateTime,
         server_default=func.now(),
         nullable=False
+    )
+
+    __table_args__ = (
+        UniqueConstraint(
+            "document_no",
+            "posting_date",
+            name="uq_transaction_key"
+        ),
     )
 
 #  GL ACCOUNT
@@ -124,10 +130,11 @@ class AdvanceRequest(Base):
         Enum(AdvanceType),
         nullable=False
     )
-    document_no = Column(
-        String(30),
+    ppc_no = Column(
+        String(50),
         unique=True,
-        nullable=False
+        nullable=False,
+        index=True
     )
     employee_id = Column(
         Integer,
@@ -201,12 +208,6 @@ class AdvanceRequest(Base):
         back_populates="advance_requests"
     )
 
-    settlement = relationship(
-        "Settlement",
-        back_populates="advance_request",
-        uselist=False
-    )
-
     reminder_logs = relationship(
         "ReminderLog",
         back_populates="advance_request",
@@ -230,7 +231,6 @@ class AdvanceRequest(Base):
 #         Integer,
 #         ForeignKey("advance_requests.id"),
 #         nullable=True,
-#         unique=True
 #     )
 
 
@@ -305,84 +305,51 @@ class ReminderLog(Base):
 
 # SETTLEMENT
 class Settlement(Base):
-
     __tablename__ = "settlements"
-
-    id = Column(
-        Integer,
-        primary_key=True,
-        index=True
+    id = Column(Integer, primary_key=True)
+    ppc_no = Column(
+        String(50),
+        unique=True,
+        index=True,
+        nullable=False
     )
-
     source = Column(
         Enum(SettlementSource),
         nullable=False
     )
-
-    advance_request_id = Column(
-        Integer,
-        ForeignKey("advance_requests.id"),
-        nullable=True,
-        unique=True
-    )
-
     employee_id = Column(
         Integer,
         ForeignKey("employees.id"),
         nullable=False
     )
-
-    document_no = Column(
-        String(50),
-        nullable=False
-    )
-
     settlement_date = Column(
         Date,
         nullable=False
     )
-
     cost_center = Column(
         String(50),
         nullable=False
     )
-
     email = Column(
         String(100),
-        nullable=True
+        nullable=False
     )
-
     description = Column(
-        String(255),
-        nullable=True
+        String(255)
     )
-
     settlement_amount = Column(
         Float,
         nullable=False
     )
-
-    payment_method = Column(
-        Enum(PaymentMethod),
-        nullable=False
-    )
-
     created_at = Column(
         DateTime,
         server_default=func.now()
     )
-
     updated_at = Column(
         DateTime,
         server_default=func.now(),
         onupdate=func.now()
     )
-
-    advance_request = relationship(
-        "AdvanceRequest",
-        back_populates="settlement"
-    )
-
     employee = relationship(
         "Employee",
         back_populates="settlements"

@@ -20,7 +20,7 @@ router = APIRouter(
 # SCHEMA
 class AdvanceCreate(BaseModel):
     employee_id: int
-    request_no: str
+    ppc_no: str
     request_date: date
     amount: float
     purpose: str
@@ -32,10 +32,10 @@ class AdvanceUpdate(BaseModel):
     deadline_date: Optional[date] = None
 
 class SettlementCreate(BaseModel):
+    ppc_no: str
     settlement_date: date
     settlement_amount: float
-    note: Optional[str] = None
-    sap_document_no: Optional[str] = None
+    description: Optional[str] = None
 
 # HELPER
 def update_status(advance: AdvanceRequest):
@@ -401,16 +401,13 @@ def create_settlement(
 ):
 
     advance = (
-
         db.query(AdvanceRequest)
-
         .filter(
             AdvanceRequest.id == advance_id
         )
-
         .first()
-
     )
+
 
     if not advance:
 
@@ -419,7 +416,9 @@ def create_settlement(
             detail="Advance tidak ditemukan"
         )
 
+
     update_status(advance)
+
 
     if advance.status == AdvanceStatus.SETTLED:
 
@@ -428,31 +427,83 @@ def create_settlement(
             detail="Advance sudah settled"
         )
 
+
+    # Cek PPC duplicate
+    existing = (
+        db.query(Settlement)
+        .filter(
+            Settlement.ppc_no == data.ppc_no
+        )
+        .first()
+    )
+
+
+    if existing:
+
+        raise HTTPException(
+            status_code=400,
+            detail="PPC sudah digunakan"
+        )
+
+
+    # Ambil data employee
+    employee = advance.employee
+
+
+    if not employee:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Employee advance tidak ditemukan"
+        )
+
+
+    # Buat Settlement
     settlement = Settlement(
-        type=SettlementSource.ADVANCE,
+        ppc_no=data.ppc_no,
+        source=SettlementSource.ADVANCE,
         advance_request_id=advance.id,
         employee_id=advance.employee_id,
         settlement_date=data.settlement_date,
-        settlement_amount=data.settlement_amount,
-        note=data.note,
-        sap_document_no=data.sap_document_no
+        cost_center=(
+            employee.cost_center
+            if hasattr(employee, "cost_center")
+            else ""
+        ),
+        email=employee.employee_email,
+        description=(
+            data.description
+            if data.description
+            else advance.purpose
+        ),
+        settlement_amount=data.settlement_amount
     )
+
 
     db.add(settlement)
 
+
+    # Update Advance
     advance.status = AdvanceStatus.SETTLED
+    advance.settlement_date = (
+        data.settlement_date
+    )
+    advance.settlement_amount = (
+        data.settlement_amount
+    )
 
     db.commit()
-
     db.refresh(settlement)
-
     db.refresh(advance)
 
+
     return {
-
-        "message": "Settlement berhasil disimpan",
-
-        "advance": serialize_advance(advance)
+        "message":
+            "Settlement berhasil dibuat",
+        "settlement_id":
+            settlement.id,
+        "advance":
+            serialize_advance(advance)
 
     }
 
@@ -495,7 +546,10 @@ def settlement_receipt(
     s = advance.settlement
 
     return {
-        "request_no": advance.request_no,
+        "request_no":
+            advance.request_no,
+        "ppc_no":
+            s.ppc_no,
         "employee_name":
             advance.employee.employee_name,
         "employee_email":
@@ -508,10 +562,10 @@ def settlement_receipt(
             s.settlement_date,
         "settlement_amount":
             s.settlement_amount,
-        "note":
-            s.note,
-        "sap_document_no":
-            s.sap_document_no,
+        "description":
+            s.description,
+        "source":
+            s.source.value,
         "created_at":
             s.created_at
     }

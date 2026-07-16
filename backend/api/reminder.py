@@ -154,7 +154,7 @@ def send_email_reminder(
     )
 
     body = f"""
-Halo {employee.employee_name},
+Kepada Bapak/Ibu {employee.employee_name},
 
 Advance berikut telah melewati Due Date Settlement.
 

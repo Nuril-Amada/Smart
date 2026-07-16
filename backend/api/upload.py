@@ -109,9 +109,13 @@ def upload_gl_account(
                 status_code=400,
                 detail=f"Kolom tidak ditemukan: {missing}"
             )
-
+        
+        from etl.utils.normalizer import (normalize_code)
         df = df[required]
-
+        df["gl_account"] = (
+            df["gl_account"]
+            .apply(normalize_code)
+        )
         df = df.dropna(subset=["gl_account"])
         df = df.drop_duplicates(
             subset=["gl_account"], keep="last"
@@ -187,7 +191,7 @@ def upload_reimbursement(
                         Employee.id == int(row["employee_id"])
                     )
 
-                    .first()
+                .first()
 
                 )
 
