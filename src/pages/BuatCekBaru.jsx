@@ -1,9 +1,57 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";   // ← Tambahan
-import { FaPlus } from "react-icons/fa";
+import { useNavigate } from "react-router-dom";
+
+// ======================================================================
+// KONFIGURASI TEMPLATE CEK PER BANK
+//
+// Setiap bank di perusahaan ini punya ukuran fisik cek & tata letak yang
+// beda, jadi preview-nya juga harus menyesuaikan. Kalau nanti ada bank
+// baru, tinggal tambah 1 entry object di sini — TIDAK perlu ubah JSX
+// preview di bawah, karena semua nilai visual (tinggi, lebar, warna,
+// posisi elemen) diambil dari sini.
+//
+// "widthClass"/"heightClass": ukuran kotak preview (mendekati proporsi
+// asli fisik cek tiap bank — sesuaikan lagi kalau ukuran resmi dari
+// masing-masing bank berbeda).
+// "accentBg"/"accentText": warna tema sesuai identitas bank.
+// "signaturePosition": beberapa bank naruh kolom tanda tangan di kiri,
+// ada yang di kanan — ini directly mempengaruhi layout cetak fisiknya.
+// ======================================================================
+const BANK_TEMPLATES = {
+  "Bank Mandiri": {
+    label: "Bank Mandiri (001)",
+    branch: "Cab. Jakarta Thamrin",
+    widthCm: 21,
+    heightCm: 10,
+    accentBg: "bg-sky-50",
+    accentBorder: "border-sky-200",
+    headerText: "text-sky-900",
+    signaturePosition: "right",
+  },
+  "Bank Sinarmas": {
+    label: "Bank Sinarmas",
+    branch: "Cab. Jakarta Sudirman",
+    widthCm: 21,
+    heightCm: 9.5,
+    accentBg: "bg-amber-50",
+    accentBorder: "border-amber-200",
+    headerText: "text-amber-900",
+    signaturePosition: "left",
+  },
+  "Maybank": {
+    label: "Maybank Indonesia",
+    branch: "Cab. Jakarta Senayan",
+    widthCm: 21,
+    heightCm: 10.5,
+    accentBg: "bg-yellow-50",
+    accentBorder: "border-yellow-300",
+    headerText: "text-yellow-900",
+    signaturePosition: "right",
+  },
+};
 
 export default function BuatCekBaru() {
-  const navigate = useNavigate();   // ← Tambahan
+  const navigate = useNavigate();
 
   const [form, setForm] = useState({
     bank: "",
@@ -27,13 +75,11 @@ export default function BuatCekBaru() {
     }));
   };
 
-  // Fungsi Simpan & Cetak
-  const handleSimpanDanCetak = () => {
-    // Di sini nanti bisa ditambahkan logic save ke database / API
-    // Untuk sementara kita tampilkan alert
-    alert("Cek berhasil disimpan dan siap dicetak!");
+  // Template aktif berdasarkan bank yang dipilih (null kalau belum pilih)
+  const activeTemplate = BANK_TEMPLATES[form.bank] || null;
 
-    // Arahkan ke halaman Daftar Cek
+  const handleSimpanDanCetak = () => {
+    alert("Cek berhasil disimpan dan siap dicetak!");
     navigate("/CetakCek");
   };
 
@@ -58,11 +104,15 @@ export default function BuatCekBaru() {
                 className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
               >
                 <option value="">Pilih Bank</option>
-                <option value="Bank Mandiri">Bank Mandiri (001)</option>
-                <option value="BCA">BCA</option>
-                <option value="BRI">BRI</option>
-                <option value="BNI">BNI</option>
+                <option value="Bank Mandiri">Bank Mandiri</option>
+                <option value="Bank Sinarmas">Bank Sinarmas</option>
+                <option value="Maybank">Maybank Indonesia</option>
               </select>
+              {!form.bank && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Ukuran & tata letak preview cek menyesuaikan bank yang dipilih.
+                </p>
+              )}
             </div>
 
             <div>
@@ -224,57 +274,86 @@ export default function BuatCekBaru() {
       {/* ================= PREVIEW ================= */}
       <div className="grid grid-cols-1 xl:grid-cols-1 gap-6" style={{ marginLeft: "20px" }}>
 
-        {/* Preview Cek */}
+        {/* Preview Cek — layout & ukuran menyesuaikan bank yang dipilih */}
         <div className="bg-white rounded-xl shadow border border-gray-200" style={{ marginRight: "20px" }}>
           <div className="border-b px-5 py-3">
             <h2 className="font-semibold text-gray-700" style={{ marginTop: "10px", marginLeft: "20px" }}>Preview Cek</h2>
           </div>
-          <div className="p-6">
-            <div className="rounded-lg border bg-sky-50 p-6 h-[360px] flex flex-col justify-between" style={{ marginTop: "10px", marginBottom: "10px", marginLeft: "10px", marginRight: "10px" }}>
-              <div className="flex justify-between">
+          <div className="p-6 flex justify-center overflow-x-auto">
+            {!activeTemplate ? (
+              // Belum pilih bank — tampilkan placeholder, bukan preview kosong yang membingungkan
+              <div
+                className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center"
+                style={{ width: "21cm", height: "9.5cm", marginTop: "10px", marginBottom: "10px" }}
+              >
+                <p className="text-gray-400 text-sm">
+                  Pilih bank terlebih dahulu untuk melihat preview cek
+                </p>
+              </div>
+            ) : (
+              <div
+                className={`${activeTemplate.accentBg} border ${activeTemplate.accentBorder} rounded-lg p-6 flex flex-col justify-between transition-all duration-300 shrink-0`}
+                style={{
+                  width: `${activeTemplate.widthCm}cm`,
+                  height: `${activeTemplate.heightCm}cm`,
+                  marginTop: "10px",
+                  marginBottom: "10px",
+                }}
+              >
+                <div className="flex justify-between">
+                  <div>
+                    <h3 className={`font-bold text-lg ${activeTemplate.headerText}`}>
+                      PT SMART Tbk
+                    </h3>
+                    <p className="text-sm">Jl. Rungkut Industri Raya No. 19, Surabaya – 60293, Indonesia</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-semibold">No. {form.nomorCek}</p>
+                    <p className="text-sm">
+                      {new Date(form.tanggal).toLocaleDateString("id-ID", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                      })}
+                    </p>
+                  </div>
+                </div>
+
                 <div>
-                  <h3 className="font-bold text-lg">PT SMART Tbk</h3>
-                  <p className="text-sm">Jl. MH. Thamrin No.51</p>
-                  <p className="text-sm">Jakarta Pusat</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold">No. {form.nomorCek}</p>
-                  <p className="text-sm">
-                    {new Date(form.tanggal).toLocaleDateString("id-ID", {
-                      day: "2-digit",
-                      month: "2-digit",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-              </div>
-
-              <div>
-                <p className="text-sm mb-2">PAY TO THE ORDER OF</p>
-                <div className="border-b h-8 bg-white"></div>
-              </div>
-
-              <div className="flex justify-between items-center">
-                <div className="w-3/4">
-                  <p className="text-sm mb-2">THE SUM OF</p>
+                  <p className="text-sm mb-2">PAY TO THE ORDER OF</p>
                   <div className="border-b h-8 bg-white"></div>
                 </div>
-                <div className="border p-3 font-bold bg-white">
-                  Rp {parseInt(form.nominal || 0).toLocaleString("id-ID")}
-                </div>
-              </div>
 
-              <div className="flex justify-between items-end">
-                <div>
-                  <p className="font-semibold">Bank Mandiri</p>
-                  <p className="text-sm">Cab. Jakarta Thamrin</p>
+                <div className="flex justify-between items-center">
+                  <div className="w-3/4">
+                    <p className="text-sm mb-2">THE SUM OF</p>
+                    <div className="border-b h-8 bg-white"></div>
+                  </div>
+                  <div className="border p-3 font-bold bg-white">
+                    Rp {parseInt(form.nominal || 0).toLocaleString("id-ID")}
+                  </div>
                 </div>
-                <div className="text-center">
-                  <div className="w-40 border-b mb-2"></div>
-                  <p className="text-sm">AUTHORIZED SIGNATURE</p>
+
+                {/* Baris tanda tangan — posisi beda tergantung bank (signaturePosition) */}
+                <div
+                  className={`flex items-end ${activeTemplate.signaturePosition === "left"
+                    ? "justify-between flex-row-reverse"
+                    : "justify-between"
+                    }`}
+                >
+                  <div>
+                    <p className={`font-semibold ${activeTemplate.headerText}`}>
+                      {activeTemplate.label}
+                    </p>
+                    <p className="text-sm">{activeTemplate.branch}</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-40 border-b mb-2"></div>
+                    <p className="text-sm">AUTHORIZED SIGNATURE</p>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
@@ -289,7 +368,8 @@ export default function BuatCekBaru() {
         </button>
         <button
           onClick={handleSimpanDanCetak}
-          className="px-8 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg transition" style={{ padding: "5px 10px" }}
+          disabled={!form.bank}
+          className="px-8 py-3 bg-gray-600 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg transition" style={{ padding: "5px 10px" }}
         >
           Simpan & Cetak
         </button>

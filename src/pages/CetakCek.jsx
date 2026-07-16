@@ -1,22 +1,56 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom"; // navigation
-import {
-  FaSearch,
-  FaUndo,
-  FaPlus,
-  FaPrint,
-  FaTrash,
-  FaEye,
-  FaSort,
-} from "react-icons/fa";
+import { FaPrint, FaRedo, FaBan } from "react-icons/fa";
 
-const dataCek = [
+// ======================================================================
+// KONFIGURASI TEMPLATE CEK PER BANK
+//
+// Setiap bank di perusahaan ini punya ukuran fisik cek & tata letak yang
+// beda, jadi preview-nya juga harus menyesuaikan. Kalau nanti ada bank
+// baru, tinggal tambah 1 entry object di sini — TIDAK perlu ubah JSX
+// preview di bawah, karena semua nilai visual (tinggi, lebar, warna,
+// posisi elemen) diambil dari sini.
+// ======================================================================
+const BANK_TEMPLATES = {
+  "Bank Mandiri": {
+    label: "Bank Mandiri (001)",
+    branch: "Cab. Jakarta Thamrin",
+    widthCm: 21,
+    heightCm: 10,
+    accentBg: "bg-sky-50",
+    accentBorder: "border-sky-200",
+    headerText: "text-sky-900",
+    signaturePosition: "right",
+  },
+  "Bank Sinarmas": {
+    label: "Bank Sinarmas",
+    branch: "Cab. Jakarta Sudirman",
+    widthCm: 21,
+    heightCm: 9.5,
+    accentBg: "bg-amber-50",
+    accentBorder: "border-amber-200",
+    headerText: "text-amber-900",
+    signaturePosition: "left",
+  },
+  Maybank: {
+    label: "Maybank Indonesia",
+    branch: "Cab. Jakarta Senayan",
+    widthCm: 21,
+    heightCm: 10.5,
+    accentBg: "bg-yellow-50",
+    accentBorder: "border-yellow-300",
+    headerText: "text-yellow-900",
+    signaturePosition: "right",
+  },
+};
+
+// Data awal Daftar Cetak Cek (dummy — nanti diganti fetch dari backend)
+const initialDataCek = [
   {
     id: 1,
     nomor: "CK-000001",
     tanggal: "2025-07-01",
     vendor: "PT ABC Indonesia",
-    bank: "BCA",
+    bank: "Bank Mandiri",
     buku: "BK-001",
     nominal: "25.000.000",
     status: "Belum Dicetak",
@@ -26,7 +60,7 @@ const dataCek = [
     nomor: "CK-000002",
     tanggal: "2025-07-02",
     vendor: "PT Sinar Jaya",
-    bank: "Mandiri",
+    bank: "Bank Sinarmas",
     buku: "BK-001",
     nominal: "10.500.000",
     status: "Sudah Dicetak",
@@ -36,186 +70,464 @@ const dataCek = [
     nomor: "CK-000003",
     tanggal: "2025-07-03",
     vendor: "PT Maju Bersama",
-    bank: "BNI",
+    bank: "Maybank",
     buku: "BK-002",
     nominal: "45.000.000",
     status: "Belum Dicetak",
   },
 ];
 
+const initialForm = {
+  bank: "",
+  bukuCek: "",
+  nomorCek: "000021",
+  tanggal: "2025-07-31",
+  tipeCek: "Cek Biasa",
+  mataUang: "IDR",
+  vendor: "",
+  nominal: "",
+  terbilang: "",
+  referensi: "",
+  keterangan: "",
+};
+
 export default function CetakCek() {
-  const navigate = useNavigate();
+  // ================= FORM INFORMASI CEK =================
+  const [form, setForm] = useState(initialForm);
 
-  // filter state
-  const [tanggalAwal, setTanggalAwal] = useState("");
-  const [tanggalAkhir, setTanggalAkhir] = useState("");
-  const [bank, setBank] = useState("");
-  const [vendor, setVendor] = useState("");
-  const [status, setStatus] = useState("");
-  const [filterCollapsed, setFilterCollapsed] = useState(false);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
 
-  // table & selected row
-  const [selected, setSelected] = useState(dataCek[0]);
+  // Template preview aktif berdasarkan bank yang dipilih di form
+  const activeTemplate = BANK_TEMPLATES[form.bank] || null;
 
-  // navigation to create page
-  const handleBuatCekBaru = () => {
-    navigate("/CetakCekBaru");
+  // ================= DAFTAR CETAK CEK =================
+  const [dataCek, setDataCek] = useState(initialDataCek);
+  const [selectedId, setSelectedId] = useState(null);
+
+  const selected = dataCek.find((item) => item.id === selectedId) || null;
+
+  // ================= AKSI CEK =================
+
+  // Cetak Cek: simpan form Informasi Cek yang sedang diisi jadi entry baru
+  // di Daftar Cetak Cek, dengan status langsung "Sudah Dicetak".
+  const handleCetakCek = () => {
+    if (!form.bank || !form.vendor || !form.nominal) {
+      alert("Lengkapi minimal Bank, Vendor, dan Nominal sebelum mencetak.");
+      return;
+    }
+
+    const newItem = {
+      id: Date.now(),
+      nomor: `CK-${form.nomorCek}`,
+      tanggal: form.tanggal,
+      vendor: form.vendor,
+      bank: form.bank,
+      buku: form.bukuCek || "-",
+      nominal: form.nominal
+        ? Number(form.nominal).toLocaleString("id-ID")
+        : "0",
+      status: "Sudah Dicetak",
+    };
+
+    setDataCek((prev) => [newItem, ...prev]);
+    alert("Cek berhasil disimpan dan dicetak!");
+    setForm(initialForm);
+  };
+
+  // Cetak Ulang: hanya berlaku untuk baris yang dipilih di Daftar Cetak Cek
+  const handleCetakUlang = () => {
+    if (!selected) {
+      alert("Pilih salah satu cek di Daftar Cetak Cek terlebih dahulu.");
+      return;
+    }
+    alert(`Mencetak ulang cek ${selected.nomor}...`);
+  };
+
+  // Batalkan Cek: ubah status baris terpilih jadi "Dibatalkan"
+  const handleBatalkanCek = () => {
+    if (!selected) {
+      alert("Pilih salah satu cek di Daftar Cetak Cek terlebih dahulu.");
+      return;
+    }
+
+    const confirmCancel = window.confirm(
+      `Yakin ingin membatalkan cek ${selected.nomor}?`
+    );
+    if (!confirmCancel) return;
+
+    setDataCek((prev) =>
+      prev.map((item) =>
+        item.id === selected.id ? { ...item, status: "Dibatalkan" } : item
+      )
+    );
+  };
+
+  const statusBadge = (status) => {
+    if (status === "Sudah Dicetak") {
+      return (
+        <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-medium">
+          Sudah Dicetak
+        </span>
+      );
+    }
+    if (status === "Dibatalkan") {
+      return (
+        <span className="bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-medium">
+          Dibatalkan
+        </span>
+      );
+    }
+    return (
+      <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">
+        Belum Dicetak
+      </span>
+    );
   };
 
   return (
-    // Wrapper halaman — padding 20px di semua sisi,
-    // dan jarak antar section (vertical) juga 20px.
-    <div style={{ padding: "10px" }} className="space-y-5">
-
-      {/* Filter Card — margin 20px di semua sisi */}
+    <div className="space-y-8 px-10 pt-10 pb-10">
+      {/* ================= 1. INFORMASI CEK ================= */}
       <div
-        className="bg-white rounded-2xl shadow border border-gray-200"
-        style={{ marginTop: "10px", marginLeft: "10px", marginRight: "10px" }}
+        className="bg-white rounded-xl shadow border border-gray-200 p-6"
+        style={{ marginLeft: "20px", marginRight: "20px", marginTop: "20px", marginBottom: "20px" }}
       >
-        <div className="flex justify-between items-center border-b px-6 py-4" style={{ marginLeft: "20px", marginTop: "10px", marginRight: "20px" }}>
-          <h2 className="text-xl font-semibold text-gray-700">
-            Pencarian Data Cek
-          </h2>
-          <button
-            className="text-gray-600 hover:underline"
-            onClick={() => setFilterCollapsed(!filterCollapsed)}
-          >
-            {filterCollapsed ? "Tampilkan Filter" : "Sembunyikan Filter"}
-          </button>
-        </div>
-        {!filterCollapsed && (
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5" style={{ marginLeft: "20px", marginRight: "20px", marginTop: "10px" }}>
-              <div>
-                <label className="text-sm font-medium text-gray-600 block mb-2">
-                  Dari Tanggal
-                </label>
-                <input
-                  type="date"
-                  value={tanggalAwal}
-                  onChange={(e) => setTanggalAwal(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600 block mb-2">
-                  Sampai Tanggal
-                </label>
-                <input
-                  type="date"
-                  value={tanggalAkhir}
-                  onChange={(e) => setTanggalAkhir(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600 block mb-2">
-                  Bank
-                </label>
+        <h2
+          className="text-lg font-semibold mb-6 text-gray-700"
+          style={{ marginTop: "10px", marginLeft: "20px" }}
+        >
+          Informasi Cek
+        </h2>
+
+        <div
+          className="grid grid-cols-1 lg:grid-cols-2 gap-8"
+          style={{ marginLeft: "20px", marginRight: "20px", marginBottom: "20px" }}
+        >
+          {/* Kolom Kiri */}
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700">
+                Bank <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="bank"
+                value={form.bank}
+                onChange={handleChange}
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">Pilih Bank</option>
+                <option value="Bank Mandiri">Bank Mandiri</option>
+                <option value="Bank Sinarmas">Bank Sinarmas</option>
+                <option value="Maybank">Maybank Indonesia</option>
+              </select>
+              {!form.bank && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Ukuran & tata letak preview cek menyesuaikan bank yang dipilih.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700">
+                Buku Cek <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="bukuCek"
+                value={form.bukuCek}
+                onChange={handleChange}
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="">Pilih Buku Cek</option>
+                <option value="Book 01">Book 01 (000001 - 000025)</option>
+                <option value="Book 02">Book 02</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700">Tipe Cek</label>
+              <select
+                name="tipeCek"
+                value={form.tipeCek}
+                onChange={handleChange}
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="Cek Biasa">Cek Biasa</option>
+                <option value="Giro">Giro</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700">
+                Mata Uang <span className="text-red-500">*</span>
+              </label>
+              <select
+                name="mataUang"
+                value={form.mataUang}
+                onChange={handleChange}
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                <option value="IDR">IDR - Rupiah</option>
+                <option value="USD">USD - US Dollar</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700">
+                Vendor / Penerima <span className="text-red-500">*</span>
+              </label>
+              <div className="flex gap-3">
                 <select
-                  value={bank}
-                  onChange={(e) => setBank(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                  name="vendor"
+                  value={form.vendor}
+                  onChange={handleChange}
+                  className="flex-1 border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                 >
-                  <option value="">Semua Bank</option>
-                  <option>BCA</option>
-                  <option>Mandiri</option>
-                  <option>BNI</option>
-                  <option>BRI</option>
+                  <option value="">Pilih Vendor</option>
+                  <option value="PT SMART Tbk">PT SMART Tbk</option>
+                  <option value="PT ABC">PT ABC</option>
                 </select>
-              </div>
-              <div>
-                <label className="text-sm font-medium text-gray-600 block mb-2">
-                  Status
-                </label>
-                <select
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
+                <button
+                  type="button"
+                  className="border border-gray-600 text-gray-600 px-5 rounded-lg hover:bg-gray-50 transition text-sm"
                 >
-                  <option value="">Semua Status</option>
-                  <option>Belum Dicetak</option>
-                  <option>Sudah Dicetak</option>
-                </select>
-              </div>
-              <div className="xl:col-span-2">
-                <label className="text-sm font-medium text-gray-600 block mb-2">
-                  Vendor
-                </label>
-                <input
-                  value={vendor}
-                  onChange={(e) => setVendor(e.target.value)}
-                  placeholder="Cari Vendor..."
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                />
+                  + Vendor Baru
+                </button>
               </div>
             </div>
-            <div className="flex justify-end gap-3 mt-8" style={{ marginTop: "10px", marginRight: "20px", marginBottom: "20px" }}>
-              <button className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition text-sm" style={{ padding: "5px 7px" }}>
-                <FaSearch />
-                Cari
-              </button>
-              <button
-                className="flex items-center gap-2 border border-gray-400 px-6 py-2 rounded-lg hover:bg-gray-100 transition text-sm" style={{ padding: "5px 7px" }}
-                onClick={() => {
-                  setTanggalAwal("");
-                  setTanggalAkhir("");
-                  setVendor("");
-                  setBank("");
-                  setStatus("");
-                }}
-              >
-                <FaUndo />
-                Reset
-              </button>
-              <button
-                onClick={handleBuatCekBaru}
-                className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 text-white px-6 py-2 rounded-lg transition text-sm" style={{ padding: "5px 7px" }}
-              >
-                <FaPlus />
-                Buat Cek Baru
-              </button>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700">Referensi</label>
+              <input
+                type="text"
+                name="referensi"
+                value={form.referensi}
+                onChange={handleChange}
+                placeholder="Masukkan Referensi"
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
             </div>
           </div>
-        )}
+
+          {/* Kolom Kanan */}
+          <div className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700">
+                Nomor Cek <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                name="nomorCek"
+                value={form.nomorCek}
+                onChange={handleChange}
+                className="w-full border rounded-lg px-4 py-2 bg-gray-50 text-sm"
+                readOnly
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Nomor cek berikutnya: {form.nomorCek}
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700">
+                Tanggal Cek <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="date"
+                name="tanggal"
+                value={form.tanggal}
+                onChange={handleChange}
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700">
+                Nominal <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                name="nominal"
+                value={form.nominal}
+                onChange={handleChange}
+                placeholder="0"
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700">
+                Terbilang <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                name="terbilang"
+                value={form.terbilang}
+                onChange={handleChange}
+                rows="3"
+                placeholder="Terbilang"
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2 text-gray-700">Keterangan</label>
+              <textarea
+                name="keterangan"
+                value={form.keterangan}
+                onChange={handleChange}
+                rows="3"
+                placeholder="Masukkan Keterangan"
+                className="w-full border rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              />
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Main Content — gap antar kolom 20px */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        {/* Daftar Cek — margin 20px di semua sisi */}
+      {/* ================= 2. PREVIEW CETAK CEK ================= */}
+      <div
+        className="bg-white rounded-xl shadow border border-gray-200"
+        style={{ marginLeft: "20px", marginRight: "20px", marginBottom: "20px" }}
+      >
+        <div className="border-b px-5 py-3">
+          <h2
+            className="font-semibold text-gray-700"
+            style={{ marginTop: "10px", marginLeft: "20px" }}
+          >
+            Preview Cetak Cek
+          </h2>
+        </div>
+        <div className="p-6 flex justify-center overflow-x-auto">
+          {!activeTemplate ? (
+            <div
+              className="rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center"
+              style={{ width: "21cm", height: "9.5cm", marginTop: "10px", marginBottom: "10px" }}
+            >
+              <p className="text-gray-400 text-sm">
+                Pilih bank terlebih dahulu untuk melihat preview cek
+              </p>
+            </div>
+          ) : (
+            <div
+              className={`${activeTemplate.accentBg} border ${activeTemplate.accentBorder} rounded-lg p-6 flex flex-col justify-between transition-all duration-300 shrink-0`}
+              style={{
+                width: `${activeTemplate.widthCm}cm`,
+                height: `${activeTemplate.heightCm}cm`,
+                marginTop: "10px",
+                marginBottom: "10px",
+              }}
+            >
+              <div className="flex justify-between">
+                <div>
+                  <h3 className={`font-bold text-lg ${activeTemplate.headerText}`}>
+                    PT SMART Tbk
+                  </h3>
+                  <p className="text-sm">
+                    Jl. Rungkut Industri Raya No. 19, Surabaya – 60293, Indonesia
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold">No. {form.nomorCek}</p>
+                  <p className="text-sm">
+                    {new Date(form.tanggal).toLocaleDateString("id-ID", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm mb-2">PAY TO THE ORDER OF</p>
+                <div className="border-b h-8 bg-white"></div>
+              </div>
+
+              <div className="flex justify-between items-center">
+                <div className="w-3/4">
+                  <p className="text-sm mb-2">THE SUM OF</p>
+                  <div className="border-b h-8 bg-white"></div>
+                </div>
+                <div className="border p-3 font-bold bg-white">
+                  Rp {parseInt(form.nominal || 0).toLocaleString("id-ID")}
+                </div>
+              </div>
+
+              <div
+                className={`flex items-end ${activeTemplate.signaturePosition === "left"
+                  ? "justify-between flex-row-reverse"
+                  : "justify-between"
+                  }`}
+              >
+                <div>
+                  <p className={`font-semibold ${activeTemplate.headerText}`}>
+                    {activeTemplate.label}
+                  </p>
+                  <p className="text-sm">{activeTemplate.branch}</p>
+                </div>
+                <div className="text-center">
+                  <div className="w-40 border-b mb-2"></div>
+                  <p className="text-sm">AUTHORIZED SIGNATURE</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ================= 3. DAFTAR CETAK CEK ================= */}
+      <div
+        className="bg-white rounded-2xl shadow border border-gray-200"
+        style={{ marginLeft: "20px", marginRight: "20px", marginBottom: "20px" }}
+      >
         <div
-          className="xl:col-span-2 bg-white rounded-2xl shadow border border-gray-200"
-          style={{ marginTop: "20px", marginLeft: "10px", marginRight: "10px" }}
+          className="flex justify-between items-center border-b px-6 py-4"
+          style={{ marginLeft: "20px", marginRight: "20px", marginTop: "10px" }}
         >
-          <div className="flex items-center justify-between border-b px-6 py-4" style={{ marginLeft: "20px", marginRight: "20px", marginTop: "10px" }}>
-            <h2 className="text-lg font-semibold text-gray-700">Daftar Cek</h2>
-            <span className="text-sm text-gray-500">
-              Total Data : {dataCek.length}
-            </span>
-          </div>
-          <div className="overflow-x-auto" style={{ marginLeft: "20px", marginRight: "20px", marginTop: "10px", marginBottom: "10px" }}>
-            <table className="w-full border border-gray-300" style={{ borderCollapse: "collapse" }}>
-              <thead className="bg-gray-100">
+          <h2 className="text-lg font-semibold text-gray-700">Daftar Cetak Cek</h2>
+        </div>
+
+        <div
+          className="overflow-x-auto"
+          style={{ marginLeft: "20px", marginRight: "20px", marginTop: "20px" }}
+        >
+          <table className="w-full border border-gray-300" style={{ borderCollapse: "collapse" }}>
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="border border-gray-300 text-center px-4 py-3 text-sm text-gray-700">
+                  Nomor Cek
+                </th>
+                <th className="border border-gray-300 text-center px-4 py-3 text-sm text-gray-700">
+                  Tanggal
+                </th>
+                <th className="border border-gray-300 text-center px-4 py-3 text-sm text-gray-700">
+                  Vendor
+                </th>
+                <th className="border border-gray-300 text-center px-4 py-3 text-sm text-gray-700">
+                  Bank
+                </th>
+                <th className="border border-gray-300 text-center px-4 py-3 text-sm text-gray-700">
+                  Nominal
+                </th>
+                <th className="border border-gray-300 text-center px-4 py-3 text-sm text-gray-700">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {dataCek.length === 0 ? (
                 <tr>
-                  <th className="border border-gray-300 text-center px-4 py-3 text-sm text-gray-700 cursor-pointer">
-                    Nomor Cek
-                  </th>
-                  <th className="border border-gray-300 text-center px-4 py-3 text-sm text-gray-700 cursor-pointer">
-                    Tanggal
-                  </th>
-                  <th className="border border-gray-300 text-center px-4 py-3 text-sm text-gray-700">Vendor</th>
-                  <th className="border border-gray-300 text-center px-4 py-3 text-sm text-gray-700">Bank</th>
-                  <th className="border border-gray-300 text-center px-4 py-3 text-sm text-gray-700">Nominal</th>
-                  <th className="border border-gray-300 text-center px-4 py-3 text-sm text-gray-700">Status</th>
-                  <th className="border border-gray-300 text-center px-4 py-3 text-sm text-gray-700">Aksi</th>
+                  <td colSpan={6} className="border border-gray-300 p-8 text-center text-gray-400 text-sm">
+                    Belum ada data cek.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {dataCek.map((item) => (
+              ) : (
+                dataCek.map((item) => (
                   <tr
                     key={item.id}
-                    onClick={() => setSelected(item)}
-                    className={`hover:bg-gray-100 cursor-pointer transition ${selected?.id === item.id ? "bg-gray-100" : ""
+                    onClick={() => setSelectedId(item.id)}
+                    className={`hover:bg-gray-100 cursor-pointer transition ${selectedId === item.id ? "bg-gray-100" : ""
                       }`}
                   >
                     <td className="border border-gray-300 px-4 py-3 text-center text-sm">{item.nomor}</td>
@@ -224,107 +536,76 @@ export default function CetakCek() {
                     <td className="border border-gray-300 px-4 py-3 text-center text-sm">{item.bank}</td>
                     <td className="border border-gray-300 px-4 py-3 text-center text-sm">Rp {item.nominal}</td>
                     <td className="border border-gray-300 px-4 py-3 text-center">
-                      {item.status === "Sudah Dicetak" ? (
-                        <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-medium">
-                          Sudah Dicetak
-                        </span>
-                      ) : (
-                        <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">
-                          Belum Dicetak
-                        </span>
-                      )}
-                    </td>
-                    <td className="border border-gray-300 px-4 py-3">
-                      <div className="flex justify-center gap-2">
-                        <button className="w-8 h-8 rounded-lg bg-gray-200 text-gray-700 hover:bg-gray-400 flex items-center justify-center">
-                          <FaPrint />
-                        </button>
-                        <button className="w-8 h-8 rounded-lg bg-red-100 text-red-700 hover:bg-red-200 flex items-center justify-center">
-                          <FaTrash />
-                        </button>
-                      </div>
+                      {statusBadge(item.status)}
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="flex items-center justify-between px-6 py-4" style={{ marginLeft: "20px", marginRight: "20px" }}>
-            <span className="text-sm text-gray-500">
-              Menampilkan 1 - {dataCek.length} data
-            </span>
-            <div className="flex gap-2">
-              <button className="border border-gray-400 rounded-lg px-4 py-2 hover:bg-gray-100 text-sm" style={{ padding: "3px 7px" }}>
-                Sebelumnya
-              </button>
-              <button className="bg-gray-700 text-white rounded-lg px-4 py-2 text-sm" style={{ padding: "3px 7px" }}>
-                1
-              </button>
-              <button className="border border-gray-400 rounded-lg px-4 py-2 hover:bg-gray-100 text-sm" style={{ padding: "3px 7px" }}>
-                Berikutnya
-              </button>
-            </div>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div
+          className="flex items-center justify-between px-6 py-4"
+          style={{ marginLeft: "20px", marginRight: "20px", marginBottom: "10px", marginTop: "10px" }}
+        >
+          <span className="text-sm text-gray-500">
+            Menampilkan 1 - {dataCek.length} dari {dataCek.length} data
+          </span>
+          <div className="flex gap-2">
+            <button className="border border-gray-400 rounded-lg px-4 py-2 hover:bg-gray-100 text-sm" style={{ padding: "3px 7px" }}>
+              Sebelumnya
+            </button>
+            <button className="bg-gray-700 text-white rounded-lg px-4 py-2 text-sm" style={{ padding: "3px 7px" }}>
+              1
+            </button>
+            <button className="border border-gray-400 rounded-lg px-4 py-2 hover:bg-gray-100 text-sm" style={{ padding: "3px 7px" }}>
+              Berikutnya
+            </button>
           </div>
         </div>
 
-        {/* Detail Cek — margin 20px di semua sisi */}
-        <div
-          className="bg-white rounded-2xl shadow border border-gray-200"
-          style={{ marginRight: "15px", marginTop: "20px", marginLeft: "-10px" }}
+        {selected && (
+          <p
+            className="text-sm text-gray-500 px-6 pb-4"
+            style={{ marginLeft: "20px", marginBottom: "10px" }}
+          >
+            Cek terpilih: <span className="font-medium text-gray-700">{selected.nomor}</span> — gunakan tombol di bawah untuk Cetak Ulang / Batalkan Cek.
+          </p>
+        )}
+      </div>
+
+      {/* ================= BUTTON ACTION ================= */}
+      <div
+        className="flex justify-end gap-4"
+        style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "20px" }}
+      >
+        <button className="px-6 py-3 border rounded-lg hover:bg-gray-100 transition text-sm" style={{ padding: "5px 15px" }}>
+          Batal
+        </button>
+        <button
+          onClick={handleCetakCek}
+          className="flex items-center gap-2 px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition text-sm" style={{ padding: "5px 15px" }}
         >
-          <div className="border-b px-6 py-4 flex justify-between items-center" style={{ marginLeft: "10px", marginRight: "10px", marginTop: "10px" }}>
-            <h2 className="text-lg font-semibold text-gray-700">Detail Cek</h2>
-          </div>
-          <div className="p-6 space-y-4" style={{ marginLeft: "10px", marginRight: "10px" }}>
-            <div className="grid grid-cols-2 gap-2 text-sm">
-              <span className="font-medium text-sm">Nomor Cek:</span>
-              <span>{selected.nomor}</span>
-              <span className="font-medium text-sm">Tanggal:</span>
-              <span>{selected.tanggal}</span>
-              <span className="font-medium text-sm">Vendor:</span>
-              <span>{selected.vendor}</span>
-              <span className="font-medium text-sm">Bank:</span>
-              <span>{selected.bank}</span>
-              <span className="font-medium text-sm">Buku Cek:</span>
-              <span>{selected.buku}</span>
-              <span className="font-medium text-sm">Nominal:</span>
-              <span className="text-xl font-bold text-gray-700 text-xs">Rp {selected.nominal}</span>
-              <span className="font-medium text-sm">Status:</span>
-              <span>
-                {selected.status === "Sudah Dicetak" ? (
-                  <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs">
-                    Sudah Dicetak
-                  </span>
-                ) : (
-                  <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs">
-                    Belum Dicetak
-                  </span>
-                )}
-              </span>
-            </div>
-            <div className="pt-6">
-              <h3 className="font-semibold text-gray-700 mb-3" style={{ marginTop: "10px" }}>Preview Cek</h3>
-              <div className="rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 h-[240px] flex flex-col items-center justify-center">
-                <FaEye className="text-5xl text-gray-400 mb-4" />
-                <p className="text-gray-500 text-sm">Preview cek akan tampil di sini</p>
-              </div>
-            </div>
-            <div className="pt-6 flex flex-col gap-3" style={{ marginTop: "10px", marginBottom: "10px" }}>
-              <button className="w-full bg-gray-700 hover:bg-gray-600 text-white py-3 rounded-lg flex justify-center items-center gap-2 transition text-sm">
-                <FaPrint />
-                Cetak Cek
-              </button>
-              <button className="w-full bg-gray-400 hover:bg-gray-500 text-white py-3 rounded-lg flex justify-center items-center gap-2 transition text-sm">
-                <FaPrint />
-                Cetak Ulang
-              </button>
-              <button className="w-full bg-red-600 hover:bg-red-700 text-white py-3 rounded-lg flex justify-center items-center gap-2 transition text-sm">
-                <FaTrash />
-                Batalkan Cek
-              </button>
-            </div>
-          </div>
-        </div>
+          <FaPrint />
+          Cetak Cek
+        </button>
+        <button
+          onClick={handleCetakUlang}
+          disabled={!selected}
+          className="flex items-center gap-2 px-6 py-3 bg-gray-400 hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg transition text-sm" style={{ padding: "5px 15px" }}
+        >
+          <FaRedo />
+          Cetak Ulang
+        </button>
+        <button
+          onClick={handleBatalkanCek}
+          disabled={!selected}
+          className="flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg transition text-sm" style={{ padding: "5px 15px" }}
+        >
+          <FaBan />
+          Batalkan Cek
+        </button>
       </div>
     </div>
   );

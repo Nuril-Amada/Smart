@@ -1,19 +1,7 @@
-import {
-    Body,
-    Button,
-    Container,
-    Head,
-    Heading,
-    Hr,
-    Html,
-    Preview,
-    Row,
-    Section,
-    Text,
-} from "@react-email/components";
+import { Body, Container, Head, Hr, Html, Preview, Text } from "@react-email/components";
 
 // ======================================================================
-// TEMPLATE EMAIL — OVERDUE ADVANCE REMINDER
+// TEMPLATE EMAIL — OVERDUE ADVANCE REMINDER (format memo resmi)
 //
 // Cara pakai:
 // 1. Preview / development di React pakai `npx react-email dev`
@@ -23,11 +11,16 @@ import {
 //
 // PENTING:
 // - Placeholder ditulis literal sebagai teks "{{ nama_variabel }}",
-//   BUKAN interpolasi JSX ({namaUser}) — supaya saat di-export ke HTML,
-//   teksnya tetap "{{ nama_variabel }}" dan bisa langsung dipakai
+//   BUKAN interpolasi JSX ({namaVariabel}) — supaya saat di-export ke
+//   HTML, teksnya tetap "{{ nama_variabel }}" dan bisa langsung dipakai
 //   Jinja2 di backend tanpa perlu diedit lagi.
-// - Semua styling inline (lewat prop React Email), karena email client
-//   (Gmail, Outlook, dll) tidak mendukung CSS modern / flexbox / class.
+// - Bagian tabel outstanding memakai Jinja2 for-loop ("{% for %}" /
+//   "{% endfor %}") karena satu user bisa punya lebih dari satu advance
+//   yang overdue dalam satu email — backend cukup loop-kan list
+//   `outstanding_items` yang berisi field: tanggal, no_ppc, nama_user,
+//   keterangan, nominal, status.
+// - Semua styling inline, tanpa warna mencolok — mengikuti format memo
+//   internal perusahaan (plain, formal, tabel bergaris).
 // ======================================================================
 
 export default function OverdueReminderEmail() {
@@ -35,91 +28,74 @@ export default function OverdueReminderEmail() {
         <Html>
             <Head />
             <Preview>
-                Reminder: Advance PPC {"{{ no_ppc }}"} kamu sudah jatuh tempo
+                Reminder outstanding Uang Muka Petty Cash — {"{{ nama_user }}"}
             </Preview>
             <Body style={main}>
                 <Container style={container}>
-                    {/* Header */}
-                    <Section style={header}>
-                        <Heading style={headerTitle}>Advance Overdue Reminder</Heading>
-                    </Section>
+                    <Text style={paragraph}>Kepada Bapak/Ibu {"{{ nama_user }}"}</Text>
 
-                    {/* Body */}
-                    <Section style={content}>
-                        <Text style={paragraph}>
-                            Halo <strong>{"{{ nama_user }}"}</strong>,
-                        </Text>
+                    <Text style={paragraph}>
+                        Berikut adalah Uang Muka Petty Cash yang masih outstanding per
+                        hari ini {"{{ tanggal_hari_ini }}"}:
+                    </Text>
 
-                        <Text style={paragraph}>
-                            Ini adalah pengingat bahwa pengajuan advance kamu dengan detail
-                            di bawah ini <strong>sudah melewati batas waktu settlement</strong>{" "}
-                            (2 hari sejak tanggal pengajuan) dan belum diselesaikan.
-                            Mohon segera lakukan proses reimbursement / settlement.
-                        </Text>
+                    <Text style={sectionTitle}>UANG MUKA</Text>
 
-                        {/* Detail Box */}
-                        <Section style={detailBox}>
-                            <Row style={detailRow}>
-                                <Text style={detailLabel}>No PPC</Text>
-                                <Text style={detailValue}>{"{{ no_ppc }}"}</Text>
-                            </Row>
-                            <Hr style={detailDivider} />
+                    <table style={table} cellPadding="0" cellSpacing="0">
+                        <thead>
+                            <tr>
+                                <th style={th}>Tanggal</th>
+                                <th style={th}>Nomor PPC</th>
+                                <th style={th}>Nama User</th>
+                                <th style={th}>Keterangan</th>
+                                <th style={thRight}>Nominal</th>
+                                <th style={th}>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {"{% for item in outstanding_items %}"}
+                            <tr>
+                                <td style={td}>{"{{ item.tanggal }}"}</td>
+                                <td style={td}>{"{{ item.no_ppc }}"}</td>
+                                <td style={td}>{"{{ item.nama_user }}"}</td>
+                                <td style={td}>{"{{ item.keterangan }}"}</td>
+                                <td style={tdRight}>{"{{ item.nominal }}"}</td>
+                                <td style={td}>{"{{ item.status }}"}</td>
+                            </tr>
+                            {"{% endfor %}"}
+                        </tbody>
+                    </table>
 
-                            <Row style={detailRow}>
-                                <Text style={detailLabel}>Tanggal Pengajuan</Text>
-                                <Text style={detailValue}>{"{{ tanggal_pengajuan }}"}</Text>
-                            </Row>
-                            <Hr style={detailDivider} />
+                    <Text style={paragraphSpaced}>
+                        Mohon untuk memberikan update status dokumen penyelesaian atas
+                        petty cash tersebut dan target waktu penyelesaian dengan
+                        membalas email ini.
+                        <br />
+                        Silahkan segera submit ke kasir jika dokumen penyelesaian sudah
+                        Full Approved.
+                        <br />
+                        Jika dirasa sudah submit dokumen dan masih tertera di list
+                        Outstanding tersebut, mohon konfirmasi ke Kasir.
+                    </Text>
 
-                            <Row style={detailRow}>
-                                <Text style={detailLabel}>Jatuh Tempo</Text>
-                                <Text style={detailValue}>{"{{ due_date }}"}</Text>
-                            </Row>
-                            <Hr style={detailDivider} />
+                    <Text style={paragraph}>Internal Memo:</Text>
 
-                            <Row style={detailRow}>
-                                <Text style={detailLabel}>Cost Center</Text>
-                                <Text style={detailValue}>{"{{ cost_center }}"}</Text>
-                            </Row>
-                            <Hr style={detailDivider} />
+                    <table style={memoTable} cellPadding="0" cellSpacing="0">
+                        <tbody>
+                            <tr>
+                                <td style={memoRefCell}>{"{{ memo_ref_no }}"}</td>
+                                <td style={memoQuoteCell}>
+                                    "Uang tunai yang diterima karyawan melalui Petty Cash
+                                    harus dipertanggungjawabkan maksimum 2 (dua) hari kerja
+                                    setelah uang diterima."
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                            <Row style={detailRow}>
-                                <Text style={detailLabel}>Keterangan</Text>
-                                <Text style={detailValue}>{"{{ keterangan }}"}</Text>
-                            </Row>
-                            <Hr style={detailDivider} />
-
-                            <Row style={detailRow}>
-                                <Text style={detailLabel}>Jumlah</Text>
-                                <Text style={detailValueAmount}>{"{{ jumlah }}"}</Text>
-                            </Row>
-                        </Section>
-
-                        <Text style={paragraph}>
-                            Segera selesaikan settlement advance ini untuk menghindari
-                            keterlambatan lebih lanjut dalam proses pelaporan keuangan.
-                        </Text>
-
-                        {/* CTA Button */}
-                        <Section style={buttonWrapper}>
-                            <Button style={button} href={"{{ settlement_url }}"}>
-                                Selesaikan Settlement
-                            </Button>
-                        </Section>
-                    </Section>
-
-                    <Hr style={footerDivider} />
-
-                    {/* Footer */}
-                    <Section style={footer}>
-                        <Text style={footerText}>
-                            Email ini dikirim otomatis oleh sistem. Mohon untuk tidak
-                            membalas email ini.
-                        </Text>
-                        <Text style={footerText}>
-                            &copy; {"{{ current_year }}"} — Finance System
-                        </Text>
-                    </Section>
+                    <Text style={paragraphSpaced}>
+                        Terima kasih atas perhatian & kerjasamanya.
+                    </Text>
                 </Container>
             </Body>
         </Html>
@@ -127,115 +103,97 @@ export default function OverdueReminderEmail() {
 }
 
 // ======================================================================
-// STYLES — semua inline, aman untuk email client
+// STYLES — plain/formal, tanpa warna mencolok
 // ======================================================================
 
 const main = {
-    backgroundColor: "#f4f4f5",
-    fontFamily:
-        "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+    backgroundColor: "#ffffff",
+    fontFamily: "Calibri, Arial, sans-serif",
     padding: "24px 0",
 };
 
 const container = {
     backgroundColor: "#ffffff",
     margin: "0 auto",
-    maxWidth: "560px",
-    borderRadius: "12px",
-    overflow: "hidden",
-    border: "1px solid #e4e4e7",
-};
-
-const header = {
-    backgroundColor: "#dc2626",
-    padding: "24px 32px",
-};
-
-const headerTitle = {
-    color: "#ffffff",
-    fontSize: "20px",
-    fontWeight: "700",
-    margin: "0",
-};
-
-const content = {
-    padding: "32px",
+    maxWidth: "640px",
+    padding: "0 24px",
 };
 
 const paragraph = {
-    color: "#3f3f46",
+    color: "#000000",
     fontSize: "14px",
     lineHeight: "22px",
     margin: "0 0 16px 0",
 };
 
-const detailBox = {
-    backgroundColor: "#f9fafb",
-    border: "1px solid #e4e4e7",
-    borderRadius: "8px",
-    padding: "16px 20px",
-    margin: "20px 0",
-};
-
-const detailRow = {
-    width: "100%",
-};
-
-const detailLabel = {
-    color: "#71717a",
-    fontSize: "12px",
-    margin: "4px 0",
-};
-
-const detailValue = {
-    color: "#18181b",
+const paragraphSpaced = {
+    color: "#000000",
     fontSize: "14px",
-    fontWeight: "600",
-    margin: "0 0 8px 0",
+    lineHeight: "22px",
+    margin: "20px 0 16px 0",
 };
 
-const detailValueAmount = {
-    color: "#dc2626",
-    fontSize: "16px",
+const sectionTitle = {
+    color: "#000000",
+    fontSize: "14px",
     fontWeight: "700",
-    margin: "0 0 8px 0",
+    textDecoration: "underline",
+    margin: "0 0 10px 0",
 };
 
-const detailDivider = {
-    borderColor: "#e4e4e7",
-    margin: "4px 0",
+const table = {
+    width: "100%",
+    borderCollapse: "collapse",
+    marginBottom: "8px",
 };
 
-const buttonWrapper = {
-    textAlign: "center",
-    margin: "24px 0 8px 0",
+const th = {
+    border: "1px solid #000000",
+    padding: "6px 10px",
+    fontSize: "13px",
+    fontWeight: "700",
+    textAlign: "left",
+    backgroundColor: "#ffffff",
+    color: "#000000",
 };
 
-const button = {
-    backgroundColor: "#dc2626",
-    borderRadius: "8px",
-    color: "#ffffff",
-    fontSize: "14px",
-    fontWeight: "600",
-    textDecoration: "none",
-    padding: "12px 28px",
-    display: "inline-block",
+const thRight = {
+    ...th,
+    textAlign: "right",
 };
 
-const footerDivider = {
-    borderColor: "#e4e4e7",
-    margin: "0",
+const td = {
+    border: "1px solid #000000",
+    padding: "6px 10px",
+    fontSize: "13px",
+    color: "#000000",
+    textAlign: "left",
 };
 
-const footer = {
-    padding: "20px 32px",
-    backgroundColor: "#fafafa",
+const tdRight = {
+    ...td,
+    textAlign: "right",
 };
 
-const footerText = {
-    color: "#a1a1aa",
-    fontSize: "11px",
-    lineHeight: "16px",
-    margin: "2px 0",
-    textAlign: "center",
+const memoTable = {
+    width: "100%",
+    borderCollapse: "collapse",
+    margin: "4px 0 8px 0",
+};
+
+const memoRefCell = {
+    fontSize: "12px",
+    color: "#000000",
+    verticalAlign: "bottom",
+    padding: "0 12px 0 0",
+    whiteSpace: "nowrap",
+    width: "1%",
+};
+
+const memoQuoteCell = {
+    fontSize: "13px",
+    fontStyle: "italic",
+    color: "#000000",
+    lineHeight: "18px",
+    padding: "0",
 };

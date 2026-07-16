@@ -74,9 +74,13 @@ export default function Table({
   const perPage = 15;
 
   // FILTER
-  const [filterUser, setFilterUser] = useState("All User");
+  const [filterUser, setFilterUser] = useState("");
   const [filterCostCenter, setFilterCostCenter] =
-    useState("All Cost Center");
+    useState("");
+
+  // Dropdown saran untuk search Nama User & Cost Center
+  const [userSuggestOpen, setUserSuggestOpen] = useState(false);
+  const [ccSuggestOpen, setCcSuggestOpen] = useState(false);
 
   // MODAL
   const [manualInputOpen, setManualInputOpen] = useState(false);
@@ -201,13 +205,16 @@ export default function Table({
     return rows.filter((row) => {
 
       const userMatch =
-        filterUser === "All User" ||
-        row.nama_user === filterUser;
+        !filterUser ||
+        (row.nama_user || "")
+          .toLowerCase()
+          .includes(filterUser.toLowerCase());
 
       const ccMatch =
-        filterCostCenter ===
-        "All Cost Center" ||
-        row.cost_center === filterCostCenter;
+        !filterCostCenter ||
+        (row.cost_center || "")
+          .toLowerCase()
+          .includes(filterCostCenter.toLowerCase());
 
       return userMatch && ccMatch;
 
@@ -223,42 +230,22 @@ export default function Table({
 
   ]);
 
-  // DROPDOWN OPTION
-  const userOptions = useMemo(() => {
+  // SARAN PENCARIAN (dropdown transparan di bawah input)
+  const userSuggestions = useMemo(() => {
+    const unique = [...new Set(rows.map((r) => r.nama_user).filter(Boolean))];
+    if (!filterUser) return unique;
+    return unique.filter((u) =>
+      u.toLowerCase().includes(filterUser.toLowerCase())
+    );
+  }, [rows, filterUser]);
 
-    return [
-
-      "All User",
-
-      ...new Set(
-
-        rows
-          .map((r) => r.nama_user)
-          .filter(Boolean)
-
-      ),
-
-    ];
-
-  }, [rows]);
-
-  const costCenterOptions = useMemo(() => {
-
-    return [
-
-      "All Cost Center",
-
-      ...new Set(
-
-        rows
-          .map((r) => r.cost_center)
-          .filter(Boolean)
-
-      ),
-
-    ];
-
-  }, [rows]);
+  const costCenterSuggestions = useMemo(() => {
+    const unique = [...new Set(rows.map((r) => r.cost_center).filter(Boolean))];
+    if (!filterCostCenter) return unique;
+    return unique.filter((c) =>
+      c.toLowerCase().includes(filterCostCenter.toLowerCase())
+    );
+  }, [rows, filterCostCenter]);
 
   // PAGINATION
   const total = filteredRows.length;
@@ -316,25 +303,40 @@ export default function Table({
             Nama User
           </label>
 
-          <select
-            value={filterUser}
-            onChange={(e) =>
-              setFilterUser(e.target.value)
-            }
-            className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
-            style={{ marginLeft: "20px", marginBottom: "10px" }}
-          >
-            {userOptions.map((item) => (
+          <div className="relative" style={{ marginLeft: "20px", marginBottom: "10px" }}>
+            <input
+              type="text"
+              value={filterUser}
+              onChange={(e) =>
+                setFilterUser(e.target.value)
+              }
+              onFocus={() => setUserSuggestOpen(true)}
+              onBlur={() =>
+                setTimeout(() => setUserSuggestOpen(false), 150)
+              }
+              placeholder="Cari Nama User..."
+              className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] w-full focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
+            />
 
-              <option
-                key={item}
-                value={item}
-              >
-                {item}
-              </option>
-
-            ))}
-          </select>
+            {userSuggestOpen && userSuggestions.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {userSuggestions.map((u) => (
+                  <button
+                    key={u}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setFilterUser(u);
+                      setUserSuggestOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100/80"
+                  >
+                    {u}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
         </div>
 
@@ -344,27 +346,42 @@ export default function Table({
             Cost Center
           </label>
 
-          <select
-            value={filterCostCenter}
-            onChange={(e) =>
-              setFilterCostCenter(
-                e.target.value
-              )
-            }
-            className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
-            style={{ marginBottom: "10px" }}
-          >
-            {costCenterOptions.map((item) => (
+          <div className="relative" style={{ marginBottom: "10px" }}>
+            <input
+              type="text"
+              value={filterCostCenter}
+              onChange={(e) =>
+                setFilterCostCenter(
+                  e.target.value
+                )
+              }
+              onFocus={() => setCcSuggestOpen(true)}
+              onBlur={() =>
+                setTimeout(() => setCcSuggestOpen(false), 150)
+              }
+              placeholder="Cari Cost Center..."
+              className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] w-full focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
+            />
 
-              <option
-                key={item}
-                value={item}
-              >
-                {item}
-              </option>
-
-            ))}
-          </select>
+            {ccSuggestOpen && costCenterSuggestions.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                {costCenterSuggestions.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      setFilterCostCenter(c);
+                      setCcSuggestOpen(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100/80"
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
 
         </div>
 
