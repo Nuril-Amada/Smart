@@ -78,10 +78,6 @@ export default function Table({
   const [filterCostCenter, setFilterCostCenter] =
     useState("");
 
-  // Dropdown saran untuk search Nama User & Cost Center
-  const [userSuggestOpen, setUserSuggestOpen] = useState(false);
-  const [ccSuggestOpen, setCcSuggestOpen] = useState(false);
-
   // MODAL
   const [manualInputOpen, setManualInputOpen] = useState(false);
   const [manualSubmitting, setManualSubmitting] = useState(false);
@@ -230,23 +226,6 @@ export default function Table({
 
   ]);
 
-  // SARAN PENCARIAN (dropdown transparan di bawah input)
-  const userSuggestions = useMemo(() => {
-    const unique = [...new Set(rows.map((r) => r.nama_user).filter(Boolean))];
-    if (!filterUser) return unique;
-    return unique.filter((u) =>
-      u.toLowerCase().includes(filterUser.toLowerCase())
-    );
-  }, [rows, filterUser]);
-
-  const costCenterSuggestions = useMemo(() => {
-    const unique = [...new Set(rows.map((r) => r.cost_center).filter(Boolean))];
-    if (!filterCostCenter) return unique;
-    return unique.filter((c) =>
-      c.toLowerCase().includes(filterCostCenter.toLowerCase())
-    );
-  }, [rows, filterCostCenter]);
-
   // PAGINATION
   const total = filteredRows.length;
 
@@ -303,40 +282,16 @@ export default function Table({
             Nama User
           </label>
 
-          <div className="relative" style={{ marginLeft: "20px", marginBottom: "10px" }}>
-            <input
-              type="text"
-              value={filterUser}
-              onChange={(e) =>
-                setFilterUser(e.target.value)
-              }
-              onFocus={() => setUserSuggestOpen(true)}
-              onBlur={() =>
-                setTimeout(() => setUserSuggestOpen(false), 150)
-              }
-              placeholder="Cari Nama User..."
-              className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] w-full focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
-            />
-
-            {userSuggestOpen && userSuggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                {userSuggestions.map((u) => (
-                  <button
-                    key={u}
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      setFilterUser(u);
-                      setUserSuggestOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100/80"
-                  >
-                    {u}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <input
+            type="text"
+            value={filterUser}
+            onChange={(e) =>
+              setFilterUser(e.target.value)
+            }
+            placeholder="Cari Nama User..."
+            className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
+            style={{ marginLeft: "20px", marginBottom: "10px" }}
+          />
 
         </div>
 
@@ -346,42 +301,18 @@ export default function Table({
             Cost Center
           </label>
 
-          <div className="relative" style={{ marginBottom: "10px" }}>
-            <input
-              type="text"
-              value={filterCostCenter}
-              onChange={(e) =>
-                setFilterCostCenter(
-                  e.target.value
-                )
-              }
-              onFocus={() => setCcSuggestOpen(true)}
-              onBlur={() =>
-                setTimeout(() => setCcSuggestOpen(false), 150)
-              }
-              placeholder="Cari Cost Center..."
-              className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] w-full focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
-            />
-
-            {ccSuggestOpen && costCenterSuggestions.length > 0 && (
-              <div className="absolute left-0 right-0 top-full mt-1 z-20 bg-white/70 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                {costCenterSuggestions.map((c) => (
-                  <button
-                    key={c}
-                    type="button"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
-                      setFilterCostCenter(c);
-                      setCcSuggestOpen(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100/80"
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <input
+            type="text"
+            value={filterCostCenter}
+            onChange={(e) =>
+              setFilterCostCenter(
+                e.target.value
+              )
+            }
+            placeholder="Cari Cost Center..."
+            className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
+            style={{ marginBottom: "10px" }}
+          />
 
         </div>
 
