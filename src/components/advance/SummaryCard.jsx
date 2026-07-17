@@ -19,8 +19,8 @@ const cards = [
         currency: false,
     },
     {
-        title: "Waiting Settlement",
-        key: "waiting_settlement",
+        title: "Active Advance",
+        key: "active_advance",
         subtitle: "(Request)",
         icon: <FaClock />,
         iconBg: "bg-gray-100",

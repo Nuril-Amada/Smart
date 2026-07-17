@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-    FaSearch,
     FaPlus,
     FaTimes,
     FaChevronLeft,
@@ -35,7 +34,7 @@ function TableSkeleton() {
         <tbody>
             {Array.from({ length: 7 }).map((_, i) => (
                 <tr key={i} className="animate-pulse">
-                    {Array.from({ length: 10 }).map((_, j) => (
+                    {Array.from({ length: 9 }).map((_, j) => (
                         <td key={j} className="border p-3">
                             <div className="h-4 bg-gray-200 rounded w-16 mx-auto" />
                         </td>
@@ -46,9 +45,87 @@ function TableSkeleton() {
     );
 }
 
+// AUTOCOMPLETE DROPDOWN
+function AutocompleteInput({
+    value,
+    onChange,
+    onSelect,
+    suggestions,
+    placeholder,
+    containerRef,
+    inputStyle,
+    wrapperStyle,
+}) {
+    const [open, setOpen] = useState(false);
+    const [highlight, setHighlight] = useState(-1);
+
+    const handleChange = (e) => {
+        onChange(e.target.value);
+        setOpen(true);
+        setHighlight(-1);
+    };
+
+    const handleSelect = (val) => {
+        onSelect(val);
+        setOpen(false);
+        setHighlight(-1);
+    };
+
+    const handleKeyDown = (e) => {
+        if (!open || suggestions.length === 0) return;
+
+        if (e.key === "ArrowDown") {
+            e.preventDefault();
+            setHighlight((h) => Math.min(h + 1, suggestions.length - 1));
+        } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            setHighlight((h) => Math.max(h - 1, 0));
+        } else if (e.key === "Enter") {
+            if (highlight >= 0) {
+                e.preventDefault();
+                handleSelect(suggestions[highlight]);
+            }
+        } else if (e.key === "Escape") {
+            setOpen(false);
+        }
+    };
+
+    return (
+        <div className="relative" ref={containerRef} style={wrapperStyle}>
+            <input
+                type="text"
+                value={value}
+                onChange={handleChange}
+                onFocus={() => setOpen(true)}
+                onKeyDown={handleKeyDown}
+                placeholder={placeholder}
+                autoComplete="off"
+                className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
+                style={inputStyle}
+            />
+
+            {open && value && suggestions.length > 0 && (
+                <ul className="absolute z-20 mt-1 w-full min-w-[160px] max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-md py-1">
+                    {suggestions.map((s, i) => (
+                        <li
+                            key={s}
+                            onMouseDown={() => handleSelect(s)}
+                            className={`px-3 py-2 text-sm cursor-pointer ${i === highlight
+                                ? "bg-gray-100 text-gray-800"
+                                : "text-gray-600 hover:bg-gray-50"
+                                }`}
+                        >
+                            {s}
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
+    );
+}
+
 const initialForm = {
     tanggal: "",
-    no_ppc: "",
     nama_user: "",
     email: "",
     cost_center: "",
@@ -68,20 +145,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
     const perPage = 15;
 
     // FILTER
-    const [filterUser, setFilterUser] = useState("All User");
-    const [filterCostCenter, setFilterCostCenter] = useState("All Cost Center");
-    const [filterSource, setFilterSource] = useState("All Source");
+    const [filterUser, setFilterUser] = useState("");
+    const [filterCostCenter, setFilterCostCenter] = useState("");
+    const [filterSource, setFilterSource] = useState("All Status");
 
-    // Search No PPC — debounce, biar gak nge-fetch tiap huruf diketik
-    const [searchInput, setSearchInput] = useState("");
-    const [searchNoPPC, setSearchNoPPC] = useState("");
-
-    useEffect(() => {
-        const timeout = setTimeout(() => {
-            setSearchNoPPC(searchInput);
-        }, 400);
-        return () => clearTimeout(timeout);
-    }, [searchInput]);
+    const userInputRef = useRef(null);
+    const ccInputRef = useRef(null);
 
     // MODAL New Request
     const [requestOpen, setRequestOpen] = useState(false);
@@ -98,12 +167,10 @@ export default function Table({ startDate, endDate, refreshKey }) {
             const result = await getAdvanceList({
                 start_date: startDate || undefined,
                 end_date: endDate || undefined,
-                search: searchNoPPC,
             });
 
             const data = result.map((item) => ({
                 tanggal: item.request_date,
-                no_ppc: item.ppc_no,
                 nama_user: item.employee_name,
                 email: item.employee_email,
                 cost_center: item.cost_center,
@@ -134,7 +201,36 @@ export default function Table({ startDate, endDate, refreshKey }) {
     useEffect(() => {
         loadData();
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [startDate, endDate, refreshKey, searchNoPPC]);
+    }, [startDate, endDate, refreshKey]);
+
+    // AUTOCOMPLETE SUGGESTIONS
+    const userSuggestions = useMemo(() => {
+        if (!filterUser) return [];
+
+        const q = filterUser.toLowerCase();
+        const unique = Array.from(
+            new Set(rows.map((r) => r.nama_user).filter(Boolean))
+        );
+
+        return unique
+            .filter((name) => name.toLowerCase().includes(q))
+            .filter((name) => name.toLowerCase() !== q)
+            .slice(0, 8);
+    }, [rows, filterUser]);
+
+    const costCenterSuggestions = useMemo(() => {
+        if (!filterCostCenter) return [];
+
+        const q = filterCostCenter.toLowerCase();
+        const unique = Array.from(
+            new Set(rows.map((r) => r.cost_center).filter(Boolean))
+        );
+
+        return unique
+            .filter((cc) => cc.toLowerCase().includes(q))
+            .filter((cc) => cc.toLowerCase() !== q)
+            .slice(0, 8);
+    }, [rows, filterCostCenter]);
 
     // Handler form New Request
     const handleRequestChange = (e) => {
@@ -157,7 +253,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
             await createAdvanceRequest({
                 request_date: requestForm.tanggal,
-                ppc_no: requestForm.no_ppc,
                 employee_name: requestForm.nama_user,
                 employee_email: requestForm.email,
                 cost_center: requestForm.cost_center,
@@ -182,30 +277,23 @@ export default function Table({ startDate, endDate, refreshKey }) {
     const filteredRows = useMemo(() => {
         return rows.filter((row) => {
             const userMatch =
-                filterUser === "All User" || row.nama_user === filterUser;
+                !filterUser ||
+                (row.nama_user || "")
+                    .toLowerCase()
+                    .includes(filterUser.toLowerCase());
+
             const ccMatch =
-                filterCostCenter === "All Cost Center" ||
-                row.cost_center === filterCostCenter;
+                !filterCostCenter ||
+                (row.cost_center || "")
+                    .toLowerCase()
+                    .includes(filterCostCenter.toLowerCase());
+
             const sourceMatch =
-                filterSource === "All Source" || row.source === filterSource;
+                filterSource === "All Status" || row.source === filterSource;
 
             return userMatch && ccMatch && sourceMatch;
         });
     }, [rows, filterUser, filterCostCenter, filterSource]);
-
-    // DROPDOWN OPTIONS
-    const userOptions = useMemo(
-        () => ["All User", ...new Set(rows.map((r) => r.nama_user).filter(Boolean))],
-        [rows]
-    );
-
-    const costCenterOptions = useMemo(
-        () => [
-            "All Cost Center",
-            ...new Set(rows.map((r) => r.cost_center).filter(Boolean)),
-        ],
-        [rows]
-    );
 
     // PAGINATION
     const total = filteredRows.length;
@@ -228,44 +316,47 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     <label className="text-xs font-medium text-gray-500 text-center" style={{ marginTop: "10px" }}>
                         Nama User
                     </label>
-                    <select
+
+                    <AutocompleteInput
+                        containerRef={userInputRef}
                         value={filterUser}
-                        onChange={(e) => {
-                            setFilterUser(e.target.value);
+                        onChange={(val) => {
+                            setFilterUser(val);
                             setPage(1);
                         }}
-                        className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-200"
-                        style={{ marginLeft: "20px", marginBottom: "10px" }}
-                    >
-                        {userOptions.map((item) => (
-                            <option key={item} value={item}>
-                                {item}
-                            </option>
-                        ))}
-                    </select>
+                        onSelect={(val) => {
+                            setFilterUser(val);
+                            setPage(1);
+                        }}
+                        suggestions={userSuggestions}
+                        placeholder="Cari Nama User..."
+                        wrapperStyle={{ marginLeft: "20px" }}
+                        inputStyle={{ marginBottom: "10px" }}
+                    />
                 </div>
 
                 <div className="flex flex-col gap-1">
                     <label className="text-xs font-medium text-gray-500 text-center">Cost Center</label>
-                    <select
+
+                    <AutocompleteInput
+                        containerRef={ccInputRef}
                         value={filterCostCenter}
-                        onChange={(e) => {
-                            setFilterCostCenter(e.target.value);
+                        onChange={(val) => {
+                            setFilterCostCenter(val);
                             setPage(1);
                         }}
-                        className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-200"
-                        style={{ marginBottom: "10px" }}
-                    >
-                        {costCenterOptions.map((item) => (
-                            <option key={item} value={item}>
-                                {item}
-                            </option>
-                        ))}
-                    </select>
+                        onSelect={(val) => {
+                            setFilterCostCenter(val);
+                            setPage(1);
+                        }}
+                        suggestions={costCenterSuggestions}
+                        placeholder="Cari Cost Center..."
+                        inputStyle={{ marginBottom: "10px" }}
+                    />
                 </div>
 
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500 text-center">Source</label>
+                    <label className="text-xs font-medium text-gray-500 text-center">Status</label>
                     <select
                         value={filterSource}
                         onChange={(e) => {
@@ -275,7 +366,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                         className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-200"
                         style={{ marginBottom: "10px" }}
                     >
-                        <option>All Source</option>
+                        <option>All Status</option>
                         <option>Active</option>
                         <option>Settled</option>
                         <option>Overdue</option>
@@ -283,22 +374,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 </div>
 
                 <div className="flex-1" />
-
-                {/* Search No PPC */}
-                <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500 invisible">Search</label>
-                    <div className="relative">
-                        <input
-                            type="text"
-                            value={searchInput}
-                            onChange={(e) => setSearchInput(e.target.value)}
-                            placeholder="Search No PPC..."
-                            className="border border-gray-200 rounded-lg text-sm pl-3 pr-9 py-2 text-gray-700 w-56 focus:outline-none focus:ring-2 focus:ring-blue-200"
-                            style={{ marginBottom: "10px", padding: "5px 10px" }}
-                        />
-                        <FaSearch className="absolute right-3 top-4 -translate-y-1/2 text-gray-400 text-xs" />
-                    </div>
-                </div>
 
                 <button
                     type="button"
@@ -312,21 +387,20 @@ export default function Table({ startDate, endDate, refreshKey }) {
             </div>
 
             {/* ================= TABLE ================= */}
-            {/* 10 kolom: Tanggal, No PPC, Nama User, Email User, Cost Center, Keterangan, Jumlah, Source, Due Date, Tgl Penyelesaian */}
+            {/* 9 kolom: Tanggal, Nama User, Email User, Cost Center, Keterangan, Jumlah, Due Date, Tgl Penyelesaian, Status */}
             <div className="overflow-x-auto" style={{ marginLeft: "10px", marginRight: "10px" }}>
                 <table className="w-full text-sm border border-gray-300 text-center">
                     <thead>
                         <tr className="text-xs uppercase tracking-wide bg-gray-50">
                             <th className="p-3 font-medium border border-gray-300">Tanggal</th>
-                            <th className="p-3 font-medium border border-gray-300">No PPC</th>
                             <th className="p-3 font-medium border border-gray-300">Nama User</th>
                             <th className="p-3 font-medium border border-gray-300">Email User</th>
                             <th className="p-3 font-medium border border-gray-300">Cost Center</th>
                             <th className="p-3 font-medium border border-gray-300">Keterangan</th>
                             <th className="p-3 font-medium border border-gray-300">Jumlah</th>
-                            <th className="p-3 font-medium border border-gray-300">Source</th>
                             <th className="p-3 font-medium border border-gray-300">Due Date</th>
                             <th className="p-3 font-medium border border-gray-300">Tgl Penyelesaian</th>
+                            <th className="p-3 font-medium border border-gray-300">Status</th>
                         </tr>
                     </thead>
 
@@ -335,10 +409,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     {!loading && !error && currentRows.length === 0 && (
                         <tbody>
                             <tr>
-                                <td colSpan={10} className="p-8 text-center text-gray-400 border border-gray-300">
-                                    {searchNoPPC
-                                        ? `Tidak ada data yang cocok dengan pencarian "${searchNoPPC}"`
-                                        : "Belum ada data advance."}
+                                <td colSpan={9} className="p-8 text-center text-gray-400 border border-gray-300">
+                                    Belum ada data advance.
                                 </td>
                             </tr>
                         </tbody>
@@ -351,7 +423,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
                                         {formatDate(row.tanggal)}
                                     </td>
-                                    <td className="p-3 text-gray-700 border border-gray-300">{row.no_ppc}</td>
                                     <td className="p-3 text-gray-700 border border-gray-300">{row.nama_user}</td>
                                     <td className="p-3 text-gray-700 border border-gray-300">{row.email}</td>
                                     <td className="p-3 text-gray-700 border border-gray-300">{row.cost_center}</td>
@@ -359,19 +430,19 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
                                         {formatRupiah(row.jumlah)}
                                     </td>
-                                    <td className="p-3 border border-gray-300">
-                                        <span
-                                            className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${SOURCE_STYLE[row.source] || "bg-gray-100 text-gray-600"
-                                                }`}
-                                        >
-                                            {row.source}
-                                        </span>
-                                    </td>
                                     <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
                                         {formatDate(row.due_date)}
                                     </td>
                                     <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
                                         {formatDate(row.tgl_penyelesaian)}
+                                    </td>
+                                    <td className="p-3 border border-gray-300">
+                                        <span
+                                            className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${SOURCE_STYLE[row.status] || "bg-gray-100 text-gray-600"
+                                                }`}
+                                        >
+                                            {row.status}
+                                        </span>
                                     </td>
                                 </tr>
                             ))}
@@ -454,19 +525,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     name="tanggal"
                                     value={requestForm.tanggal}
                                     onChange={handleRequestChange}
-                                    required
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm text-gray-600 mb-1">No PPC</label>
-                                <input
-                                    type="text"
-                                    name="no_ppc"
-                                    value={requestForm.no_ppc}
-                                    onChange={handleRequestChange}
-                                    placeholder="PPC-0001"
                                     required
                                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
                                 />
