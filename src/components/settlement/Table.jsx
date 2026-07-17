@@ -55,6 +55,7 @@ function AutocompleteInput({
   placeholder,
   containerRef,
   inputStyle,
+  wrapperStyle,
 }) {
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(-1);
@@ -91,7 +92,7 @@ function AutocompleteInput({
   };
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className="relative" ref={containerRef} style={wrapperStyle}>
       <input
         type="text"
         value={value}
@@ -111,8 +112,8 @@ function AutocompleteInput({
               key={s}
               onMouseDown={() => handleSelect(s)}
               className={`px-3 py-2 text-sm cursor-pointer ${i === highlight
-                  ? "bg-gray-100 text-gray-800"
-                  : "text-gray-600 hover:bg-gray-50"
+                ? "bg-gray-100 text-gray-800"
+                : "text-gray-600 hover:bg-gray-50"
                 }`}
             >
               {s}
@@ -411,7 +412,8 @@ export default function Table({
             onSelect={setFilterUser}
             suggestions={userSuggestions}
             placeholder="Cari Nama User..."
-            inputStyle={{ marginLeft: "20px", marginBottom: "10px" }}
+            wrapperStyle={{ marginLeft: "20px" }}
+            inputStyle={{ marginBottom: "10px" }}
           />
 
         </div>
