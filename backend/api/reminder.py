@@ -14,7 +14,6 @@ from database.connection import get_db
 from database.models import (
     AdvanceRequest,
     AdvanceStatus,
-    AdvanceType,
     ReminderLog,
     ReminderStatus
 )
@@ -89,7 +88,6 @@ def update_overdue_advances(db: Session) -> int:
     advances = (
         db.query(AdvanceRequest)
         .filter(
-            AdvanceRequest.advance_type == AdvanceType.PPC,
             AdvanceRequest.status == AdvanceStatus.ACTIVE,
             AdvanceRequest.due_date < today
         )
@@ -110,7 +108,6 @@ def get_overdue_advances(db: Session) -> List[AdvanceRequest]:
     return (
         db.query(AdvanceRequest)
         .filter(
-            AdvanceRequest.advance_type == AdvanceType.PPC,
             AdvanceRequest.status == AdvanceStatus.OVERDUE
         )
         .all()

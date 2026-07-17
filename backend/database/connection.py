@@ -15,10 +15,6 @@ DATABASE_URL = (
     f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 )
 
-print("=" * 50)
-print("DATABASE URL :", DATABASE_URL)
-print("=" * 50)
-
 engine = create_engine(
     DATABASE_URL,
     echo=False,
