@@ -1,11 +1,15 @@
 import logging
 import smtplib
+
+from collections import defaultdict
 from datetime import date, datetime
 from email.mime.text import MIMEText
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Query
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+
 from database.connection import get_db
 from database.models import (
     AdvanceRequest,
@@ -21,6 +25,7 @@ from config import (
     SMTP_USER,
     SMTP_PASSWORD
 )
+
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +59,9 @@ def serialize_log(log: ReminderLog):
             log.advance_request_id,
 
         "document_no":
-            log.advance_request.document_no
-            if log.advance_request else None,
+            log.advance_request.ppc_no
+            if log.advance_request
+            else None,
 
         "employee_name":
             log.advance_request.employee.employee_name
@@ -116,71 +122,197 @@ def reminder_already_sent(
     advance_id: int
 ) -> bool:
 
+    today = date.today()
+
     log = (
         db.query(ReminderLog)
         .filter(
             ReminderLog.advance_request_id == advance_id,
             ReminderLog.status == ReminderStatus.SUCCESS
         )
+        .order_by(
+            ReminderLog.sent_at.desc()
+        )
         .first()
     )
 
-    return log is not None
+    if not log:
+        return False
+
+    return log.sent_at.date() == today
+
+# Table advance
+def build_advance_table(
+    advances: List[AdvanceRequest]
+) -> str:
+
+    rows = ""
+
+    for advance in advances:
+
+        rows += f"""
+        <tr>
+            <td>{advance.request_date}</td>
+            <td>{advance.ppc_no}</td>
+            <td>{advance.employee.employee_name}</td>
+            <td>{advance.purpose}</td>
+            <td>Rp {advance.amount:,.0f}</td>
+            <td>Outstanding</td>
+        </tr>
+        """
+
+    return f"""
+    <table
+        border="1"
+        cellspacing="0"
+        cellpadding="8"
+        style="
+            border-collapse: collapse;
+            width:100%;
+            text-align:center;
+        "
+    >
+
+        <thead>
+            <tr>
+                <th>Tanggal</th>
+                <th>Nomor PPC</th>
+                <th>Nama User</th>
+                <th>Keterangan</th>
+                <th>Nominal</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+
+        <tbody>
+
+            {rows}
+
+        </tbody>
+
+    </table>
+    """
+# BUILD MEMO
+def build_internal_memo() -> str:
+
+    today = date.today()
+
+    return f"""
+    <br>
+    <b>INTERNAL MEMO</b>
+    <br><br>
+    'Uang tunai yang diterima karyawan melalui Petty Cash harus dipertanggungjawabkan maksimum 2 (dua) hari kerja setelah uang diterima.'
+    036/BYM-FA/XII/2017
+    <br><br>
+
+    Best Regards,
+    <br>
+    Finance Department
+    """
 
 # SEND EMAIL
 def send_email_reminder(
-    advance: AdvanceRequest,
+
+    employee,
+    advances: List[AdvanceRequest],
     db: Session
+
 ) -> bool:
 
-    if reminder_already_sent(db, advance.id):
-        logger.info(
-            f"Reminder {advance.document_no} sudah dikirim."
-        )
+
+    # ---------------------------------
+    # Skip jika seluruh PPC hari ini
+    # sudah pernah direminder
+    # ---------------------------------
+
+    unsent_advances = []
+
+    for advance in advances:
+
+        if not reminder_already_sent(
+            db,
+            advance.id
+        ):
+
+            unsent_advances.append(
+                advance
+            )
+
+
+    if len(unsent_advances) == 0:
+
         return True
 
-    employee = advance.employee
 
-    if not employee or not employee.employee_email:
-
-        logger.warning(
-            f"Email employee tidak ditemukan ({advance.document_no})"
-        )
-
-        return False
+    # ---------------------------------
+    # Subject
+    # ---------------------------------
 
     subject = (
-        f"[REFCON] Reminder Settlement Advance - {advance.document_no}"
+
+        "[REFCON] Reminder Outstanding Settlement PPC"
+
     )
 
+
+    # ---------------------------------
+    # Body Email
+    # ---------------------------------
+
+    table_html = build_advance_table(
+        unsent_advances
+    )
+
+    internal_memo = build_internal_memo()
+
+
     body = f"""
-Kepada Bapak/Ibu {employee.employee_name},
 
-Advance berikut telah melewati Due Date Settlement.
+    <html>
 
-No PPC      : {advance.document_no}
-Tanggal     : {advance.request_date}
-Amount      : Rp {advance.amount:,.0f}
-Keterangan  : {advance.purpose}
-Due Date    : {advance.due_date}
+    <body>
 
-Status saat ini :
-OVERDUE
+    <p>
+        Kepada Bapak/Ibu
+        <b>{employee.employee_name}</b>,
+    </p>
 
-Mohon segera melakukan Settlement.
 
-Terima kasih.
+    <p>
+        Berikut adalah daftar Petty Cash
+        yang masih outstanding dan
+        belum dilakukan settlement.
+    </p>
 
-Finance
-"""
+
+    <br>
+
+    <b>UANG MUKA</b>
+
+    <br><br>
+
+    {table_html}
+
+
+    <br>
+
+    {internal_memo}
+
+
+    </body>
+
+    </html>
+
+    """
 
     success = False
 
     try:
-
         if SMTP_HOST and SMTP_USER:
-
-            msg = MIMEText(body)
+            msg = MIMEText(
+                body,
+                "html"
+            )
 
             msg["Subject"] = subject
             msg["From"] = SMTP_USER
@@ -198,10 +330,12 @@ Finance
                     SMTP_PASSWORD
                 )
 
-                smtp.send_message(msg)
+                smtp.send_message(
+                    msg
+                )
+
 
             success = True
-
         else:
 
             logger.info(
@@ -209,34 +343,27 @@ Finance
             )
 
             logger.info(subject)
-
             logger.info(body)
 
             success = True
-
     except Exception as e:
-
         logger.exception(e)
-
         success = False
 
-    log = ReminderLog(
-
-        advance_request_id=advance.id,
-
-        email=employee.employee_email,
-
-        status=(
-            ReminderStatus.SUCCESS
-            if success
-            else ReminderStatus.FAILED
-        ),
-
-        sent_at=datetime.now()
-
-    )
-
-    db.add(log)
+    for advance in unsent_advances:
+        log = ReminderLog(
+            advance_request_id=
+                advance.id,
+            email=
+                employee.employee_email,
+            status=(
+                ReminderStatus.SUCCESS
+                if success
+                else ReminderStatus.FAILED
+            ),
+            sent_at=datetime.now()
+        )
+        db.add(log)
     db.commit()
     return success
 
@@ -248,41 +375,46 @@ def run_reminder_process(
     logger.info(
         "Reminder Process Started"
     )
-
+    # Ubah ACTIVE -> OVERDUE
     marked = update_overdue_advances(db)
-
+    # Ambil seluruh PPC yang OVERDUE
     overdue_advances = get_overdue_advances(db)
+    # Kelompokkan PPC berdasarkan employee
+    grouped_advances = defaultdict(list)
+    for advance in overdue_advances:
+        grouped_advances[
+            advance.employee.id
+        ].append(
+            advance
+        )
 
     success = 0
     failed = 0
 
-    for adv in overdue_advances:
-
+    # Kirim 1 email untuk setiap employee
+    for employee_id, advances in grouped_advances.items():
+        employee = advances[0].employee
         if send_email_reminder(
-            adv,
+            employee,
+            advances,
             db
         ):
             success += 1
         else:
             failed += 1
 
+    # Summary hasil reminder
     result = {
-
         "marked_overdue": marked,
-
         "total_overdue":
             len(overdue_advances),
-
         "success":
             success,
-
         "failed":
             failed
-
     }
 
     logger.info(result)
-
     return result
 
 # MANUAL TRIGGER
@@ -295,29 +427,19 @@ def trigger_reminder(
     """
 
     try:
-
         result = run_reminder_process(db)
-
         return {
-
             "message":
                 "Reminder berhasil dijalankan.",
-
             "result":
                 result
-
         }
 
     except Exception as e:
-
         logger.exception(e)
-
         raise HTTPException(
-
             status_code=500,
-
             detail="Gagal menjalankan reminder."
-
         )
 
 
@@ -331,23 +453,16 @@ def reminder_logs(
 ):
 
     logs = (
-
         db.query(ReminderLog)
-
         .order_by(
             ReminderLog.sent_at.desc()
         )
-
         .all()
-
     )
 
     return [
-
         serialize_log(log)
-
         for log in logs
-
     ]
 
 
@@ -357,33 +472,20 @@ def reminder_logs(
     response_model=ReminderLogResponse
 )
 def reminder_log_detail(
-
     log_id: int,
-
     db: Session = Depends(get_db)
-
 ):
-
     log = (
-
         db.query(ReminderLog)
-
         .filter(
             ReminderLog.id == log_id
         )
-
         .first()
-
     )
 
     if not log:
-
         raise HTTPException(
-
             status_code=404,
-
             detail="Reminder log tidak ditemukan."
-
         )
-
     return serialize_log(log)

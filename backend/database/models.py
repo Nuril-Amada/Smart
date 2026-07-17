@@ -271,7 +271,6 @@ class AdvanceRequest(Base):
 #     )
 
 # REMINDER LOGS
-
 class ReminderLog(Base):
     __tablename__ = "reminder_logs"
 
