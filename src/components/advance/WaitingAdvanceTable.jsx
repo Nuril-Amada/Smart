@@ -6,7 +6,7 @@ import {
     FaChevronRight,
 } from "react-icons/fa";
 
-const SOURCE_STYLE = {
+const STATUS_STYLE = {
     Active: "bg-blue-100 text-blue-700",
     Settled: "bg-green-100 text-green-700",
     Overdue: "bg-red-100 text-red-700",
@@ -154,7 +154,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
     const [filterUser, setFilterUser] = useState("");
     const [filterCostCenter, setFilterCostCenter] = useState("");
-    const [filterSource, setFilterSource] = useState("All Status");
+    const [filterStatus, setFilterStatus] = useState("All Status");
 
     const userInputRef = useRef(null);
     const ccInputRef = useRef(null);
@@ -181,7 +181,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 cost_center: item.cost_center,
                 keterangan: item.description,
                 jumlah: Number(item.amount),
-                source:
+                status:
                     item.status === "SETTLED"
                         ? "Settled"
                         : item.status === "OVERDUE"
@@ -286,12 +286,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     .toLowerCase()
                     .includes(filterCostCenter.toLowerCase());
 
-            const sourceMatch =
-                filterSource === "All Status" || row.source === filterSource;
+            const statusMatch =
+                filterStatus === "All Status" || row.status === filterStatus;
 
-            return userMatch && ccMatch && sourceMatch;
+            return userMatch && ccMatch && statusMatch;
         });
-    }, [rows, filterUser, filterCostCenter, filterSource]);
+    }, [rows, filterUser, filterCostCenter, filterStatus]);
 
     const total = filteredRows.length;
     const totalPages = Math.max(1, Math.ceil(total / perPage));
@@ -507,9 +507,9 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     <div className="flex flex-col gap-1">
                         <label className="text-xs font-medium text-gray-500 text-center">Status</label>
                         <select
-                            value={filterSource}
+                            value={filterStatus}
                             onChange={(e) => {
-                                setFilterSource(e.target.value);
+                                setFilterStatus(e.target.value);
                                 setPage(1);
                             }}
                             className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-200"
@@ -586,7 +586,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         </td>
                                         <td className="p-3 border border-gray-300">
                                             <span
-                                                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${SOURCE_STYLE[row.status] || "bg-gray-100 text-gray-600"
+                                                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_STYLE[row.status] || "bg-gray-100 text-gray-600"
                                                     }`}
                                             >
                                                 {row.status}
@@ -757,7 +757,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Source</label>
+                                    <label className="block text-sm text-gray-600 mb-1">Status</label>
                                     <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500">
                                         Active
                                         <span className="block text-xs text-gray-400 mt-0.5">
