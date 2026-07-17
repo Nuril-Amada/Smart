@@ -39,7 +39,7 @@ const cards = [
     {
         title: "Nominal Outstanding",
         key: "nominal_outstanding",
-        subtitle: "",
+        subtitle: "Rupiah",
         icon: <FaWallet />,
         iconBg: "bg-gray-100",
         iconColor: "text-gray-600",
