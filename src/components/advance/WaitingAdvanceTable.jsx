@@ -6,6 +6,13 @@ import {
     FaChevronRight,
 } from "react-icons/fa";
 
+import {
+    getAdvancePpc,
+    createAdvanceRequest,
+    getPamList,
+    createPamRequest,
+} from "../../api/advance";
+
 const STATUS_STYLE = {
     Active: "bg-blue-100 text-blue-700",
     Settled: "bg-green-100 text-green-700",
@@ -125,6 +132,8 @@ function AutocompleteInput({
 }
 
 const initialForm = {
+    ppc_no: "",
+    employee_id: "",
     request_date: "",
     employee_name: "",
     email: "",
@@ -138,7 +147,7 @@ const initialPamForm = {
     pam_no: "",
     employee_name: "",
     cost_center: "",
-    description: "",
+    description : "",
     amount: "",
     due_date: "",
 };
@@ -185,8 +194,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     item.status === "SETTLED"
                         ? "Settled"
                         : item.status === "OVERDUE"
-                            ? "Overdue"
-                            : "Active",
+                        ? "Overdue"
+                        : "Active",
                 due_date: item.due_date,
                 tgl_penyelesaian: item.settlement_date,
             }));
@@ -250,7 +259,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
             setRequestSubmitting(true);
             setRequestError("");
 
-            await createAdvanceRequest({
+            const payload = {
                 ppc_no: requestForm.ppc_no,
                 employee_id: Number(requestForm.employee_id),
                 request_date: requestForm.request_date,
@@ -259,15 +268,29 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 purpose: requestForm.purpose,
                 amount: Number(requestForm.amount),
                 due_date: requestForm.due_date,
-            });
+            };
+
+            await createAdvanceRequest(payload);
 
             handleRequestClose();
             loadData();
+
         } catch (err) {
+
             console.error(err);
-            setRequestError(
-                err.response?.data?.detail || "Gagal menyimpan data advance."
-            );
+            console.error(err.response?.data);
+
+            const detail = err.response?.data?.detail;
+            if (Array.isArray(detail)) {
+                setRequestError(
+                    detail.map((item) => item.msg).join(", ")
+                );
+            } else {
+                setRequestError(
+                    detail || "Gagal menyimpan data advance."
+                );
+            }
+
         } finally {
             setRequestSubmitting(false);
         }
@@ -548,7 +571,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 <th className="p-3 font-medium border border-gray-300">Keterangan</th>
                                 <th className="p-3 font-medium border border-gray-300">Jumlah</th>
                                 <th className="p-3 font-medium border border-gray-300">Due Date</th>
-                                <th className="p-3 font-medium border border-gray-300">Tgl Penyelesaian</th>
                                 <th className="p-3 font-medium border border-gray-300">Status</th>
                             </tr>
                         </thead>
@@ -581,9 +603,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         </td>
                                         <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
                                             {formatDate(row.due_date)}
-                                        </td>
-                                        <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
-                                            {formatDate(row.tgl_penyelesaian)}
                                         </td>
                                         <td className="p-3 border border-gray-300">
                                             <span
@@ -666,25 +685,53 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 onSubmit={handleRequestSubmit}
                                 className="px-6 py-5 flex flex-col gap-4"
                                 style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px" }}
-                            >
+                            >   
+                                <div>
+                                    <label className="block text-sm text-gray-600 mb-1">
+                                        PPC Number
+                                    </label>
+
+                                    <input
+                                        type="text"
+                                        name="ppc_no"
+                                        value={requestForm.ppc_no}
+                                        onChange={handleRequestChange}
+                                        placeholder="PPC-0001"
+                                        required
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                    />
+                                </div>
                                 <div>
                                     <label className="block text-sm text-gray-600 mb-1">Tanggal</label>
                                     <input
                                         type="date"
                                         name="request_date"
-                                        value={requestForm.tanggal}
+                                        value={requestForm.request_date}
                                         onChange={handleRequestChange}
                                         required
                                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-sm text-gray-600 mb-1">
+                                        Employee ID
+                                    </label>
 
+                                    <input
+                                        type="number"
+                                        name="employee_id"
+                                        value={requestForm.employee_id}
+                                        onChange={handleRequestChange}
+                                        required
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                    />
+                                </div>
                                 <div>
                                     <label className="block text-sm text-gray-600 mb-1">Nama User</label>
                                     <input
                                         type="text"
-                                        name="nama_user"
-                                        value={requestForm.nama_user}
+                                        name="employee_name"
+                                        value={requestForm.employee_name}
                                         onChange={handleRequestChange}
                                         placeholder="Andi Pratama"
                                         required
@@ -722,7 +769,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     <label className="block text-sm text-gray-600 mb-1">Keterangan</label>
                                     <textarea
                                         name="purpose"
-                                        value={requestForm.keterangan}
+                                        value={requestForm.purpose}
                                         onChange={handleRequestChange}
                                         rows={3}
                                         placeholder="Contoh: Advance perjalanan dinas"
@@ -736,7 +783,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     <input
                                         type="number"
                                         name="amount"
-                                        value={requestForm.jumlah}
+                                        value={requestForm.amount}
                                         onChange={handleRequestChange}
                                         placeholder="0"
                                         min="0"
@@ -744,7 +791,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
                                     />
                                 </div>
-
                                 <div>
                                     <label className="block text-sm text-gray-600 mb-1">Due Date</label>
                                     <input
@@ -872,7 +918,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 <th className="p-3 font-medium border border-gray-300">Nama User</th>
                                 <th className="p-3 font-medium border border-gray-300">Cost Center</th>
                                 <th className="p-3 font-medium border border-gray-300">Keterangan</th>
-                                <th className="p-3 font-medium border border-gray-300">Amount</th>
+                                <th className="p-3 font-medium border border-gray-300">Jumlah</th>
                                 <th className="p-3 font-medium border border-gray-300">Due Date</th>
                             </tr>
                         </thead>
