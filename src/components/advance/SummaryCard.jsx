@@ -31,7 +31,7 @@ const cards = [
     },
     {
         title: "Overdue (>2 Hari)",
-        key: "overdue",
+        key: "overdue_advance",
         border: "border-gray-300",
         subtitle: "(Request)",
         icon: <FaExclamationTriangle />,
@@ -41,7 +41,7 @@ const cards = [
     },
     {
         title: "Nominal Outstanding",
-        key: "nominal_outstanding",
+        key: "outstanding_amount",
         border: "border-gray-300",
         subtitle: "Rupiah",
         icon: <FaWallet />,
