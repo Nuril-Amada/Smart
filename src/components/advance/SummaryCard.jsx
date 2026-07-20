@@ -12,6 +12,7 @@ const cards = [
     {
         title: "Total Advance",
         key: "total_advance",
+        border: "border-gray-300",
         subtitle: "(Request)",
         icon: <FaMoneyCheckAlt />,
         iconBg: "bg-gray-100",
@@ -21,6 +22,7 @@ const cards = [
     {
         title: "Active Advance",
         key: "active_advance",
+        border: "border-gray-300",
         subtitle: "(Request)",
         icon: <FaClock />,
         iconBg: "bg-gray-100",
@@ -30,6 +32,7 @@ const cards = [
     {
         title: "Overdue (>2 Hari)",
         key: "overdue",
+        border: "border-gray-300",
         subtitle: "(Request)",
         icon: <FaExclamationTriangle />,
         iconBg: "bg-gray-100",
@@ -39,6 +42,7 @@ const cards = [
     {
         title: "Nominal Outstanding",
         key: "nominal_outstanding",
+        border: "border-gray-300",
         subtitle: "Rupiah",
         icon: <FaWallet />,
         iconBg: "bg-gray-100",
@@ -74,7 +78,7 @@ function formatRupiah(value) {
 export default function SummaryCard({ data = {} }) {
     return (
         <div
-            className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6"
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 m-5"
             style={{ marginBottom: "20px", marginTop: "20px", paddingLeft: "20px", paddingRight: "20px" }}
         >
             {cards.map((item) => {
@@ -89,31 +93,29 @@ export default function SummaryCard({ data = {} }) {
                 return (
                     <div
                         key={item.key}
-                        className="bg-gray-50 rounded-xl border border-gray-200 shadow-sm p-5 hover:shadow-md transition-all"
+                        className={`bg-white rounded-xl border ${item.border} shadow-sm p-6 hover:shadow-md transition-all duration-300`}
                     >
-                        <div
-                            className="flex justify-between items-start"
-                            style={{ marginLeft: "10px", marginTop: "10px", marginBottom: "10px" }}
-                        >
-                            <div>
-                                <p className="text-gray-500 text-sm">{item.title}</p>
+                        <div className="flex items-center gap-2" style={{ marginLeft: "10px", marginTop: "10px", marginBottom: "10px" }}>
+                            {/* Icon */}
+                            <div
+                                className={`w-12 h-12 rounded-full flex items-center justify-center text-xl ${item.iconBg} ${item.iconColor}`}
+                            >
+                                {item.icon}
+                            </div>
 
-                                <h2 className="text-xl font-bold text-gray-800 mt-3">
+                            {/* Text */}
+                            <div>
+                                <p className="text-sm font-semibold text-gray-700">
+                                    {item.title}
+                                </p>
+
+                                <h2 className="text-xl font-bold text-gray-800 leading-tight mt-1">
                                     {displayValue}
                                 </h2>
 
-                                {item.subtitle && (
-                                    <p className="text-xs text-gray-400 mt-1">
-                                        {item.subtitle}
-                                    </p>
-                                )}
-                            </div>
-
-                            <div
-                                className={`${item.iconBg} ${item.iconColor} w-12 h-12 rounded-full flex items-center justify-center text-xl`}
-                                style={{ marginTop: "10px", marginRight: "5px" }}
-                            >
-                                {item.icon}
+                                <p className="text-xs text-gray-400">
+                                    {item.subtitle}
+                                </p>
                             </div>
                         </div>
                     </div>
