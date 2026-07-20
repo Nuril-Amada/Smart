@@ -15,7 +15,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         {/* Dashboard */}
-        <Route path="/" element={<MainLayout><Dashboard /></MainLayout>} />
+        <Route path="/Dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
 
         {/* Daftar Cetak Cek */}
         <Route path="/CetakCek" element={<MainLayout><CetakCek /></MainLayout>} />

@@ -2,8 +2,9 @@ import { NavLink } from "react-router-dom";
 import {
   FaHome,
   FaMoneyCheckAlt,
-  FaHistory,
-  FaChartBar,
+  FaWallet,
+  FaClipboardCheck,
+  FaHandHoldingUsd,
   FaFileExport,
 } from "react-icons/fa";
 
@@ -16,7 +17,7 @@ const menu = [
       {
         name: "Dashboard",
         icon: <FaHome />,
-        path: "/",
+        path: "/Dashboard",
       },
     ],
   },
@@ -37,12 +38,12 @@ const menu = [
     items: [
       {
         name: "Settlement",
-        icon: <FaHistory />,
+        icon: <FaWallet />,
         path: "/Settlement",
       },
       {
         name: "Advance",
-        icon: <FaChartBar />,
+        icon: <FaHandHoldingUsd />,
         path: "/Advance",
       },
     ],
@@ -54,7 +55,7 @@ const menu = [
       {
         name: "Export",
         icon: <FaFileExport />,
-        path: "/export-sap",
+        path: "/Export",
       },
     ],
   },

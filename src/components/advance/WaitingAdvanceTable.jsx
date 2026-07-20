@@ -125,20 +125,20 @@ function AutocompleteInput({
 }
 
 const initialForm = {
-    tanggal: "",
-    nama_user: "",
+    request_date: "",
+    employee_name: "",
     email: "",
     cost_center: "",
-    keterangan: "",
-    jumlah: "",
+    purpose: "",
+    amount: "",
     due_date: "",
 };
 
 const initialPamForm = {
-    no_pam: "",
-    nama_user: "",
+    pam_no: "",
+    employee_name: "",
     cost_center: "",
-    keterangan: "",
+    description: "",
     amount: "",
     due_date: "",
 };
@@ -169,7 +169,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
             setLoading(true);
             setError("");
 
-            const result = await getAdvanceList({
+            const result = await getAdvancePpc({
                 start_date: startDate || undefined,
                 end_date: endDate || undefined,
             });
@@ -177,9 +177,9 @@ export default function Table({ startDate, endDate, refreshKey }) {
             const data = result.map((item) => ({
                 tanggal: item.request_date,
                 nama_user: item.employee_name,
-                email: item.employee_email,
+                email: item.email,
                 cost_center: item.cost_center,
-                keterangan: item.description,
+                keterangan: item.purpose,
                 jumlah: Number(item.amount),
                 status:
                     item.status === "SETTLED"
@@ -188,7 +188,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                             ? "Overdue"
                             : "Active",
                 due_date: item.due_date,
-                tgl_penyelesaian: item.settled_date,
+                tgl_penyelesaian: item.settlement_date,
             }));
 
             setRows(data);
@@ -251,12 +251,13 @@ export default function Table({ startDate, endDate, refreshKey }) {
             setRequestError("");
 
             await createAdvanceRequest({
-                request_date: requestForm.tanggal,
-                employee_name: requestForm.nama_user,
-                employee_email: requestForm.email,
+                ppc_no: requestForm.ppc_no,
+                employee_id: Number(requestForm.employee_id),
+                request_date: requestForm.request_date,
+                email: requestForm.email,
                 cost_center: requestForm.cost_center,
-                description: requestForm.keterangan,
-                amount: Number(requestForm.jumlah),
+                purpose: requestForm.purpose,
+                amount: Number(requestForm.amount),
                 due_date: requestForm.due_date,
             });
 
@@ -286,10 +287,10 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     .toLowerCase()
                     .includes(filterCostCenter.toLowerCase());
 
-            const statusMatch =
+            const sourceMatch =
                 filterStatus === "All Status" || row.status === filterStatus;
 
-            return userMatch && ccMatch && statusMatch;
+            return userMatch && ccMatch && sourceMatch;
         });
     }, [rows, filterUser, filterCostCenter, filterStatus]);
 
@@ -670,7 +671,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     <label className="block text-sm text-gray-600 mb-1">Tanggal</label>
                                     <input
                                         type="date"
-                                        name="tanggal"
+                                        name="request_date"
                                         value={requestForm.tanggal}
                                         onChange={handleRequestChange}
                                         required
@@ -720,7 +721,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 <div>
                                     <label className="block text-sm text-gray-600 mb-1">Keterangan</label>
                                     <textarea
-                                        name="keterangan"
+                                        name="purpose"
                                         value={requestForm.keterangan}
                                         onChange={handleRequestChange}
                                         rows={3}
@@ -734,7 +735,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     <label className="block text-sm text-gray-600 mb-1">Jumlah</label>
                                     <input
                                         type="number"
-                                        name="jumlah"
+                                        name="amount"
                                         value={requestForm.jumlah}
                                         onChange={handleRequestChange}
                                         placeholder="0"
@@ -993,7 +994,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     <label className="block text-sm text-gray-600 mb-1">Nama User</label>
                                     <input
                                         type="text"
-                                        name="nama_user"
+                                        name="employee_name"
                                         value={pamRequestForm.nama_user}
                                         onChange={handlePamRequestChange}
                                         placeholder="Andi Pratama"
@@ -1018,7 +1019,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 <div>
                                     <label className="block text-sm text-gray-600 mb-1">Keterangan</label>
                                     <textarea
-                                        name="keterangan"
+                                        name="purpose"
                                         value={pamRequestForm.keterangan}
                                         onChange={handlePamRequestChange}
                                         rows={3}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FaPrint, FaRedo, FaBan } from "react-icons/fa";
+import { FaPrint, FaRedo, FaBan, FaFileSignature } from "react-icons/fa";
 
 // ======================================================================
 // KONFIGURASI TEMPLATE CEK PER BANK
@@ -112,7 +112,8 @@ export default function CetakCek() {
   // ================= AKSI CEK =================
 
   // Cetak Cek: simpan form Informasi Cek yang sedang diisi jadi entry baru
-  // di Daftar Cetak Cek, dengan status langsung "Sudah Dicetak".
+  // di Daftar Cetak Cek, dengan status awal "Belum Dicetak". Cek fisiknya
+  // baru dicetak belakangan lewat tombol "Cetak Fisik" di Daftar Cetak Cek.
   const handleCetakCek = () => {
     if (!form.bank || !form.vendor || !form.nominal) {
       alert("Lengkapi minimal Bank, Vendor, dan Nominal sebelum mencetak.");
@@ -129,18 +130,50 @@ export default function CetakCek() {
       nominal: form.nominal
         ? Number(form.nominal).toLocaleString("id-ID")
         : "0",
-      status: "Sudah Dicetak",
+      status: "Belum Dicetak",
     };
 
     setDataCek((prev) => [newItem, ...prev]);
-    alert("Cek berhasil disimpan dan dicetak!");
+    alert(
+      "Cek berhasil disimpan. Pilih cek ini di Daftar Cetak Cek untuk mencetak fisik."
+    );
     setForm(initialForm);
   };
 
-  // Cetak Ulang: hanya berlaku untuk baris yang dipilih di Daftar Cetak Cek
+  // Cetak Fisik: hanya berlaku untuk cek yang statusnya masih "Belum Dicetak".
+  // Setelah dicetak fisik, status berubah jadi "Sudah Dicetak".
+  const handleCetakFisik = () => {
+    if (!selected) {
+      alert("Pilih salah satu cek di Daftar Cetak Cek terlebih dahulu.");
+      return;
+    }
+    if (selected.status !== "Belum Dicetak") {
+      alert("Cek ini sudah pernah dicetak. Gunakan tombol Cetak Ulang.");
+      return;
+    }
+
+    const confirmPrint = window.confirm(
+      `Cetak fisik cek ${selected.nomor} sekarang?`
+    );
+    if (!confirmPrint) return;
+
+    setDataCek((prev) =>
+      prev.map((item) =>
+        item.id === selected.id ? { ...item, status: "Sudah Dicetak" } : item
+      )
+    );
+    alert(`Cek ${selected.nomor} berhasil dicetak.`);
+  };
+
+  // Cetak Ulang: hanya berlaku untuk cek yang statusnya sudah "Sudah Dicetak".
+  // Murni re-print, tidak mengubah status.
   const handleCetakUlang = () => {
     if (!selected) {
       alert("Pilih salah satu cek di Daftar Cetak Cek terlebih dahulu.");
+      return;
+    }
+    if (selected.status !== "Sudah Dicetak") {
+      alert("Cetak Ulang hanya berlaku untuk cek yang sudah dicetak sebelumnya.");
       return;
     }
     alert(`Mencetak ulang cek ${selected.nomor}...`);
@@ -150,6 +183,10 @@ export default function CetakCek() {
   const handleBatalkanCek = () => {
     if (!selected) {
       alert("Pilih salah satu cek di Daftar Cetak Cek terlebih dahulu.");
+      return;
+    }
+    if (selected.status === "Dibatalkan") {
+      alert("Cek ini sudah dibatalkan.");
       return;
     }
 
@@ -570,7 +607,7 @@ export default function CetakCek() {
             className="text-sm text-gray-500 px-6 pb-4"
             style={{ marginLeft: "20px", marginBottom: "10px" }}
           >
-            Cek terpilih: <span className="font-medium text-gray-700">{selected.nomor}</span> — gunakan tombol di bawah untuk Cetak Ulang / Batalkan Cek.
+            Cek terpilih: <span className="font-medium text-gray-700">{selected.nomor}</span> — gunakan tombol Cetak Fisik / Cetak Ulang / Batalkan Cek di bawah.
           </p>
         )}
       </div>
@@ -591,8 +628,16 @@ export default function CetakCek() {
           Cetak Cek
         </button>
         <button
+          onClick={handleCetakFisik}
+          disabled={!selected || selected.status !== "Belum Dicetak"}
+          className="flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg transition text-sm" style={{ padding: "5px 15px" }}
+        >
+          <FaFileSignature />
+          Cetak Fisik
+        </button>
+        <button
           onClick={handleCetakUlang}
-          disabled={!selected}
+          disabled={!selected || selected.status !== "Sudah Dicetak"}
           className="flex items-center gap-2 px-6 py-3 bg-gray-400 hover:bg-gray-500 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg transition text-sm" style={{ padding: "5px 15px" }}
         >
           <FaRedo />
@@ -600,7 +645,7 @@ export default function CetakCek() {
         </button>
         <button
           onClick={handleBatalkanCek}
-          disabled={!selected}
+          disabled={!selected || selected.status === "Dibatalkan"}
           className="flex items-center gap-2 px-6 py-3 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-lg transition text-sm" style={{ padding: "5px 15px" }}
         >
           <FaBan />
