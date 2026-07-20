@@ -3,7 +3,7 @@ import {
   FaHome,
   FaMoneyCheckAlt,
   FaWallet,
-  FaDonate,
+  FaFileInvoiceDollar,
   FaFileExport,
 } from "react-icons/fa";
 
@@ -42,7 +42,7 @@ const menu = [
       },
       {
         name: "Advance",
-        icon: <FaDonate />,
+        icon: <FaFileInvoiceDollar />,
         path: "/Advance",
       },
     ],
