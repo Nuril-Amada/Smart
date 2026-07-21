@@ -21,6 +21,7 @@ class AdvanceStatus(str, PyEnum):
     ACTIVE = "ACTIVE"
     OVERDUE = "OVERDUE"
     SETTLED = "SETTLED"
+    CANCEL = "CANCEL"
 
 class ReminderStatus(str, PyEnum):
     SUCCESS = "SUCCESS"
@@ -120,198 +121,141 @@ class GlAccount(Base):
         onupdate=datetime.utcnow
     )
 
-# EMPLOYEE
+# EMPLOYEES
 class Employee(Base):
     __tablename__ = "employees"
-    id = Column(
-        Integer,
-        primary_key=True,
-        index=True
-    )
-    employee_id = Column(
-        String(30),
+
+    id = Column(Integer, primary_key=True, index=True)
+
+    employee_name = Column(
+        String(100),
         unique=True,
         nullable=False
     )
-    employee_name = Column(
-        String(100),
-        nullable=False
-    )
+
     employee_email = Column(
         String(100),
         nullable=False
     )
+
+    department_email = Column(
+        String(100),
+        nullable=False
+    )
+
     created_at = Column(
         DateTime,
         server_default=func.now()
     )
+
     updated_at = Column(
         DateTime,
         server_default=func.now(),
         onupdate=func.now()
     )
 
-    # RELATIONSHIP
-    advance_requests = relationship(
-        "AdvanceRequest",
-        back_populates="employee"
-    )
-    pam_requests = relationship(
-        "PamRequest",
-        back_populates="employee"
-    )
-    settlements = relationship(
-        "Settlement",
-        back_populates="employee"
-    )
-
 # ADVANCE REQUEST (PPC)
 class AdvanceRequest(Base):
     __tablename__ = "advance_requests"
-    id = Column(
-        Integer,
-        primary_key=True,
-        index=True
-    )
+
+    id = Column(Integer, primary_key=True, index=True)
+
     ppc_no = Column(
         String(50),
         unique=True,
         nullable=False,
         index=True
     )
-    employee_id = Column(
-        Integer,
-        ForeignKey("employees.id"),
-        nullable=False
-    )
+
     request_date = Column(
         Date,
         nullable=False
     )
+
+    employee_name = Column(
+        String(100),
+        nullable=False
+    )
+
     cost_center = Column(
         String(50),
         nullable=False
     )
-    email = Column(
-        String(100),
-        nullable=False
-    )
+
     purpose = Column(
         String(255),
         nullable=False
     )
+
     amount = Column(
         Float,
         nullable=False
     )
+
     due_date = Column(
         Date,
         nullable=False
     )
+    
     status = Column(
         Enum(AdvanceStatus),
         default=AdvanceStatus.ACTIVE,
         nullable=False
     )
+
     created_at = Column(
         DateTime,
         server_default=func.now()
     )
+
     updated_at = Column(
         DateTime,
         server_default=func.now(),
         onupdate=func.now()
     )
 
-    # RELATIONSHIP
-    employee = relationship(
-        "Employee",
-        back_populates="advance_requests"
-    )
     reminder_logs = relationship(
         "ReminderLog",
         back_populates="advance_request",
         cascade="all, delete-orphan"
     )
 
-# PAM REQUEST
-class PamRequest(Base):
-    __tablename__ = "pam_requests"
-    id = Column(
-        Integer,
-        primary_key=True,
-        index=True
-    )
-    pam_no = Column(
-        String(50),
-        unique=True,
-        nullable=False,
-        index=True
-    )
-    employee_id = Column(
-        Integer,
-        ForeignKey("employees.id"),
-        nullable=False
-    )
-    cost_center = Column(
-        String(50),
-        nullable=False
-    )
-    purpose = Column(
-        String(255),
-        nullable=False
-    )
-    amount = Column(
-        Float,
-        nullable=False
-    )
-    due_date = Column(
-        Date,
-        nullable=False
-    )
-    created_at = Column(
-        DateTime,
-        server_default=func.now()
-    )
-    updated_at = Column(
-        DateTime,
-        server_default=func.now(),
-        onupdate=func.now()
-    )
-
-    # RELATIONSHIP
-    employee = relationship(
-        "Employee",
-        back_populates="pam_requests"
-    )
-
 # REMINDER LOG
 class ReminderLog(Base):
     __tablename__ = "reminder_logs"
+
     id = Column(
         Integer,
         primary_key=True,
         index=True
     )
+
     advance_request_id = Column(
         Integer,
         ForeignKey("advance_requests.id"),
         nullable=False
     )
-    email = Column(
+
+    employee_email = Column(
         String(100),
         nullable=False
     )
+
+    department_email = Column(
+        String(100),
+        nullable=False
+    )
+
     sent_at = Column(
         DateTime,
         server_default=func.now()
     )
+
     status = Column(
         Enum(ReminderStatus),
         nullable=False
     )
 
-    # RELATIONSHIP
     advance_request = relationship(
         "AdvanceRequest",
         back_populates="reminder_logs"
@@ -320,58 +264,57 @@ class ReminderLog(Base):
 # SETTLEMENT
 class Settlement(Base):
     __tablename__ = "settlements"
+
     id = Column(
         Integer,
         primary_key=True,
         index=True
     )
+
     ppc_no = Column(
         String(50),
         unique=True,
         nullable=False,
         index=True
     )
+
     source = Column(
         Enum(SettlementSource),
         nullable=False
     )
-    employee_id = Column(
-        Integer,
-        ForeignKey("employees.id"),
+
+    employee_name = Column(
+        String(100),
         nullable=False
     )
+
     settlement_date = Column(
         Date,
         nullable=False
     )
+
     cost_center = Column(
         String(50),
         nullable=False
     )
-    email = Column(
-        String(100),
-        nullable=False
-    )
+
     description = Column(
         String(255),
         nullable=True
     )
+
     settlement_amount = Column(
         Float,
         nullable=False
     )
+
     created_at = Column(
         DateTime,
         server_default=func.now()
     )
+
     updated_at = Column(
         DateTime,
         server_default=func.now(),
         onupdate=func.now()
-    )
-
-    # RELATIONSHIP
-    employee = relationship(
-        "Employee",
-        back_populates="settlements"
     )

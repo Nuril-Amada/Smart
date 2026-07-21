@@ -4,21 +4,20 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from database.connection import get_db
+from database.models import Transaction
 from etl.pipeline import run_pipeline
 from etl.gl_loader import load_gl
-from etl.utils.gl_column_mapper import map_columns
-from database.models import (
-    Settlement,
-    SettlementSource,
-    Employee
-)
-from database.models import Transaction
-
+from etl.utils.gl_column_mapper import map_columns as map_gl_columns
+from etl.utils.settlement_mapper import map_columns as map_settlement_columns
+from etl.utils.advance_mapper import map_columns as map_advance_columns
+from etl.settlement_loader import load_settlement
+from etl.advance_loader import load_advance
+from etl.employee_loader import load_employee
+from etl.utils.employee_mapper import map_columns as map_employee_columns
 
 router = APIRouter(
     tags=["Upload & Ingestion"]
 )
-
 UPLOAD_DIR = "uploads"
 
 # IMPORT SAP (Transactions)
@@ -90,7 +89,7 @@ def upload_gl_account(
 
         df = pd.read_excel(file.file)
 
-        df = map_columns(df)
+        df = map_gl_columns(df)
 
         required = [
             "gl_account",
@@ -139,110 +138,143 @@ def upload_gl_account(
             detail=str(e)
         )
 
-# UPLOAD REIMBURSEMENT
-@router.post("/settlement/upload")
-def upload_reimbursement(
+# Import Settlement Excel
+@router.post("/settlement/import")
+async def import_settlement(
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
 
+    # Validasi File
+    if not file.filename.endswith((".xlsx", ".xls")):
+
+        raise HTTPException(
+            status_code=400,
+            detail="File harus berupa Excel (.xlsx atau .xls)"
+        )
+
     try:
 
-        if not file.filename.endswith((".xlsx", ".xls")):
-            raise HTTPException(
-                status_code=400,
-                detail="File harus berupa Excel"
-            )
-
+        # Read Excel
         df = pd.read_excel(file.file)
 
-        required = [
-            "employee_id",
-            "settlement_date",
-            "settlement_amount",
-            "note"
-        ]
+        if df.empty:
 
-        missing = [
-            c
-            for c in required
-            if c not in df.columns
-        ]
-
-        if missing:
             raise HTTPException(
                 status_code=400,
-                detail=f"Kolom tidak ditemukan : {missing}"
+                detail="File Excel kosong."
             )
 
-        inserted = 0
-        skipped = 0
+        # Mapping Kolom
+        df = map_settlement_columns(df)
 
-        for _, row in df.iterrows():
+        # Load ke Database
+        result = load_settlement(df, db)
 
-            try:
+        # Response
+        return {
+            "message": "Import Settlement berhasil",
+            "filename": file.filename,
+            **result
+        }
 
-                employee = (
+    except HTTPException:
+        raise
+    
+    except Exception as e:
+        raise HTTPException(
 
-                    db.query(Employee)
+            status_code=500,
 
-                    .filter(
-                        Employee.id == int(row["employee_id"])
-                    )
+            detail=f"Gagal import Settlement : {str(e)}"
+        )
+    
+# IMPORT PPC
+@router.post("/advance/import")
+async def import_ppc(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
+):
 
-                .first()
+    # Validasi file
+    if not file.filename.endswith((".xlsx", ".xls")):
+        raise HTTPException(
+            status_code=400,
+            detail="File harus berupa Excel (.xlsx atau .xls)"
+        )
 
-                )
+    try:
 
-                if not employee:
-                    skipped += 1
-                    continue
+        # Baca Excel
+        df = pd.read_excel(file.file)
 
-                settlement = Settlement(
+        if df.empty:
+            raise HTTPException(
+                status_code=400,
+                detail="File Excel kosong."
+            )
 
-                    type=SettlementSource.REIMBURSEMENT,
+        # Mapping kolom
+        df = map_advance_columns(df)
 
-                    employee_id=int(
-                        row["employee_id"]
-                    ),
+        # Load ke database
+        result = load_advance(df, db)
 
-                    advance_request_id=None,
+        return {
+            "message": "Import PPC berhasil",
+            "filename": file.filename,
+            **result
+        }
 
-                    settlement_date=pd.to_datetime(
-                        row["settlement_date"]
-                    ).date(),
+    except HTTPException:
+        raise
 
-                    settlement_amount=float(
-                        row["settlement_amount"]
-                    ),
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Gagal import PPC : {str(e)}"
+        )
+    
+# IMPORT EMPLOYEE
+@router.post("/employee/import")
+async def import_employee(
 
-                    note=None
-                    if pd.isna(row["note"])
-                    else row["note"]
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db)
 
-                )
+):
 
-                db.add(settlement)
+    # Validasi file
+    if not file.filename.endswith((".xlsx", ".xls")):
 
-                inserted += 1
+        raise HTTPException(
+            status_code=400,
+            detail="File harus berupa Excel."
+        )
 
-            except Exception:
+    try:
 
-                skipped += 1
+        # Read excel
+        df = pd.read_excel(file.file)
 
-                continue
+        if df.empty:
 
-        db.commit()
+            raise HTTPException(
+                status_code=400,
+                detail="File Excel kosong."
+            )
+
+        # Mapping kolom
+        df = map_employee_columns(df)
+
+        # Load ke database
+        result = load_employee(df, db)
 
         return {
 
-            "message": "Upload reimbursement berhasil",
-
-            "rows": len(df),
-
-            "inserted": inserted,
-
-            "skipped": skipped
+            "message": "Import Employee berhasil.",
+            "filename": file.filename,
+            **result
 
         }
 
@@ -251,9 +283,9 @@ def upload_reimbursement(
 
     except Exception as e:
 
-        db.rollback()
-
         raise HTTPException(
+
             status_code=500,
-            detail=str(e)
+            detail=f"Gagal import Employee : {str(e)}"
+
         )

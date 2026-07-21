@@ -28,13 +28,6 @@ COLUMN_MAPPING = {
         "user"
     ],
 
-    "email": [
-        "email user",
-        "email",
-        "employee email",
-        "employee_email"
-    ],
-
     "cost_center": [
         "cost center",
         "cost_center",

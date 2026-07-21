@@ -1,4 +1,5 @@
 import io
+from io import BytesIO
 from datetime import date, datetime, timedelta
 from typing import Optional
 import pandas as pd
@@ -10,11 +11,15 @@ from fastapi import (
 )
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from sqlalchemy.orm import joinedload
 from sqlalchemy import func
 from database.connection import get_db
 from database.models import (
     Transaction,
     GlAccount,
+    Settlement,
+    AdvanceRequest,
+    Employee,
 )
 from reportlab.platypus import (
     SimpleDocTemplate,
@@ -25,11 +30,11 @@ from reportlab.platypus import (
     PageBreak
 )
 
+from api.advance import update_ppc_status
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.lib.pagesizes import A4
-
 
 router = APIRouter(
     prefix="/export",
@@ -89,10 +94,7 @@ def count_workdays(start, end):
 
     return days
 
-# ==========================================================
 # PDF HELPER
-# ==========================================================
-
 def calculate_percentage(value, total):
 
     if not total:
@@ -112,7 +114,6 @@ def calculate_growth(current, previous):
         ((current - previous) / previous) * 100,
         2
     )
-
 
 def determine_trend_group(start_date, end_date):
     """
@@ -145,6 +146,24 @@ def create_table(data, widths=None):
 
     return table
 
+# Advance Helper
+def apply_advance_date_filter(
+    query,
+    start_date,
+    end_date
+):
+
+    if start_date:
+        query = query.filter(
+            AdvanceRequest.request_date >= start_date
+        )
+
+    if end_date:
+        query = query.filter(
+            AdvanceRequest.request_date <= end_date
+        )
+
+    return query
 
 TABLE_STYLE = TableStyle([
 
@@ -846,4 +865,199 @@ def export_dashboard_pdf(
             detail=str(e)
         )
     
-        
+# Export Settlement Excel
+@router.get("/settlement")
+def export_settlement(
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    db: Session = Depends(get_db)
+):
+    query = (
+        db.query(Settlement)
+        .options(
+            joinedload(Settlement.employee)
+        )
+    )
+
+    # Filter Tanggal
+    if start_date:
+        query = query.filter(
+            Settlement.settlement_date >= start_date
+        )
+
+    if end_date:
+        query = query.filter(
+            Settlement.settlement_date <= end_date
+        )
+
+    settlements = (
+        query
+        .order_by(
+            Settlement.settlement_date.desc()
+        )
+        .all()
+    )
+
+    if not settlements:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Tidak ada data Settlement."
+        )
+    
+    rows = []
+    for item in settlements:
+        rows.append({
+            "PPC No": item.ppc_no,
+            "Settlement Date": item.settlement_date,
+            "Employee Name": (
+                item.employee.employee_name
+                if item.employee
+                else ""
+            ),
+            "Email": item.email,
+            "Cost Center": item.cost_center,
+            "Description": item.description,
+            "Settlement Amount": item.settlement_amount,
+            "Source": item.source.value
+        })
+
+    df = pd.DataFrame(rows)
+    output = BytesIO()
+
+    with pd.ExcelWriter(
+        output,
+        engine="openpyxl"
+    ) as writer:
+
+        df.to_excel(
+            writer,
+            index=False,
+            sheet_name="Settlement"
+        )
+
+    output.seek(0)
+    
+    return StreamingResponse(
+
+        output,
+
+        media_type=(
+            "application/"
+            "vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
+
+        headers={
+
+            "Content-Disposition":
+            "attachment; filename=settlement_export.xlsx"
+        }
+    )
+
+
+# EXPORT ADVANCE
+# ==========================================================
+# EXPORT ADVANCE
+# ==========================================================
+
+@router.get("/advance")
+def export_ppc(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    db: Session = Depends(get_db),
+):
+
+    query = db.query(AdvanceRequest)
+
+    # Filter tanggal
+    query = apply_advance_date_filter(
+        query=query,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    ppc_list = (
+        query
+        .order_by(
+            AdvanceRequest.request_date.desc()
+        )
+        .all()
+    )
+
+    # Tidak ada data
+    if not ppc_list:
+        raise HTTPException(
+            status_code=404,
+            detail="Tidak ada data PPC."
+        )
+
+    rows = []
+
+    for ppc in ppc_list:
+
+        # Update status terlebih dahulu
+        update_ppc_status(ppc, db)
+
+        status = ppc.status.value
+
+        rows.append(
+            {
+                "Request Date": ppc.request_date,
+                "PPC No": ppc.ppc_no,
+                "Employee Name": ppc.employee_name,
+                "Cost Center": ppc.cost_center,
+                "Purpose": ppc.purpose,
+                "Amount": ppc.amount,
+                "Due Date": ppc.due_date,
+                "Status": status,
+            }
+        )
+
+    # Simpan perubahan status apabila ada yang berubah
+    db.commit()
+
+    df = pd.DataFrame(rows)
+
+    output = io.BytesIO()
+
+    with pd.ExcelWriter(
+        output,
+        engine="openpyxl",
+    ) as writer:
+
+        df.to_excel(
+            writer,
+            index=False,
+            sheet_name="Advance",
+        )
+
+        # Auto fit column width
+        worksheet = writer.sheets["Advance"]
+
+        for column_cells in worksheet.columns:
+
+            length = max(
+                len(str(cell.value))
+                if cell.value is not None else 0
+                for cell in column_cells
+            )
+
+            worksheet.column_dimensions[
+                column_cells[0].column_letter
+            ].width = max(length + 3, 15)
+
+    output.seek(0)
+
+    return StreamingResponse(
+        output,
+        media_type=(
+            "application/"
+            "vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
+        headers={
+            "Content-Disposition":
+            "attachment; filename=advance_export.xlsx"
+        },
+    )

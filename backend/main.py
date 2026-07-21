@@ -8,8 +8,6 @@ from api.gl_account import router as gl_router
 from api.upload import router as upload_router
 from api.reminder import router as reminder_router
 from api.export import router as export_router
-# from api import dashboard_advance
-# from api import dashboard_settlement
 from scheduler.reminder_scheduler import (
     start_reminder_scheduler,
     stop_reminder_scheduler

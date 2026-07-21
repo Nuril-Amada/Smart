@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, EmailStr
+from sqlalchemy import func
 
-from database.connection import SessionLocal
+from database.connection import get_db
 from database.models import Employee
+
 
 router = APIRouter(
     prefix="/employees",
@@ -11,120 +12,73 @@ router = APIRouter(
 )
 
 
-# Database Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-# Pydantic Schema
-class EmployeeCreate(BaseModel):
-    employee_id: str
-    employee_name: str
-    employee_email: EmailStr
-
-
-class EmployeeUpdate(BaseModel):
-    employee_name: str
-    employee_email: EmailStr
-
-
-# GET ALL
+# ==========================================================
+# GET ALL EMPLOYEE
+# ==========================================================
 @router.get("/")
-def get_all_employees(db: Session = Depends(get_db)):
-    return db.query(Employee).all()
+def get_all_employees(
+    db: Session = Depends(get_db)
+):
 
+    employees = (
 
-# GET BY ID
-@router.get("/{id}")
-def get_employee(id: int, db: Session = Depends(get_db)):
+        db.query(Employee)
+        .order_by(Employee.employee_name.asc())
+        .all()
 
-    employee = db.query(Employee).filter(Employee.id == id).first()
-
-    if not employee:
-        raise HTTPException(
-            status_code=404,
-            detail="Employee not found"
-        )
-
-    return employee
-
-# CREATE
-@router.post("/")
-def create_employee(data: EmployeeCreate,
-                    db: Session = Depends(get_db)):
-
-    existing = db.query(Employee).filter(
-        Employee.employee_id == data.employee_id
-    ).first()
-
-    if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="Employee ID already exists"
-        )
-
-    employee = Employee(
-        employee_id=data.employee_id,
-        employee_name=data.employee_name,
-        employee_email=data.employee_email
     )
 
-    db.add(employee)
-    db.commit()
-    db.refresh(employee)
+    return employees
+
+
+# ==========================================================
+# GET EMPLOYEE BY ID
+# ==========================================================
+@router.get("/{id}")
+def get_employee_by_id(
+    id: int,
+    db: Session = Depends(get_db)
+):
+
+    employee = (
+
+        db.query(Employee)
+        .filter(Employee.id == id)
+        .first()
+
+    )
+
+    if not employee:
+
+        raise HTTPException(
+            status_code=404,
+            detail="Employee tidak ditemukan."
+        )
 
     return employee
 
 
-# UPDATE
-@router.put("/{id}")
-def update_employee(
-        id: int,
-        data: EmployeeUpdate,
-        db: Session = Depends(get_db)):
+# ==========================================================
+# SEARCH EMPLOYEE
+# ==========================================================
+@router.get("/search/")
+def search_employee(
+    keyword: str = Query(...),
+    limit: int = 10,
+    db: Session = Depends(get_db)
+):
 
-    employee = db.query(Employee).filter(
-        Employee.id == id
-    ).first()
+    employees = (
 
-    if not employee:
-        raise HTTPException(
-            status_code=404,
-            detail="Employee not found"
+        db.query(Employee)
+        .filter(
+            func.lower(Employee.employee_name)
+            .contains(keyword.lower())
         )
+        .order_by(Employee.employee_name.asc())
+        .limit(limit)
+        .all()
 
-    employee.employee_name = data.employee_name
-    employee.employee_email = data.employee_email
+    )
 
-    db.commit()
-    db.refresh(employee)
-
-    return employee
-
-
-# DELETE
-@router.delete("/{id}")
-def delete_employee(
-        id: int,
-        db: Session = Depends(get_db)):
-
-    employee = db.query(Employee).filter(
-        Employee.id == id
-    ).first()
-
-    if not employee:
-        raise HTTPException(
-            status_code=404,
-            detail="Employee not found"
-        )
-
-    db.delete(employee)
-    db.commit()
-
-    return {
-        "message": "Employee deleted successfully"
-    }
+    return employees

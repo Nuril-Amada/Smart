@@ -7,7 +7,6 @@ from database.models import (
 )
 
 
-# Helper
 def clean_string(value):
 
     if pd.isna(value):
@@ -65,116 +64,87 @@ def normalize_source(value):
     return SettlementSource.REIMBURSEMENT
 
 
-# Loader
 def load_settlement(df, db):
 
     inserted = 0
     skipped = 0
+    errors = []
 
     for _, row in df.iterrows():
 
-        ppc_no = clean_string(row.get("ppc_no"))
+        ppc_no = clean_string(
+            row.get("ppc_no")
+        )
 
         if not ppc_no:
+
             skipped += 1
             continue
 
-        # Duplicate PPC
         exist = (
             db.query(Settlement)
-            .filter(Settlement.ppc_no == ppc_no)
+            .filter(
+                Settlement.ppc_no == ppc_no
+            )
             .first()
         )
 
         if exist:
+
             skipped += 1
             continue
-
-        # Employee
 
         employee_name = clean_string(
             row.get("employee_name")
         )
 
-        employee_email = clean_string(
-            row.get("email")
+        employee = (
+            db.query(Employee)
+            .filter(
+                Employee.employee_name == employee_name
+            )
+            .first()
         )
 
-        employee = None
+        if not employee:
 
-        if employee_email:
+            skipped += 1
 
-            employee = (
-                db.query(Employee)
-                .filter(
-                    Employee.employee_email == employee_email
-                )
-                .first()
+            errors.append(
+                f"Employee '{employee_name}' tidak ditemukan."
             )
 
-        if employee is None and employee_name:
+            continue
 
-            employee = (
-                db.query(Employee)
-                .filter(
-                    Employee.employee_name == employee_name
-                )
-                .first()
-            )
+        transaction_date = clean_date(
+            row.get("transaction_date")
+        )
 
-        if employee is None:
-
-            employee = Employee(
-
-                employee_id=f"IMPORT-{ppc_no}",
-
-                employee_name=employee_name
-                or "UNKNOWN",
-
-                employee_email=employee_email
-                or "-"
-            )
-
-            db.add(employee)
-            db.flush()
-
-        # Settlement
-        # Tentukan settlement date
         settlement_date = clean_date(
             row.get("settlement_date")
         )
 
-        # Jika reimbursement tidak punya settlement date,
-        # gunakan tanggal transaksi
-        if settlement_date is None:
-            settlement_date = clean_date(
-                row.get("transaction_date")
-            )
-
-        raw_transaction = row.get("transaction_date")
-        raw_settlement = row.get("settlement_date")
-
-        transaction_date = clean_date(raw_transaction)
-        settlement_date = clean_date(raw_settlement)
-
         if settlement_date is None:
             settlement_date = transaction_date
 
-        print(
-            f"PPC={ppc_no}",
-            f"raw_settlement={raw_settlement}",
-            f"parsed_settlement={settlement_date}",
-        )
-
         settlement = Settlement(
+
             ppc_no=ppc_no,
-            source=normalize_source(row.get("source")),
-            employee_id=employee.id,
+            source=normalize_source(
+                row.get("source")
+            ),
             settlement_date=settlement_date,
-            cost_center=clean_string(row.get("cost_center")) or "-",
-            email=employee.employee_email,
-            description=clean_string(row.get("description")),
-            settlement_amount=clean_amount(row.get("settlement_amount"))
+            employee_name=employee_name,
+            cost_center=clean_string(
+                row.get("cost_center")
+            ) or "-",
+            description=clean_string(
+                row.get("description")
+            ),
+            settlement_amount=clean_amount(
+                row.get("settlement_amount")
+            )
+
         )
 
         db.add(settlement)
@@ -186,6 +156,7 @@ def load_settlement(df, db):
     return {
 
         "inserted": inserted,
+        "skipped": skipped,
+        "errors": errors
 
-        "skipped": skipped
     }
