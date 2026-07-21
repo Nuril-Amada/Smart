@@ -697,21 +697,6 @@ export default function Table({
 
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  No PPC
-                </label>
-
-                <input
-                  type="text"
-                  name="no_ppc"
-                  value={manualForm.no_ppc}
-                  onChange={handleManualChange}
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
                   Nama User
                 </label>
 
