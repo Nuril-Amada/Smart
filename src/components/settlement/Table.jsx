@@ -3,6 +3,7 @@ import {
   FaTimes,
   FaChevronLeft,
   FaChevronRight,
+  FaTrash,
 } from "react-icons/fa";
 
 // STYLE
@@ -130,10 +131,10 @@ const initialForm = {
   settlement_date: "",
   no_ppc: "",
   nama_user: "",
-  email: "",
   cost_center: "",
   description: "",
   settlement_amount: "",
+  SAP: "",
 };
 
 // COMPONENT
@@ -166,6 +167,50 @@ export default function Table({
   const [manualError, setManualError] = useState("");
   const [manualForm, setManualForm] = useState(initialForm);
 
+  // SAP CHECKBOX (key = no_ppc, biar konsisten walau pindah halaman/filter)
+  const [sapChecked, setSapChecked] = useState({});
+
+  const toggleSap = (key) => {
+    setSapChecked((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
+  };
+
+  // DELETE CONFIRM
+  const [rowToDelete, setRowToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
+
+  const handleDeleteClick = (row) => {
+    setRowToDelete(row);
+    setDeleteError("");
+  };
+
+  const handleDeleteCancel = () => {
+    setRowToDelete(null);
+    setDeleteError("");
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!rowToDelete) return;
+    try {
+      setDeleting(true);
+      setDeleteError("");
+      await deleteSettlement(rowToDelete.no_ppc);
+      setRowToDelete(null);
+      loadData();
+    } catch (err) {
+      console.error(err);
+      setDeleteError(
+        err.response?.data?.detail ||
+        "Gagal menghapus data."
+      );
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // LOAD DATA
   const loadData = async () => {
     try {
@@ -185,8 +230,6 @@ export default function Table({
           item.ppc_no,
         nama_user:
           item.employee_name,
-        email:
-          item.employee_email,
         cost_center:
           item.cost_center,
         description:
@@ -290,8 +333,6 @@ export default function Table({
           manualForm.no_ppc,
         employee_name:
           manualForm.nama_user,
-        email:
-          manualForm.email,
         cost_center:
           manualForm.cost_center,
         description:
@@ -459,11 +500,12 @@ export default function Table({
               <th className="p-3 font-medium border border-gray-300 text-center">Tanggal</th>
               <th className="p-3 font-medium border border-gray-300 text-center">No PPC</th>
               <th className="p-3 font-medium border border-gray-300 text-center">Nama User</th>
-              <th className="p-3 font-medium border border-gray-300 text-center">Email</th>
               <th className="p-3 font-medium border border-gray-300 text-center">Cost Center</th>
               <th className="p-3 font-medium border border-gray-300 text-center">Description</th>
               <th className="p-3 font-medium border border-gray-300 text-center">Amount</th>
               <th className="p-3 font-medium border border-gray-300 text-center">Source</th>
+              <th className="p-3 font-medium border border-gray-300 text-center">SAP</th>
+              <th className="p-3 border border-gray-300"></th>
             </tr>
           </thead>
 
@@ -472,7 +514,7 @@ export default function Table({
           {!loading && !error && currentRows.length === 0 && (
             <tbody>
               <tr>
-                <td colSpan={8} className="p-8 text-center text-gray-400 border border-gray-300" >
+                <td colSpan={9} className="p-8 text-center text-gray-400 border border-gray-300" >
                   Belum ada data settlement.
                 </td>
               </tr>
@@ -489,7 +531,6 @@ export default function Table({
                     </td>
                     <td className="p-3 text-gray-700 border border-gray-300">{row.no_ppc}</td>
                     <td className="p-3 text-gray-700 border border-gray-300">{row.nama_user}</td>
-                    <td className="p-3 text-gray-700 border border-gray-300">{row.email}</td>
                     <td className="p-3 text-gray-700 border border-gray-300">{row.cost_center}</td>
                     <td className="p-3 text-gray-700 border border-gray-300">{row.description}</td>
                     <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
@@ -504,6 +545,42 @@ export default function Table({
                       >
                         {row.source}
                       </span>
+                    </td>
+                    <td className="p-3 border border-gray-300">
+                      <span
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap ${SOURCE_STYLE[
+                          row.source
+                        ]
+                          }`}
+                      >
+                        {row.source}
+                      </span>
+                    </td>
+                    <td className="p-3 border border-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={!!sapChecked[row.no_ppc]}
+                        onChange={() => toggleSap(row.no_ppc)}
+                        className="w-4 h-4 accent-gray-600 cursor-pointer"
+                      />
+                    </td>
+                    <td className="p-3 border border-gray-300">
+                      <input
+                        type="checkbox"
+                        checked={!!sapChecked[row.no_ppc]}
+                        onChange={() => toggleSap(row.no_ppc)}
+                        className="w-4 h-4 accent-gray-600 cursor-pointer"
+                      />
+                    </td>
+                    <td className="p-3 border border-gray-300">
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteClick(row)}
+                        className="text-red-500 hover:text-red-700"
+                        title="Hapus"
+                      >
+                        <FaTrash className="text-sm" />
+                      </button>
                     </td>
                   </tr>
                 )
@@ -650,21 +727,6 @@ export default function Table({
 
               <div>
                 <label className="block text-sm text-gray-600 mb-1">
-                  Email
-                </label>
-
-                <input
-                  type="email"
-                  name="email"
-                  value={manualForm.email}
-                  onChange={handleManualChange}
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
                   Cost Center
                 </label>
 
@@ -756,6 +818,55 @@ export default function Table({
 
             </form>
           </div>
+          {/* ================= DELETE CONFIRM MODAL ================= */}
+          {rowToDelete && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+              <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
+                <div className="px-6 py-5">
+                  <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                    Hapus Data
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    Apakah kamu yakin ingin menghapus data settlement{" "}
+                    <span className="font-medium text-gray-700">
+                      {rowToDelete.no_ppc}
+                    </span>{" "}
+                    atas nama{" "}
+                    <span className="font-medium text-gray-700">
+                      {rowToDelete.nama_user}
+                    </span>
+                    ? Tindakan ini tidak dapat dibatalkan.
+                  </p>
+
+                  {deleteError && (
+                    <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                      {deleteError}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={handleDeleteCancel}
+                    disabled={deleting}
+                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                  >
+                    Batal
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleDeleteConfirm}
+                    disabled={deleting}
+                    className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
+                  >
+                    {deleting ? "Menghapus..." : "Ya, Hapus"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
