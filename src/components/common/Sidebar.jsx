@@ -152,7 +152,7 @@ export default function Sidebar() {
 
       <div className="border-t border-gray-600 py-4 text-center text-[11px] text-gray-400">
 
-        © 2025 PT. SMART Tbk.
+        © 2026 PT. SMART Tbk.
         <br />
         All rights reserved.
 
