@@ -10,8 +10,8 @@ import {
 // import {
 //     getAdvancePpc,
 //     createAdvanceRequest,
-//     getPamList,
-//     createPamRequest,
+//     deleteAdvanceRequest,
+//     cancelAdvanceRequest,
 // } from "../../api/advance";
 
 const STATUS_STYLE = {
@@ -134,10 +134,8 @@ function AutocompleteInput({
 }
 
 const initialForm = {
-    ppc_no: "",
-    employee_id: "",
-    request_date: "",
     employee_name: "",
+    request_date: "",
     cost_center: "",
     purpose: "",
     amount: "",
@@ -171,6 +169,11 @@ export default function Table({ startDate, endDate, refreshKey }) {
     const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState("");
 
+    // CANCEL CONFIRM
+    const [rowToCancel, setRowToCancel] = useState(null);
+    const [canceling, setCanceling] = useState(false);
+    const [cancelError, setCancelError] = useState("");
+
     const loadData = async () => {
         try {
             setLoading(true);
@@ -182,21 +185,24 @@ export default function Table({ startDate, endDate, refreshKey }) {
             });
 
             const data = result.map((item) => ({
+                id: item.id,
+                ppc_no: item.ppc_no,
                 tanggal: item.request_date,
                 nama_user: item.employee_name,
                 cost_center: item.cost_center,
                 keterangan: item.purpose,
                 jumlah: Number(item.amount),
-                status:
-                    item.status === "SETTLED"
-                        ? "Settled"
-                        : item.status === "OVERDUE"
-                            ? "Overdue"
-                            : item.status === "CANCELED"
-                                ? "Canceled"
-                                : "Active",
                 due_date: item.due_date,
                 tgl_penyelesaian: item.settlement_date,
+
+                status:
+                    item.status === "ACTIVE"
+                        ? "Active"
+                        : item.status === "SETTLED"
+                            ? "Settled"
+                            : item.status === "OVERDUE"
+                                ? "Overdue"
+                                : "Canceled",
             }));
 
             setRows(data);
@@ -259,8 +265,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
             setRequestError("");
 
             const payload = {
-                ppc_no: requestForm.ppc_no,
-                employee_id: Number(requestForm.employee_id),
+                employee_name: requestForm.employee_name,
                 request_date: requestForm.request_date,
                 cost_center: requestForm.cost_center,
                 purpose: requestForm.purpose,
@@ -294,11 +299,38 @@ export default function Table({ startDate, endDate, refreshKey }) {
         }
     };
 
-    // ACTION: BATAL
-    const handleCancelRow = (row) => {
-        setRows((prev) =>
-            prev.map((r) => (r === row ? { ...r, status: "Canceled" } : r))
-        );
+    // ACTION: BATAL (dengan konfirmasi)
+    const handleCancelClick = (row) => {
+        setRowToCancel(row);
+        setCancelError("");
+    };
+
+    const handleCancelDismiss = () => {
+        setRowToCancel(null);
+        setCancelError("");
+    };
+
+    const handleCancelConfirm = async () => {
+        if (!rowToCancel) return;
+
+        try {
+            setCanceling(true);
+            setCancelError("");
+
+            await cancelAdvanceRequest(rowToCancel.id);
+
+            setRowToCancel(null);
+
+            loadData();
+
+        } catch (err) {
+            console.error(err);
+            setCancelError(
+                err.response?.data?.detail || "Gagal membatalkan data."
+            );
+        } finally {
+            setCanceling(false);
+        }
     };
 
     // ACTION: HAPUS (dengan konfirmasi)
@@ -314,20 +346,31 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
     const handleDeleteConfirm = async () => {
         if (!rowToDelete) return;
+
         try {
+
             setDeleting(true);
             setDeleteError("");
 
-            setRows((prev) => prev.filter((r) => r !== rowToDelete));
+            await deleteAdvanceRequest(
+                rowToDelete.id
+            );
 
             setRowToDelete(null);
+
+            loadData();
+
         } catch (err) {
-            console.error(err);
+
             setDeleteError(
-                err.response?.data?.detail || "Gagal menghapus data."
+                err.response?.data?.detail ||
+                "Gagal menghapus data."
             );
+
         } finally {
+
             setDeleting(false);
+
         }
     };
 
@@ -503,7 +546,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                             <div className="flex items-center justify-center gap-2">
                                                 <button
                                                     type="button"
-                                                    onClick={() => handleCancelRow(row)}
+                                                    onClick={() => handleCancelClick(row)}
                                                     disabled={row.status === "Canceled"}
                                                     className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-medium px-3 py-1.5 rounded-md whitespace-nowrap"
                                                 >
@@ -594,7 +637,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 className="px-6 py-5 flex flex-col gap-4"
                                 style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px" }}
                             >
-                                <div>
+                                {/* <div>
                                     <label className="block text-sm text-gray-600 mb-1">
                                         PPC Number
                                     </label>
@@ -608,7 +651,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         required
                                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                                     />
-                                </div>
+                                </div> */}
                                 <div>
                                     <label className="block text-sm text-gray-600 mb-1">Tanggal</label>
                                     <input
@@ -618,20 +661,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         onChange={handleRequestChange}
                                         required
                                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm text-gray-600 mb-1">
-                                        Employee ID
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        name="employee_id"
-                                        value={requestForm.employee_id}
-                                        onChange={handleRequestChange}
-                                        required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                                     />
                                 </div>
                                 <div>
@@ -738,24 +767,64 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     </div>
                 )}
 
+                {/* MODAL Konfirmasi Batal */}
+                {rowToCancel && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" style={{ marginTop: "15px", marginBottom: "15px", marginLeft: "15px", marginRight: "15px" }}>
+                        <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
+                            <div className="px-6 py-5">
+                                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                                    Batalkan Request
+                                </h3>
+                                <p className="text-sm text-gray-500">
+                                    Apakah kamu yakin ingin membatalkan data advance atas nama{" "}
+                                    <span className="font-medium text-gray-700">
+                                        {rowToCancel.nama_user}
+                                    </span>{" "}
+                                </p>
+
+                                {cancelError && (
+                                    <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                        {cancelError}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px" }}>
+                                <button
+                                    type="button"
+                                    onClick={handleCancelDismiss}
+                                    disabled={canceling}
+                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
+                                >
+                                    Tutup
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={handleCancelConfirm}
+                                    disabled={canceling}
+                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
+                                >
+                                    {canceling ? "Membatalkan..." : "Ya, Batalkan"}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* MODAL Konfirmasi Hapus */}
                 {rowToDelete && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" style={{ marginTop: "15px", marginBottom: "15px", marginLeft: "15px", marginRight: "15px" }}>
                         <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
                             <div className="px-6 py-5">
                                 <h3 className="text-lg font-semibold text-gray-700 mb-2">
                                     Hapus Data
                                 </h3>
                                 <p className="text-sm text-gray-500">
-                                    Apakah kamu yakin ingin menghapus data advance atas nama{" "}
+                                    Apakah anda yakin ingin menghapus data advance atas nama{" "}
                                     <span className="font-medium text-gray-700">
                                         {rowToDelete.nama_user}
                                     </span>{" "}
-                                    dengan cost center{" "}
-                                    <span className="font-medium text-gray-700">
-                                        {rowToDelete.cost_center}
-                                    </span>
-                                    ? Tindakan ini tidak dapat dibatalkan.
                                 </p>
 
                                 {deleteError && (
@@ -765,12 +834,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 )}
                             </div>
 
-                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
+                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px" }}>
                                 <button
                                     type="button"
                                     onClick={handleDeleteCancel}
                                     disabled={deleting}
-                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
                                 >
                                     Batal
                                 </button>
@@ -779,7 +848,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     type="button"
                                     onClick={handleDeleteConfirm}
                                     disabled={deleting}
-                                    className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
+                                    className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
                                 >
                                     {deleting ? "Menghapus..." : "Ya, Hapus"}
                                 </button>
