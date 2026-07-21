@@ -9,7 +9,7 @@ export default function Navbar() {
   const location = useLocation();
 
   const pageTitle = {
-    "/Dashboard": "Dashboard",
+    "/Dashboard": "Dashboard Petty Cash",
     "/CetakCek": "Cetak Cek",
     "/CetakCekBaru": "Buat Cek Baru",
     "/Settlement": "Dashboard Settlement",
