@@ -4,19 +4,21 @@ import {
     FaTimes,
     FaChevronLeft,
     FaChevronRight,
+    FaTrash,
 } from "react-icons/fa";
 
-import {
-    getAdvancePpc,
-    createAdvanceRequest,
-    getPamList,
-    createPamRequest,
-} from "../../api/advance";
+// import {
+//     getAdvancePpc,
+//     createAdvanceRequest,
+//     getPamList,
+//     createPamRequest,
+// } from "../../api/advance";
 
 const STATUS_STYLE = {
     Active: "bg-blue-100 text-blue-700",
     Settled: "bg-green-100 text-green-700",
     Overdue: "bg-red-100 text-red-700",
+    Canceled: "bg-orange-100 text-orange-700",
 };
 
 function formatRupiah(value) {
@@ -36,7 +38,7 @@ function formatDate(isoDate) {
     }).format(new Date(isoDate));
 }
 
-function TableSkeleton({ cols = 9 }) {
+function TableSkeleton({ cols = 8 }) {
     return (
         <tbody>
             {Array.from({ length: 7 }).map((_, i) => (
@@ -136,21 +138,12 @@ const initialForm = {
     employee_id: "",
     request_date: "",
     employee_name: "",
-    email: "",
     cost_center: "",
     purpose: "",
     amount: "",
     due_date: "",
 };
 
-const initialPamForm = {
-    pam_no: "",
-    employee_name: "",
-    cost_center: "",
-    description : "",
-    amount: "",
-    due_date: "",
-};
 
 export default function Table({ startDate, endDate, refreshKey }) {
     // ================= TABLE 1: ADVANCE =================
@@ -173,6 +166,11 @@ export default function Table({ startDate, endDate, refreshKey }) {
     const [requestSubmitting, setRequestSubmitting] = useState(false);
     const [requestError, setRequestError] = useState("");
 
+    // DELETE CONFIRM
+    const [rowToDelete, setRowToDelete] = useState(null);
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState("");
+
     const loadData = async () => {
         try {
             setLoading(true);
@@ -186,7 +184,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
             const data = result.map((item) => ({
                 tanggal: item.request_date,
                 nama_user: item.employee_name,
-                email: item.email,
                 cost_center: item.cost_center,
                 keterangan: item.purpose,
                 jumlah: Number(item.amount),
@@ -194,8 +191,10 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     item.status === "SETTLED"
                         ? "Settled"
                         : item.status === "OVERDUE"
-                        ? "Overdue"
-                        : "Active",
+                            ? "Overdue"
+                            : item.status === "CANCELED"
+                                ? "Canceled"
+                                : "Active",
                 due_date: item.due_date,
                 tgl_penyelesaian: item.settlement_date,
             }));
@@ -263,7 +262,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 ppc_no: requestForm.ppc_no,
                 employee_id: Number(requestForm.employee_id),
                 request_date: requestForm.request_date,
-                email: requestForm.email,
                 cost_center: requestForm.cost_center,
                 purpose: requestForm.purpose,
                 amount: Number(requestForm.amount),
@@ -296,6 +294,43 @@ export default function Table({ startDate, endDate, refreshKey }) {
         }
     };
 
+    // ACTION: BATAL
+    const handleCancelRow = (row) => {
+        setRows((prev) =>
+            prev.map((r) => (r === row ? { ...r, status: "Canceled" } : r))
+        );
+    };
+
+    // ACTION: HAPUS (dengan konfirmasi)
+    const handleDeleteClick = (row) => {
+        setRowToDelete(row);
+        setDeleteError("");
+    };
+
+    const handleDeleteCancel = () => {
+        setRowToDelete(null);
+        setDeleteError("");
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!rowToDelete) return;
+        try {
+            setDeleting(true);
+            setDeleteError("");
+
+            setRows((prev) => prev.filter((r) => r !== rowToDelete));
+
+            setRowToDelete(null);
+        } catch (err) {
+            console.error(err);
+            setDeleteError(
+                err.response?.data?.detail || "Gagal menghapus data."
+            );
+        } finally {
+            setDeleting(false);
+        }
+    };
+
     const filteredRows = useMemo(() => {
         return rows.filter((row) => {
             const userMatch =
@@ -325,154 +360,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
     const visiblePages = [];
     for (let i = 1; i <= totalPages; i++) visiblePages.push(i);
-
-    // ================= TABLE 2: PAM =================
-    const [pamRows, setPamRows] = useState([]);
-    const [pamLoading, setPamLoading] = useState(true);
-    const [pamError, setPamError] = useState("");
-
-    const [pamPage, setPamPage] = useState(1);
-    const pamPerPage = 15;
-
-    const [pamFilterUser, setPamFilterUser] = useState("");
-    const [pamFilterCostCenter, setPamFilterCostCenter] = useState("");
-
-    const pamUserInputRef = useRef(null);
-    const pamCcInputRef = useRef(null);
-
-    const [pamRequestOpen, setPamRequestOpen] = useState(false);
-    const [pamRequestForm, setPamRequestForm] = useState(initialPamForm);
-    const [pamRequestSubmitting, setPamRequestSubmitting] = useState(false);
-    const [pamRequestError, setPamRequestError] = useState("");
-
-    const loadPamData = async () => {
-        try {
-            setPamLoading(true);
-            setPamError("");
-
-            const result = await getPamList({
-                start_date: startDate || undefined,
-                end_date: endDate || undefined,
-            });
-
-            const data = result.map((item) => ({
-                no_pam: item.pam_no,
-                nama_user: item.employee_name,
-                cost_center: item.cost_center,
-                keterangan: item.description,
-                amount: Number(item.amount),
-                due_date: item.due_date,
-            }));
-
-            setPamRows(data);
-            setPamPage(1);
-        } catch (err) {
-            console.error(err);
-            setPamError(
-                err.response?.data?.detail || "Gagal memuat data PAM."
-            );
-        } finally {
-            setPamLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        loadPamData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [startDate, endDate, refreshKey]);
-
-    const pamUserSuggestions = useMemo(() => {
-        if (!pamFilterUser) return [];
-        const q = pamFilterUser.toLowerCase();
-        const unique = Array.from(
-            new Set(pamRows.map((r) => r.nama_user).filter(Boolean))
-        );
-        return unique
-            .filter((name) => name.toLowerCase().includes(q))
-            .filter((name) => name.toLowerCase() !== q)
-            .slice(0, 8);
-    }, [pamRows, pamFilterUser]);
-
-    const pamCostCenterSuggestions = useMemo(() => {
-        if (!pamFilterCostCenter) return [];
-        const q = pamFilterCostCenter.toLowerCase();
-        const unique = Array.from(
-            new Set(pamRows.map((r) => r.cost_center).filter(Boolean))
-        );
-        return unique
-            .filter((cc) => cc.toLowerCase().includes(q))
-            .filter((cc) => cc.toLowerCase() !== q)
-            .slice(0, 8);
-    }, [pamRows, pamFilterCostCenter]);
-
-    const handlePamRequestChange = (e) => {
-        const { name, value } = e.target;
-        setPamRequestForm((prev) => ({ ...prev, [name]: value }));
-    };
-
-    const handlePamRequestClose = () => {
-        setPamRequestForm(initialPamForm);
-        setPamRequestError("");
-        setPamRequestOpen(false);
-    };
-
-    const handlePamRequestSubmit = async (e) => {
-        e.preventDefault();
-
-        try {
-            setPamRequestSubmitting(true);
-            setPamRequestError("");
-
-            await createPamRequest({
-                pam_no: pamRequestForm.no_pam,
-                employee_name: pamRequestForm.nama_user,
-                cost_center: pamRequestForm.cost_center,
-                description: pamRequestForm.keterangan,
-                amount: Number(pamRequestForm.amount),
-                due_date: pamRequestForm.due_date,
-            });
-
-            handlePamRequestClose();
-            loadPamData();
-        } catch (err) {
-            console.error(err);
-            setPamRequestError(
-                err.response?.data?.detail || "Gagal menyimpan data PAM."
-            );
-        } finally {
-            setPamRequestSubmitting(false);
-        }
-    };
-
-    const pamFilteredRows = useMemo(() => {
-        return pamRows.filter((row) => {
-            const userMatch =
-                !pamFilterUser ||
-                (row.nama_user || "")
-                    .toLowerCase()
-                    .includes(pamFilterUser.toLowerCase());
-
-            const ccMatch =
-                !pamFilterCostCenter ||
-                (row.cost_center || "")
-                    .toLowerCase()
-                    .includes(pamFilterCostCenter.toLowerCase());
-
-            return userMatch && ccMatch;
-        });
-    }, [pamRows, pamFilterUser, pamFilterCostCenter]);
-
-    const pamTotal = pamFilteredRows.length;
-    const pamTotalPages = Math.max(1, Math.ceil(pamTotal / pamPerPage));
-    const pamCurrentRows = pamFilteredRows.slice(
-        (pamPage - 1) * pamPerPage,
-        pamPage * pamPerPage
-    );
-    const pamStartEntry = pamTotal === 0 ? 0 : (pamPage - 1) * pamPerPage + 1;
-    const pamEndEntry = Math.min(pamPage * pamPerPage, pamTotal);
-
-    const pamVisiblePages = [];
-    for (let i = 1; i <= pamTotalPages; i++) pamVisiblePages.push(i);
 
     return (
         <>
@@ -543,6 +430,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                             <option>Active</option>
                             <option>Settled</option>
                             <option>Overdue</option>
+                            <option>Canceled</option>
                         </select>
                     </div>
 
@@ -566,21 +454,21 @@ export default function Table({ startDate, endDate, refreshKey }) {
                             <tr className="text-xs uppercase tracking-wide bg-gray-50">
                                 <th className="p-3 font-medium border border-gray-300">Tanggal</th>
                                 <th className="p-3 font-medium border border-gray-300">Nama User</th>
-                                <th className="p-3 font-medium border border-gray-300">Email User</th>
                                 <th className="p-3 font-medium border border-gray-300">Cost Center</th>
                                 <th className="p-3 font-medium border border-gray-300">Keterangan</th>
                                 <th className="p-3 font-medium border border-gray-300">Jumlah</th>
                                 <th className="p-3 font-medium border border-gray-300">Due Date</th>
                                 <th className="p-3 font-medium border border-gray-300">Status</th>
+                                <th className="p-3 font-medium border border-gray-300">Action</th>
                             </tr>
                         </thead>
 
-                        {loading && <TableSkeleton cols={9} />}
+                        {loading && <TableSkeleton cols={8} />}
 
                         {!loading && !error && currentRows.length === 0 && (
                             <tbody>
                                 <tr>
-                                    <td colSpan={9} className="p-8 text-center text-gray-400 border border-gray-300">
+                                    <td colSpan={8} className="p-8 text-center text-gray-400 border border-gray-300">
                                         Belum ada data advance.
                                     </td>
                                 </tr>
@@ -595,7 +483,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                             {formatDate(row.tanggal)}
                                         </td>
                                         <td className="p-3 text-gray-700 border border-gray-300">{row.nama_user}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300">{row.email}</td>
                                         <td className="p-3 text-gray-700 border border-gray-300">{row.cost_center}</td>
                                         <td className="p-3 text-gray-700 border border-gray-300">{row.keterangan}</td>
                                         <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
@@ -611,6 +498,27 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                             >
                                                 {row.status}
                                             </span>
+                                        </td>
+                                        <td className="p-3 border border-gray-300">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleCancelRow(row)}
+                                                    disabled={row.status === "Canceled"}
+                                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-medium px-3 py-1.5 rounded-md whitespace-nowrap"
+                                                >
+                                                    Batal
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleDeleteClick(row)}
+                                                    className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-md"
+                                                    title="Hapus"
+                                                >
+                                                    <FaTrash className="text-xs" />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
@@ -685,7 +593,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 onSubmit={handleRequestSubmit}
                                 className="px-6 py-5 flex flex-col gap-4"
                                 style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px" }}
-                            >   
+                            >
                                 <div>
                                     <label className="block text-sm text-gray-600 mb-1">
                                         PPC Number
@@ -734,19 +642,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         value={requestForm.employee_name}
                                         onChange={handleRequestChange}
                                         placeholder="Andi Pratama"
-                                        required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Email User</label>
-                                    <input
-                                        type="email"
-                                        name="email"
-                                        value={requestForm.email}
-                                        onChange={handleRequestChange}
-                                        placeholder="nama@company.com"
                                         required
                                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
                                     />
@@ -842,291 +737,53 @@ export default function Table({ startDate, endDate, refreshKey }) {
                         </div>
                     </div>
                 )}
-            </div>
 
-            {/* ================================================= */}
-            {/* ================= TABLE 2: PAM ================= */}
-            {/* ================================================= */}
-            <div
-                className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5"
-                style={{ marginLeft: "20px", marginRight: "20px", marginTop: "20px" }}
-            >
-                {/* FILTER */}
-                <div className="flex flex-wrap items-end gap-4 mb-5">
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs font-medium text-gray-500 text-center" style={{ marginTop: "10px" }}>
-                            Nama User
-                        </label>
-
-                        <AutocompleteInput
-                            containerRef={pamUserInputRef}
-                            value={pamFilterUser}
-                            onChange={(val) => {
-                                setPamFilterUser(val);
-                                setPamPage(1);
-                            }}
-                            onSelect={(val) => {
-                                setPamFilterUser(val);
-                                setPamPage(1);
-                            }}
-                            suggestions={pamUserSuggestions}
-                            placeholder="Cari Nama User..."
-                            wrapperStyle={{ marginLeft: "20px" }}
-                            inputStyle={{ marginBottom: "10px" }}
-                        />
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                        <label className="text-xs font-medium text-gray-500 text-center">Cost Center</label>
-
-                        <AutocompleteInput
-                            containerRef={pamCcInputRef}
-                            value={pamFilterCostCenter}
-                            onChange={(val) => {
-                                setPamFilterCostCenter(val);
-                                setPamPage(1);
-                            }}
-                            onSelect={(val) => {
-                                setPamFilterCostCenter(val);
-                                setPamPage(1);
-                            }}
-                            suggestions={pamCostCenterSuggestions}
-                            placeholder="Cari Cost Center..."
-                            inputStyle={{ marginBottom: "10px" }}
-                        />
-                    </div>
-
-                    <div className="flex-1" />
-
-                    <button
-                        type="button"
-                        onClick={() => setPamRequestOpen(true)}
-                        className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-                        style={{ marginBottom: "10px", marginRight: "20px", padding: "5px 10px" }}
-                    >
-                        <FaPlus className="text-xs" />
-                        New Request
-                    </button>
-                </div>
-
-                {/* TABLE */}
-                <div className="overflow-x-auto" style={{ marginLeft: "10px", marginRight: "10px" }}>
-                    <table className="w-full text-sm border border-gray-300 text-center">
-                        <thead>
-                            <tr className="text-xs uppercase tracking-wide bg-gray-50">
-                                <th className="p-3 font-medium border border-gray-300">No PAM</th>
-                                <th className="p-3 font-medium border border-gray-300">Nama User</th>
-                                <th className="p-3 font-medium border border-gray-300">Cost Center</th>
-                                <th className="p-3 font-medium border border-gray-300">Keterangan</th>
-                                <th className="p-3 font-medium border border-gray-300">Jumlah</th>
-                                <th className="p-3 font-medium border border-gray-300">Due Date</th>
-                            </tr>
-                        </thead>
-
-                        {pamLoading && <TableSkeleton cols={6} />}
-
-                        {!pamLoading && !pamError && pamCurrentRows.length === 0 && (
-                            <tbody>
-                                <tr>
-                                    <td colSpan={6} className="p-8 text-center text-gray-400 border border-gray-300">
-                                        Belum ada data PAM.
-                                    </td>
-                                </tr>
-                            </tbody>
-                        )}
-
-                        {!pamLoading && !pamError && pamCurrentRows.length > 0 && (
-                            <tbody>
-                                {pamCurrentRows.map((row, index) => (
-                                    <tr key={index} className="hover:bg-gray-50">
-                                        <td className="p-3 text-gray-700 border border-gray-300">{row.no_pam}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300">{row.nama_user}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300">{row.cost_center}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300">{row.keterangan}</td>
-                                        <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
-                                            {formatRupiah(row.amount)}
-                                        </td>
-                                        <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
-                                            {formatDate(row.due_date)}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        )}
-                    </table>
-                </div>
-
-                {!pamLoading && pamError && (
-                    <div className="text-center py-6 text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl mt-3">
-                        Gagal memuat data: {pamError}
-                    </div>
-                )}
-
-                {/* PAGINATION */}
-                {!pamLoading && !pamError && (
-                    <div
-                        className="flex items-center justify-between mt-4 text-sm text-gray-500"
-                        style={{ marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
-                    >
-                        <span>
-                            Showing {pamStartEntry} to {pamEndEntry} of {pamTotal} entries
-                        </span>
-
-                        <div className="flex items-center gap-1">
-                            <button
-                                onClick={() => setPamPage((p) => Math.max(1, p - 1))}
-                                disabled={pamPage === 1}
-                                className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 disabled:opacity-40 hover:bg-gray-50"
-                            >
-                                <FaChevronLeft className="text-xs" />
-                            </button>
-
-                            {pamVisiblePages.map((p) => (
-                                <button
-                                    key={p}
-                                    onClick={() => setPamPage(p)}
-                                    className={`w-8 h-8 flex items-center justify-center rounded-md text-sm ${pamPage === p
-                                        ? "bg-gray-600 text-white"
-                                        : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-                                        }`}
-                                >
-                                    {p}
-                                </button>
-                            ))}
-
-                            <button
-                                onClick={() => setPamPage((p) => Math.min(pamTotalPages, p + 1))}
-                                disabled={pamPage === pamTotalPages}
-                                className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 disabled:opacity-40 hover:bg-gray-50"
-                            >
-                                <FaChevronRight className="text-xs" />
-                            </button>
-                        </div>
-                    </div>
-                )}
-
-                {/* MODAL New Request (PAM) */}
-                {pamRequestOpen && (
+                {/* MODAL Konfirmasi Hapus */}
+                {rowToDelete && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-                        <div className="bg-white rounded-2xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200" style={{ marginRight: "20px" }}>
-                                <h3 className="text-lg font-semibold text-gray-700" style={{ marginLeft: "20px" }}>
-                                    New Request
+                        <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
+                            <div className="px-6 py-5">
+                                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                                    Hapus Data
                                 </h3>
-                                <button type="button" onClick={handlePamRequestClose} className="text-gray-400 hover:text-gray-600">
-                                    <FaTimes />
-                                </button>
-                            </div>
+                                <p className="text-sm text-gray-500">
+                                    Apakah kamu yakin ingin menghapus data advance atas nama{" "}
+                                    <span className="font-medium text-gray-700">
+                                        {rowToDelete.nama_user}
+                                    </span>{" "}
+                                    dengan cost center{" "}
+                                    <span className="font-medium text-gray-700">
+                                        {rowToDelete.cost_center}
+                                    </span>
+                                    ? Tindakan ini tidak dapat dibatalkan.
+                                </p>
 
-                            <form
-                                onSubmit={handlePamRequestSubmit}
-                                className="px-6 py-5 flex flex-col gap-4"
-                                style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px" }}
-                            >
-                                <div>
-                                    <label className="block text-sm text-gray-600 mb-1">No PAM</label>
-                                    <input
-                                        type="text"
-                                        name="no_pam"
-                                        value={pamRequestForm.no_pam}
-                                        onChange={handlePamRequestChange}
-                                        placeholder="PAM-0001"
-                                        required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Nama User</label>
-                                    <input
-                                        type="text"
-                                        name="employee_name"
-                                        value={pamRequestForm.nama_user}
-                                        onChange={handlePamRequestChange}
-                                        placeholder="Andi Pratama"
-                                        required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Cost Center</label>
-                                    <input
-                                        type="text"
-                                        name="cost_center"
-                                        value={pamRequestForm.cost_center}
-                                        onChange={handlePamRequestChange}
-                                        placeholder="Finance"
-                                        required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Keterangan</label>
-                                    <textarea
-                                        name="purpose"
-                                        value={pamRequestForm.keterangan}
-                                        onChange={handlePamRequestChange}
-                                        rows={3}
-                                        placeholder="Contoh: Pembayaran PAM"
-                                        required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none resize-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Amount</label>
-                                    <input
-                                        type="number"
-                                        name="amount"
-                                        value={pamRequestForm.amount}
-                                        onChange={handlePamRequestChange}
-                                        placeholder="0"
-                                        min="0"
-                                        required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Due Date</label>
-                                    <input
-                                        type="date"
-                                        name="due_date"
-                                        value={pamRequestForm.due_date}
-                                        onChange={handlePamRequestChange}
-                                        required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                                    />
-                                </div>
-
-                                {pamRequestError && (
-                                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                                        {pamRequestError}
+                                {deleteError && (
+                                    <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                        {deleteError}
                                     </div>
                                 )}
+                            </div>
 
-                                <div className="flex justify-end gap-2 mt-2 pt-4 border-t border-gray-100">
-                                    <button
-                                        type="button"
-                                        onClick={handlePamRequestClose}
-                                        disabled={pamRequestSubmitting}
-                                        className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
-                                        style={{ padding: "1px 15px", marginRight: "5px" }}
-                                    >
-                                        Batal
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={pamRequestSubmitting}
-                                        className="bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
-                                        style={{ padding: "1px 10px" }}
-                                    >
-                                        {pamRequestSubmitting ? "Menyimpan..." : "Simpan"}
-                                    </button>
-                                </div>
-                            </form>
+                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={handleDeleteCancel}
+                                    disabled={deleting}
+                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                                >
+                                    Batal
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={handleDeleteConfirm}
+                                    disabled={deleting}
+                                    className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
+                                >
+                                    {deleting ? "Menghapus..." : "Ya, Hapus"}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
