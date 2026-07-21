@@ -604,7 +604,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         <td className="p-3 border border-gray-300">
                                             <span
                                                 className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_STYLE[row.status] || "bg-gray-100 text-gray-600"
-                                                    }`} style={{ padding: "3px 5px" }}
+                                                    }`} style={{ padding: "1px 3px" }}
                                             >
                                                 {row.status}
                                             </span>
@@ -615,7 +615,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                                     type="button"
                                                     onClick={() => handleCancelClick(row)}
                                                     disabled={row.status === "Canceled"}
-                                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-medium px-3 py-1.5 rounded-md whitespace-nowrap" style={{ padding: "3px 5px" }}
+                                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-medium px-3 py-1.5 rounded-md whitespace-nowrap" style={{ padding: "1px 3px" }}
                                                 >
                                                     Batal
                                                 </button>
@@ -836,42 +836,44 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 {/* MODAL Konfirmasi Batal */}
                 {rowToCancel && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" >
-                        <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm" style={{ marginTop: "15px", marginBottom: "15px", marginLeft: "15px", marginRight: "15px" }}>
-                            <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                                Batalkan Request
-                            </h3>
-                            <p className="text-sm text-gray-500">
-                                Apakah kamu yakin ingin membatalkan data advance atas nama{" "}
-                                <span className="font-medium text-gray-700">
-                                    {rowToCancel.nama_user}
-                                </span>{" "}
-                            </p>
+                        <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
+                            <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
+                                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                                    Batalkan Request
+                                </h3>
+                                <p className="text-sm text-gray-500">
+                                    Apakah kamu yakin ingin membatalkan data advance atas nama{" "}
+                                    <span className="font-medium text-gray-700">
+                                        {rowToCancel.nama_user}
+                                    </span>{" "}
+                                </p>
 
-                            {cancelError && (
-                                <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                                    {cancelError}
-                                </div>
-                            )}
-                        </div>
+                                {cancelError && (
+                                    <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                        {cancelError}
+                                    </div>
+                                )}
+                            </div>
 
-                        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px" }}>
-                            <button
-                                type="button"
-                                onClick={handleCancelDismiss}
-                                disabled={canceling}
-                                className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
-                            >
-                                Tutup
-                            </button>
+                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px", marginTop: "10px" }}>
+                                <button
+                                    type="button"
+                                    onClick={handleCancelDismiss}
+                                    disabled={canceling}
+                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
+                                >
+                                    Tutup
+                                </button>
 
-                            <button
-                                type="button"
-                                onClick={handleCancelConfirm}
-                                disabled={canceling}
-                                className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
-                            >
-                                {canceling ? "Membatalkan..." : "Ya, Batalkan"}
-                            </button>
+                                <button
+                                    type="button"
+                                    onClick={handleCancelConfirm}
+                                    disabled={canceling}
+                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
+                                >
+                                    {canceling ? "Membatalkan..." : "Ya, Batalkan"}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -879,42 +881,44 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 {/* MODAL Konfirmasi Hapus */}
                 {rowToDelete && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                        <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm" style={{ marginTop: "15px", marginBottom: "15px", marginLeft: "15px", marginRight: "15px" }}>
-                            <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                                Hapus Data
-                            </h3>
-                            <p className="text-sm text-gray-500">
-                                Apakah anda yakin ingin menghapus data advance atas nama{" "}
-                                <span className="font-medium text-gray-700">
-                                    {rowToDelete.nama_user}
-                                </span>{" "}
-                            </p>
+                        <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
+                            <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
+                                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                                    Hapus Data
+                                </h3>
+                                <p className="text-sm text-gray-500">
+                                    Apakah anda yakin ingin menghapus data advance atas nama{" "}
+                                    <span className="font-medium text-gray-700">
+                                        {rowToDelete.nama_user}
+                                    </span>{" "}
+                                </p>
 
-                            {deleteError && (
-                                <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                                    {deleteError}
-                                </div>
-                            )}
-                        </div>
+                                {deleteError && (
+                                    <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                        {deleteError}
+                                    </div>
+                                )}
+                            </div>
 
-                        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px" }}>
-                            <button
-                                type="button"
-                                onClick={handleDeleteCancel}
-                                disabled={deleting}
-                                className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
-                            >
-                                Batal
-                            </button>
+                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px", marginTop: "10px" }}>
+                                <button
+                                    type="button"
+                                    onClick={handleDeleteCancel}
+                                    disabled={deleting}
+                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
+                                >
+                                    Batal
+                                </button>
 
-                            <button
-                                type="button"
-                                onClick={handleDeleteConfirm}
-                                disabled={deleting}
-                                className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
-                            >
-                                {deleting ? "Menghapus..." : "Ya, Hapus"}
-                            </button>
+                                <button
+                                    type="button"
+                                    onClick={handleDeleteConfirm}
+                                    disabled={deleting}
+                                    className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
+                                >
+                                    {deleting ? "Menghapus..." : "Ya, Hapus"}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
