@@ -135,6 +135,7 @@ function AutocompleteInput({
 
 const initialForm = {
     employee_name: "",
+    no_ppc: "",
     request_date: "",
     cost_center: "",
     purpose: "",
@@ -467,7 +468,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 setPage(1);
                             }}
                             className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-200"
-                            style={{ marginBottom: "10px" }}
+                            style={{ marginBottom: "10px", padding: "5px 5px" }}
                         >
                             <option>All Status</option>
                             <option>Active</option>
@@ -496,6 +497,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                         <thead>
                             <tr className="text-xs uppercase tracking-wide bg-gray-50">
                                 <th className="p-3 font-medium border border-gray-300">Tanggal</th>
+                                <th className="p-3 font-medium border border-gray-300">No PPC</th>
                                 <th className="p-3 font-medium border border-gray-300">Nama User</th>
                                 <th className="p-3 font-medium border border-gray-300">Cost Center</th>
                                 <th className="p-3 font-medium border border-gray-300">Keterangan</th>
@@ -525,6 +527,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
                                             {formatDate(row.tanggal)}
                                         </td>
+                                        <td className="p-3 text-gray-700 border border-gray-300">{row.no_ppc}</td>
                                         <td className="p-3 text-gray-700 border border-gray-300">{row.nama_user}</td>
                                         <td className="p-3 text-gray-700 border border-gray-300">{row.cost_center}</td>
                                         <td className="p-3 text-gray-700 border border-gray-300">{row.keterangan}</td>
@@ -548,7 +551,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                                     type="button"
                                                     onClick={() => handleCancelClick(row)}
                                                     disabled={row.status === "Canceled"}
-                                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-medium px-3 py-1.5 rounded-md whitespace-nowrap"
+                                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-medium px-3 py-1.5 rounded-md whitespace-nowrap" style={{ padding: "5px 5px" }}
                                                 >
                                                     Batal
                                                 </button>
@@ -556,7 +559,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                                 <button
                                                     type="button"
                                                     onClick={() => handleDeleteClick(row)}
-                                                    className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-md"
+                                                    className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-md" style={{ padding: "5px 5px" }}
                                                     title="Hapus"
                                                 >
                                                     <FaTrash className="text-xs" />
@@ -637,7 +640,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 className="px-6 py-5 flex flex-col gap-4"
                                 style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px" }}
                             >
-                                {/* <div>
+                                <div>
                                     <label className="block text-sm text-gray-600 mb-1">
                                         PPC Number
                                     </label>
@@ -651,7 +654,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         required
                                         className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
                                     />
-                                </div> */}
+                                </div>
                                 <div>
                                     <label className="block text-sm text-gray-600 mb-1">Tanggal</label>
                                     <input
@@ -769,8 +772,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
                 {/* MODAL Konfirmasi Batal */}
                 {rowToCancel && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" style={{ marginTop: "15px", marginBottom: "15px", marginLeft: "15px", marginRight: "15px" }}>
-                        <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" >
+                        <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm" style={{ marginTop: "15px", marginBottom: "15px", marginLeft: "15px", marginRight: "15px" }}>
                             <div className="px-6 py-5">
                                 <h3 className="text-lg font-semibold text-gray-700 mb-2">
                                     Batalkan Request
@@ -814,8 +817,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
                 {/* MODAL Konfirmasi Hapus */}
                 {rowToDelete && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" style={{ marginTop: "15px", marginBottom: "15px", marginLeft: "15px", marginRight: "15px" }}>
-                        <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                        <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm" style={{ marginTop: "15px", marginBottom: "15px", marginLeft: "15px", marginRight: "15px" }}>
                             <div className="px-6 py-5">
                                 <h3 className="text-lg font-semibold text-gray-700 mb-2">
                                     Hapus Data
