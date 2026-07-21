@@ -12,6 +12,7 @@ import {
 //     createAdvanceRequest,
 //     deleteAdvanceRequest,
 //     cancelAdvanceRequest,
+//     generatePPCNumber
 // } from "../../api/advance";
 
 const STATUS_STYLE = {
@@ -135,7 +136,7 @@ function AutocompleteInput({
 
 const initialForm = {
     employee_name: "",
-    no_ppc: "",
+    ppc_no: "",
     request_date: "",
     cost_center: "",
     purpose: "",
@@ -247,9 +248,72 @@ export default function Table({ startDate, endDate, refreshKey }) {
             .slice(0, 8);
     }, [rows, filterCostCenter]);
 
-    const handleRequestChange = (e) => {
+    // calculate due date
+    const calculateDueDate = (requestDateString) => {
+        const dueDate = new Date(requestDateString);
+        let workingDays = 0;
+        while (workingDays < 2) {
+            // tambah 1 hari
+            dueDate.setDate(dueDate.getDate() + 1);
+            // Minggu = 0
+            // Senin = 1
+            // ...
+            // Sabtu = 6
+            const day = dueDate.getDay();
+            // hanya hitung hari kerja
+            if (day !== 0 && day !== 6) {
+                workingDays++;
+            }
+        }
+        return dueDate.toISOString().split("T")[0];
+    };
+
+    const handleRequestChange = async (e) => {
         const { name, value } = e.target;
-        setRequestForm((prev) => ({ ...prev, [name]: value }));
+
+        // Jika field selain request_date
+        if (name !== "request_date") {
+            setRequestForm((prev) => ({
+                ...prev,
+                [name]: value,
+            }));
+            return;
+        }
+
+        // AUTO GENERATE DUE DATE (+2 HARI KERJA)
+        let dueDate = "";
+
+        if (value) {
+            dueDate = calculateDueDate(value);
+        }
+
+        // AUTO GENERATE PPC NUMBER
+
+        try {
+            const response = await generatePPCNumber(
+                value
+            );
+
+            setRequestForm((prev) => ({
+                ...prev,
+                request_date: value,
+                due_date: dueDate,
+                ppc_no: response.ppc_no,
+            }));
+
+        } catch (error) {
+
+            console.error(
+                "Gagal generate PPC Number",
+                error
+            );
+
+            setRequestForm((prev) => ({
+                ...prev,
+                request_date: value,
+                due_date: dueDate,
+            }));
+        }
     };
 
     const handleRequestClose = () => {
@@ -468,7 +532,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 setPage(1);
                             }}
                             className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-200"
-                            style={{ marginBottom: "10px", padding: "5px 5px" }}
+                            style={{ marginBottom: "10px" }}
                         >
                             <option>All Status</option>
                             <option>Active</option>
@@ -527,7 +591,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
                                             {formatDate(row.tanggal)}
                                         </td>
-                                        <td className="p-3 text-gray-700 border border-gray-300">{row.no_ppc}</td>
+                                        <td className="p-3 text-gray-700 border border-gray-300">{row.ppc_no}</td>
                                         <td className="p-3 text-gray-700 border border-gray-300">{row.nama_user}</td>
                                         <td className="p-3 text-gray-700 border border-gray-300">{row.cost_center}</td>
                                         <td className="p-3 text-gray-700 border border-gray-300">{row.keterangan}</td>
@@ -540,7 +604,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         <td className="p-3 border border-gray-300">
                                             <span
                                                 className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_STYLE[row.status] || "bg-gray-100 text-gray-600"
-                                                    }`}
+                                                    }`} style={{ padding: "3px 5px" }}
                                             >
                                                 {row.status}
                                             </span>
@@ -551,7 +615,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                                     type="button"
                                                     onClick={() => handleCancelClick(row)}
                                                     disabled={row.status === "Canceled"}
-                                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-medium px-3 py-1.5 rounded-md whitespace-nowrap" style={{ padding: "5px 5px" }}
+                                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-medium px-3 py-1.5 rounded-md whitespace-nowrap" style={{ padding: "3px 5px" }}
                                                 >
                                                     Batal
                                                 </button>
@@ -644,15 +708,14 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     <label className="block text-sm text-gray-600 mb-1">
                                         PPC Number
                                     </label>
-
                                     <input
                                         type="text"
-                                        name="ppc_no"
-                                        value={requestForm.ppc_no}
-                                        onChange={handleRequestChange}
-                                        placeholder="PPC-0001"
-                                        required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                                        value={
+                                            requestForm.ppc_no ||
+                                            "Pilih tanggal terlebih dahulu"
+                                        }
+                                        readOnly
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50"
                                     />
                                 </div>
                                 <div>
@@ -774,43 +837,41 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 {rowToCancel && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" >
                         <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm" style={{ marginTop: "15px", marginBottom: "15px", marginLeft: "15px", marginRight: "15px" }}>
-                            <div className="px-6 py-5">
-                                <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                                    Batalkan Request
-                                </h3>
-                                <p className="text-sm text-gray-500">
-                                    Apakah kamu yakin ingin membatalkan data advance atas nama{" "}
-                                    <span className="font-medium text-gray-700">
-                                        {rowToCancel.nama_user}
-                                    </span>{" "}
-                                </p>
+                            <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                                Batalkan Request
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                                Apakah kamu yakin ingin membatalkan data advance atas nama{" "}
+                                <span className="font-medium text-gray-700">
+                                    {rowToCancel.nama_user}
+                                </span>{" "}
+                            </p>
 
-                                {cancelError && (
-                                    <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                                        {cancelError}
-                                    </div>
-                                )}
-                            </div>
+                            {cancelError && (
+                                <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                    {cancelError}
+                                </div>
+                            )}
+                        </div>
 
-                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px" }}>
-                                <button
-                                    type="button"
-                                    onClick={handleCancelDismiss}
-                                    disabled={canceling}
-                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
-                                >
-                                    Tutup
-                                </button>
+                        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px" }}>
+                            <button
+                                type="button"
+                                onClick={handleCancelDismiss}
+                                disabled={canceling}
+                                className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
+                            >
+                                Tutup
+                            </button>
 
-                                <button
-                                    type="button"
-                                    onClick={handleCancelConfirm}
-                                    disabled={canceling}
-                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
-                                >
-                                    {canceling ? "Membatalkan..." : "Ya, Batalkan"}
-                                </button>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={handleCancelConfirm}
+                                disabled={canceling}
+                                className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
+                            >
+                                {canceling ? "Membatalkan..." : "Ya, Batalkan"}
+                            </button>
                         </div>
                     </div>
                 )}
@@ -819,43 +880,41 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 {rowToDelete && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
                         <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm" style={{ marginTop: "15px", marginBottom: "15px", marginLeft: "15px", marginRight: "15px" }}>
-                            <div className="px-6 py-5">
-                                <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                                    Hapus Data
-                                </h3>
-                                <p className="text-sm text-gray-500">
-                                    Apakah anda yakin ingin menghapus data advance atas nama{" "}
-                                    <span className="font-medium text-gray-700">
-                                        {rowToDelete.nama_user}
-                                    </span>{" "}
-                                </p>
+                            <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                                Hapus Data
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                                Apakah anda yakin ingin menghapus data advance atas nama{" "}
+                                <span className="font-medium text-gray-700">
+                                    {rowToDelete.nama_user}
+                                </span>{" "}
+                            </p>
 
-                                {deleteError && (
-                                    <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                                        {deleteError}
-                                    </div>
-                                )}
-                            </div>
+                            {deleteError && (
+                                <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                    {deleteError}
+                                </div>
+                            )}
+                        </div>
 
-                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px" }}>
-                                <button
-                                    type="button"
-                                    onClick={handleDeleteCancel}
-                                    disabled={deleting}
-                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
-                                >
-                                    Batal
-                                </button>
+                        <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px" }}>
+                            <button
+                                type="button"
+                                onClick={handleDeleteCancel}
+                                disabled={deleting}
+                                className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
+                            >
+                                Batal
+                            </button>
 
-                                <button
-                                    type="button"
-                                    onClick={handleDeleteConfirm}
-                                    disabled={deleting}
-                                    className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
-                                >
-                                    {deleting ? "Menghapus..." : "Ya, Hapus"}
-                                </button>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={handleDeleteConfirm}
+                                disabled={deleting}
+                                className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
+                            >
+                                {deleting ? "Menghapus..." : "Ya, Hapus"}
+                            </button>
                         </div>
                     </div>
                 )}
