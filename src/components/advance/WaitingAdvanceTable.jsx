@@ -12,7 +12,8 @@ import {
 //     createAdvanceRequest,
 //     deleteAdvanceRequest,
 //     cancelAdvanceRequest,
-//     generatePPCNumber
+//     generatePPCNumber,
+//     submitSettlement
 // } from "../../api/advance";
 
 const STATUS_STYLE = {
@@ -144,6 +145,171 @@ const initialForm = {
     due_date: "",
 };
 
+// Detail popup untuk row dengan status SETTLED (settlement receipt)
+function SettlementReceiptModal({ row, onClose }) {
+    if (!row) return null;
+
+    const Line = ({ label, value }) => (
+        <div className="mb-4">
+            <p className="text-sm text-gray-500">{label}</p>
+            <p className="text-sm text-gray-800 font-medium">{value || "-"}</p>
+        </div>
+    );
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm font-mono">
+                <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
+                    <h3 className="text-base font-semibold text-gray-700 mb-1">
+                        Settlement Receipt
+                    </h3>
+                    <div className="border-b border-gray-300 mb-4" />
+
+                    <Line label="PPC No" value={row.ppc_no} />
+                    <Line label="Employee" value={row.nama_user} />
+                    <Line label="Advance Amount" value={formatRupiah(row.jumlah)} />
+                    <Line
+                        label="Settlement Amount"
+                        value={
+                            row.settlement_amount !== undefined &&
+                                row.settlement_amount !== null
+                                ? formatRupiah(row.settlement_amount)
+                                : "-"
+                        }
+                    />
+                    <Line label="Settlement Date" value={formatDate(row.tgl_penyelesaian)} />
+                    <Line label="Description" value={row.keterangan} />
+                    <Line label="Created By" value={row.created_by} />
+                    <Line label="Status" value={row.status?.toUpperCase()} />
+                </div>
+
+                <div className="flex justify-end px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px", marginTop: "10px" }}>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50" style={{ padding: "5px 7px" }}
+                    >
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
+// Form popup untuk row dengan status ACTIVE / OVERDUE (submit settlement)
+function SettlementFormModal({
+    row,
+    form,
+    onChange,
+    onClose,
+    onSubmit,
+    submitting,
+    error,
+}) {
+    if (!row) return null;
+
+    const Info = ({ label, value }) => (
+        <div className="mb-4">
+            <p className="text-sm text-gray-500">{label}</p>
+            <p className="text-sm text-gray-800 font-medium">{value || "-"}</p>
+        </div>
+    );
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm max-h-[90vh] overflow-y-auto">
+                <div
+                    className="px-8 py-7"
+                    style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}
+                >
+                    <Info label="PPC No" value={row.ppc_no} />
+                    <Info label="Employee" value={row.nama_user} />
+                    <Info label="Advance Amount" value={formatRupiah(row.jumlah)} />
+                    <Info label="Purpose" value={row.keterangan} />
+                    <Info label="Deadline Settlement" value={formatDate(row.due_date)} />
+
+                    <div className="border-t border-dashed border-gray-300 my-4" />
+
+                    <form onSubmit={onSubmit} className="flex flex-col gap-4">
+                        <div>
+                            <label className="block text-sm text-gray-600 mb-1">
+                                Settlement Date
+                            </label>
+                            <input
+                                type="date"
+                                name="settlement_date"
+                                value={form.settlement_date}
+                                onChange={onChange}
+                                required
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm text-gray-600 mb-1">
+                                Settlement Amount
+                            </label>
+                            <input
+                                type="number"
+                                name="settlement_amount"
+                                value={form.settlement_amount}
+                                onChange={onChange}
+                                placeholder="0"
+                                min="0"
+                                required
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm text-gray-600 mb-1">
+                                Description
+                            </label>
+                            <textarea
+                                name="description"
+                                value={form.description}
+                                onChange={onChange}
+                                rows={3}
+                                placeholder="Contoh: Biaya transport dan akomodasi"
+                                required
+                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none resize-none"
+                            />
+                        </div>
+
+                        {error && (
+                            <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                {error}
+                            </div>
+                        )}
+
+                        <div className="flex justify-end gap-2 mt-2 pt-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px", marginTop: "10px" }}>
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                disabled={submitting}
+                                className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                                style={{ padding: "5px 7px" }}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={submitting}
+                                className="bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
+                                style={{ padding: "5px 7px" }}
+                            >
+                                {submitting ? "Menyimpan..." : "Submit Settlement"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 
 export default function Table({ startDate, endDate, refreshKey }) {
     // ================= TABLE 1: ADVANCE =================
@@ -176,6 +342,19 @@ export default function Table({ startDate, endDate, refreshKey }) {
     const [canceling, setCanceling] = useState(false);
     const [cancelError, setCancelError] = useState("");
 
+    // STATUS DETAIL POPUP (Settled)
+    const [rowToShowSettlement, setRowToShowSettlement] = useState(null);
+
+    // STATUS FORM POPUP (Active / Overdue -> submit settlement)
+    const [rowToSettle, setRowToSettle] = useState(null);
+    const [settlementForm, setSettlementForm] = useState({
+        settlement_date: "",
+        settlement_amount: "",
+        description: "",
+    });
+    const [settlementSubmitting, setSettlementSubmitting] = useState(false);
+    const [settlementError, setSettlementError] = useState("");
+
     const loadData = async () => {
         try {
             setLoading(true);
@@ -196,6 +375,11 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 jumlah: Number(item.amount),
                 due_date: item.due_date,
                 tgl_penyelesaian: item.settlement_date,
+                settlement_amount:
+                    item.settlement_amount !== undefined && item.settlement_amount !== null
+                        ? Number(item.settlement_amount)
+                        : null,
+                created_by: item.created_by,
 
                 status:
                     item.status === "ACTIVE"
@@ -439,6 +623,73 @@ export default function Table({ startDate, endDate, refreshKey }) {
         }
     };
 
+    // STATUS BADGE CLICK
+    const handleStatusClick = (row) => {
+        if (row.status === "Settled") {
+            setRowToShowSettlement(row);
+        } else if (row.status === "Active" || row.status === "Overdue") {
+            setRowToSettle(row);
+            setSettlementForm({
+                settlement_date: "",
+                settlement_amount: "",
+                description: "",
+            });
+            setSettlementError("");
+        }
+    };
+
+    const handleSettlementChange = (e) => {
+        const { name, value } = e.target;
+        setSettlementForm((prev) => ({
+            ...prev,
+            [name]: value,
+        }));
+    };
+
+    const handleSettlementClose = () => {
+        setRowToSettle(null);
+        setSettlementForm({
+            settlement_date: "",
+            settlement_amount: "",
+            description: "",
+        });
+        setSettlementError("");
+    };
+
+    const handleSettlementSubmit = async (e) => {
+        e.preventDefault();
+        if (!rowToSettle) return;
+
+        try {
+            setSettlementSubmitting(true);
+            setSettlementError("");
+
+            const payload = {
+                settlement_date: settlementForm.settlement_date,
+                settlement_amount: Number(settlementForm.settlement_amount),
+                description: settlementForm.description,
+            };
+
+            await submitSettlement(rowToSettle.id, payload);
+
+            handleSettlementClose();
+            loadData();
+
+        } catch (err) {
+            console.error(err);
+
+            const detail = err.response?.data?.detail;
+            if (Array.isArray(detail)) {
+                setSettlementError(detail.map((item) => item.msg).join(", "));
+            } else {
+                setSettlementError(detail || "Gagal menyimpan settlement.");
+            }
+
+        } finally {
+            setSettlementSubmitting(false);
+        }
+    };
+
     const filteredRows = useMemo(() => {
         return rows.filter((row) => {
             const userMatch =
@@ -603,8 +854,9 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         </td>
                                         <td className="p-3 border border-gray-300">
                                             <span
+                                                onClick={() => handleStatusClick(row)}
                                                 className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_STYLE[row.status] || "bg-gray-100 text-gray-600"
-                                                    }`} style={{ padding: "1px 3px" }}
+                                                    } ${row.status === "Settled" || row.status === "Active" || row.status === "Overdue" ? "cursor-pointer hover:opacity-75" : ""}`} style={{ padding: "1px 3px" }}
                                             >
                                                 {row.status}
                                             </span>
@@ -922,6 +1174,23 @@ export default function Table({ startDate, endDate, refreshKey }) {
                         </div>
                     </div>
                 )}
+
+                {/* MODAL Detail Settlement (klik status Settled) */}
+                <SettlementReceiptModal
+                    row={rowToShowSettlement}
+                    onClose={() => setRowToShowSettlement(null)}
+                />
+
+                {/* MODAL Form Settlement (klik status Active / Overdue) */}
+                <SettlementFormModal
+                    row={rowToSettle}
+                    form={settlementForm}
+                    onChange={handleSettlementChange}
+                    onClose={handleSettlementClose}
+                    onSubmit={handleSettlementSubmit}
+                    submitting={settlementSubmitting}
+                    error={settlementError}
+                />
             </div>
         </>
     );

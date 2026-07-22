@@ -129,20 +129,15 @@ function AutocompleteInput({
 // INITIAL FORM
 const initialForm = {
   settlement_date: "",
-  no_ppc: "",
-  nama_user: "",
+  ppc_no: "",
+  employee_name: "",
   cost_center: "",
   description: "",
   settlement_amount: "",
-  SAP: "",
 };
 
 // COMPONENT
-export default function Table({
-  startDate,
-  endDate,
-  refreshKey,
-}) {
+export default function Table({ startDate, endDate, refreshKey }) {
 
   // TABLE
   const [rows, setRows] = useState([]);
@@ -181,35 +176,6 @@ export default function Table({
   const [rowToDelete, setRowToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-
-  const handleDeleteClick = (row) => {
-    setRowToDelete(row);
-    setDeleteError("");
-  };
-
-  const handleDeleteCancel = () => {
-    setRowToDelete(null);
-    setDeleteError("");
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!rowToDelete) return;
-    try {
-      setDeleting(true);
-      setDeleteError("");
-      await deleteSettlement(rowToDelete.no_ppc);
-      setRowToDelete(null);
-      loadData();
-    } catch (err) {
-      console.error(err);
-      setDeleteError(
-        err.response?.data?.detail ||
-        "Gagal menghapus data."
-      );
-    } finally {
-      setDeleting(false);
-    }
-  };
 
   // LOAD DATA
   const loadData = async () => {
@@ -306,6 +272,46 @@ export default function Table({
       .slice(0, 8);
   }, [rows, filterCostCenter]);
 
+  const handleRequestChange = async (e) => {
+    const { name, value } = e.target;
+
+    // Jika field selain request_date
+    if (name !== "request_date") {
+      setRequestForm((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+      return;
+    }
+    // AUTO GENERATE PPC NUMBER
+
+    try {
+      const response = await generatePPCNumber(
+        value
+      );
+
+      setRequestForm((prev) => ({
+        ...prev,
+        request_date: value,
+        due_date: dueDate,
+        ppc_no: response.ppc_no,
+      }));
+
+    } catch (error) {
+
+      console.error(
+        "Gagal generate PPC Number",
+        error
+      );
+
+      setRequestForm((prev) => ({
+        ...prev,
+        request_date: value,
+        due_date: dueDate,
+      }));
+    }
+  };
+
   // MANUAL INPUT
   const handleManualChange = (e) => {
     const { name, value } = e.target;
@@ -359,6 +365,47 @@ export default function Table({
 
   };
 
+  // ACTION: HAPUS (dengan konfirmasi)
+  const handleDeleteClick = (row) => {
+    setRowToDelete(row);
+    setDeleteError("");
+  };
+
+  const handleDeleteCancel = () => {
+    setRowToDelete(null);
+    setDeleteError("");
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!rowToDelete) return;
+
+    try {
+
+      setDeleting(true);
+      setDeleteError("");
+
+      await deleteAdvanceRequest(
+        rowToDelete.id
+      );
+
+      setRowToDelete(null);
+
+      loadData();
+
+    } catch (err) {
+
+      setDeleteError(
+        err.response?.data?.detail ||
+        "Gagal menghapus data."
+      );
+
+    } finally {
+
+      setDeleting(false);
+
+    }
+  };
+
   // FILTER
   const filteredRows = useMemo(() => {
 
@@ -380,53 +427,17 @@ export default function Table({
 
     });
 
-  }, [
-
-    rows,
-
-    filterUser,
-
-    filterCostCenter,
-
-  ]);
+  }, [rows, filterUser, filterCostCenter]);
 
   // PAGINATION
   const total = filteredRows.length;
-
-  const totalPages = Math.max(
-    1,
-    Math.ceil(total / perPage)
-  );
-
-  const currentRows = filteredRows.slice(
-
-    (page - 1) * perPage,
-
-    page * perPage
-
-  );
-
-  const startEntry =
-    total === 0
-      ? 0
-      : (page - 1) * perPage + 1;
-
-  const endEntry = Math.min(
-    page * perPage,
-    total
-  );
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const currentRows = filteredRows.slice((page - 1) * perPage, page * perPage);
+  const startEntry = total === 0 ? 0 : (page - 1) * perPage + 1;
+  const endEntry = Math.min(page * perPage, total);
 
   const visiblePages = [];
-
-  for (
-    let i = 1;
-    i <= totalPages;
-    i++
-  ) {
-
-    visiblePages.push(i);
-
-  }
+  for (let i = 1; i <= totalPages; i++) visiblePages.push(i);
 
   // JSX
   return (
@@ -504,8 +515,7 @@ export default function Table({
               <th className="p-3 font-medium border border-gray-300 text-center">Description</th>
               <th className="p-3 font-medium border border-gray-300 text-center">Amount</th>
               <th className="p-3 font-medium border border-gray-300 text-center">Source</th>
-              <th className="p-3 font-medium border border-gray-300 text-center">SAP</th>
-              <th className="p-3 border border-gray-300"></th>
+              <th className="p-3 font-medium border border-gray-300 text-center">Action</th>
             </tr>
           </thead>
 
@@ -529,7 +539,7 @@ export default function Table({
                     <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
                       {formatDate(row.tanggal)}
                     </td>
-                    <td className="p-3 text-gray-700 border border-gray-300">{row.no_ppc}</td>
+                    <td className="p-3 text-gray-700 border border-gray-300">{row.ppc_no}</td>
                     <td className="p-3 text-gray-700 border border-gray-300">{row.nama_user}</td>
                     <td className="p-3 text-gray-700 border border-gray-300">{row.cost_center}</td>
                     <td className="p-3 text-gray-700 border border-gray-300">{row.description}</td>
@@ -557,30 +567,23 @@ export default function Table({
                       </span>
                     </td>
                     <td className="p-3 border border-gray-300">
-                      <input
-                        type="checkbox"
-                        checked={!!sapChecked[row.no_ppc]}
-                        onChange={() => toggleSap(row.no_ppc)}
-                        className="w-4 h-4 accent-gray-600 cursor-pointer"
-                      />
-                    </td>
-                    <td className="p-3 border border-gray-300">
-                      <input
-                        type="checkbox"
-                        checked={!!sapChecked[row.no_ppc]}
-                        onChange={() => toggleSap(row.no_ppc)}
-                        className="w-4 h-4 accent-gray-600 cursor-pointer"
-                      />
-                    </td>
-                    <td className="p-3 border border-gray-300">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteClick(row)}
-                        className="text-red-500 hover:text-red-700"
-                        title="Hapus"
-                      >
-                        <FaTrash className="text-sm" />
-                      </button>
+                      <div className="flex items-center justify-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={!!sapChecked[row.no_ppc]}
+                          onChange={() => toggleSap(row.no_ppc)}
+                          className="w-4 h-4 accent-gray-600 cursor-pointer"
+                        />
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteClick(row)}
+                          className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-md" style={{ padding: "5px 5px" }}
+                          title="Hapus"
+                        >
+                          <FaTrash className="text-xs" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )
@@ -589,272 +592,273 @@ export default function Table({
           )}
         </table>
       </div>
-      {!loading && error && (
-        <div className="text-center py-6 text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl mt-3">
-          Gagal memuat data: {error}
-        </div>
-      )}
+      {
+        !loading && error && (
+          <div className="text-center py-6 text-red-600 text-sm bg-red-50 border border-red-200 rounded-xl mt-3">
+            Gagal memuat data: {error}
+          </div>
+        )
+      }
 
       {/* ================= PAGINATION ================= */}
-      {!loading && !error && (
-        <div
-          className="flex items-center justify-between mt-4 text-sm text-gray-500"
-          style={{
-            marginLeft: "10px",
-            marginRight: "10px",
-            marginTop: "10px",
-            marginBottom: "10px",
-          }}
-        >
-          <span>
-            Showing {startEntry} to {endEntry} of {total} entries
-          </span>
+      {
+        !loading && !error && (
+          <div
+            className="flex items-center justify-between mt-4 text-sm text-gray-500"
+            style={{
+              marginLeft: "10px",
+              marginRight: "10px",
+              marginTop: "10px",
+              marginBottom: "10px",
+            }}
+          >
+            <span>
+              Showing {startEntry} to {endEntry} of {total} entries
+            </span>
 
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page === 1}
-              className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 disabled:opacity-40 hover:bg-gray-50"
-            >
-              <FaChevronLeft className="text-xs" />
-            </button>
-
-            {visiblePages.map((p) => (
+            <div className="flex items-center gap-1">
               <button
-                key={p}
-                onClick={() => setPage(p)}
-                className={`w-8 h-8 flex items-center justify-center rounded-md text-sm ${page === p
-                  ? "bg-gray-600 text-white"
-                  : "border border-gray-200 text-gray-600 hover:bg-gray-50"
-                  }`}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 disabled:opacity-40 hover:bg-gray-50"
               >
-                {p}
+                <FaChevronLeft className="text-xs" />
               </button>
-            ))}
 
-            <button
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page === totalPages}
-              className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 disabled:opacity-40 hover:bg-gray-50"
-            >
-              <FaChevronRight className="text-xs" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ================= MODAL ================= */}
-      {manualInputOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="bg-white rounded-2xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
-
-            {/* Header */}
-            <div
-              className="flex items-center justify-between px-6 py-4 border-b border-gray-200"
-              style={{ marginRight: "20px" }}
-            >
-              <h3
-                className="text-lg font-semibold text-gray-700"
-                style={{ marginLeft: "20px" }}
-              >
-                Reimbursement
-              </h3>
+              {visiblePages.map((p) => (
+                <button
+                  key={p}
+                  onClick={() => setPage(p)}
+                  className={`w-8 h-8 flex items-center justify-center rounded-md text-sm ${page === p
+                    ? "bg-gray-600 text-white"
+                    : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                    }`}
+                >
+                  {p}
+                </button>
+              ))}
 
               <button
-                type="button"
-                onClick={handleManualClose}
-                className="text-gray-400 hover:text-gray-600"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 disabled:opacity-40 hover:bg-gray-50"
               >
-                <FaTimes />
+                <FaChevronRight className="text-xs" />
               </button>
             </div>
+          </div>
+        )
+      }
 
-            {/* Form */}
-            <form
-              onSubmit={handleManualSubmit}
-              className="px-6 py-5 flex flex-col gap-4"
-              style={{
-                marginRight: "20px",
-                marginLeft: "20px",
-                marginBottom: "10px",
-              }}
-            >
+      {/* ================= MODAL ================= */}
+      {
+        manualInputOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+            <div className="bg-white rounded-2xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
 
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  Settlement Date
-                </label>
-
-                <input
-                  type="date"
-                  name="settlement_date"
-                  value={manualForm.settlement_date}
-                  onChange={handleManualChange}
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  Nama User
-                </label>
-
-                <input
-                  type="text"
-                  name="nama_user"
-                  value={manualForm.nama_user}
-                  onChange={handleManualChange}
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  Cost Center
-                </label>
-
-                <input
-                  type="text"
-                  name="cost_center"
-                  value={manualForm.cost_center}
-                  onChange={handleManualChange}
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  Description
-                </label>
-
-                <textarea
-                  rows={3}
-                  name="description"
-                  value={manualForm.description}
-                  onChange={handleManualChange}
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  Settlement Amount
-                </label>
-
-                <input
-                  type="number"
-                  min="0"
-                  name="settlement_amount"
-                  value={manualForm.settlement_amount}
-                  onChange={handleManualChange}
-                  required
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">
-                  Source
-                </label>
-
-                <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500">
+              {/* Header */}
+              <div
+                className="flex items-center justify-between px-6 py-4 border-b border-gray-200"
+                style={{ marginRight: "20px" }}
+              >
+                <h3
+                  className="text-lg font-semibold text-gray-700"
+                  style={{ marginLeft: "20px" }}
+                >
                   Reimbursement
-                  <span className="block text-xs text-gray-400 mt-0.5">
-                    Manual input hanya untuk data Reimbursement.
-                  </span>
-                </div>
-              </div>
+                </h3>
 
-              {manualError && (
-                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                  {manualError}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2 mt-2 pt-4 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={handleManualClose}
-                  disabled={manualSubmitting}
-                  className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
-                  style={{
-                    padding: "1px 15px",
-                    marginRight: "5px",
-                  }}
+                  className="text-gray-400 hover:text-gray-600"
                 >
-                  Batal
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={manualSubmitting}
-                  className="bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
-                  style={{
-                    padding: "1px 10px",
-                  }}
-                >
-                  {manualSubmitting ? "Menyimpan..." : "Simpan"}
+                  <FaTimes />
                 </button>
               </div>
 
-            </form>
-          </div>
-          {/* ================= DELETE CONFIRM MODAL ================= */}
-          {rowToDelete && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-              <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
-                <div className="px-6 py-5">
-                  <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                    Hapus Data
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    Apakah kamu yakin ingin menghapus data settlement{" "}
-                    <span className="font-medium text-gray-700">
-                      {rowToDelete.no_ppc}
-                    </span>{" "}
-                    atas nama{" "}
-                    <span className="font-medium text-gray-700">
-                      {rowToDelete.nama_user}
-                    </span>
-                    ? Tindakan ini tidak dapat dibatalkan.
-                  </p>
+              {/* Form */}
+              <form
+                onSubmit={handleManualSubmit}
+                className="px-6 py-5 flex flex-col gap-4"
+                style={{
+                  marginRight: "20px",
+                  marginLeft: "20px",
+                  marginBottom: "10px",
+                }}
+              >
 
-                  {deleteError && (
-                    <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                      {deleteError}
-                    </div>
-                  )}
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Settlement Date
+                  </label>
+
+                  <input
+                    type="date"
+                    name="settlement_date"
+                    value={manualForm.settlement_date}
+                    onChange={handleManualChange}
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
                 </div>
 
-                <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Nama User
+                  </label>
+
+                  <input
+                    type="text"
+                    name="nama_user"
+                    value={manualForm.nama_user}
+                    onChange={handleManualChange}
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Cost Center
+                  </label>
+
+                  <input
+                    type="text"
+                    name="cost_center"
+                    value={manualForm.cost_center}
+                    onChange={handleManualChange}
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Description
+                  </label>
+
+                  <textarea
+                    rows={3}
+                    name="description"
+                    value={manualForm.description}
+                    onChange={handleManualChange}
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Settlement Amount
+                  </label>
+
+                  <input
+                    type="number"
+                    min="0"
+                    name="settlement_amount"
+                    value={manualForm.settlement_amount}
+                    onChange={handleManualChange}
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    Source
+                  </label>
+
+                  <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500">
+                    Reimbursement
+                    <span className="block text-xs text-gray-400 mt-0.5">
+                      Manual input hanya untuk data Reimbursement.
+                    </span>
+                  </div>
+                </div>
+
+                {manualError && (
+                  <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    {manualError}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2 mt-2 pt-4 border-t border-gray-100">
                   <button
                     type="button"
-                    onClick={handleDeleteCancel}
-                    disabled={deleting}
+                    onClick={handleManualClose}
+                    disabled={manualSubmitting}
                     className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                    style={{
+                      padding: "1px 15px",
+                      marginRight: "5px",
+                    }}
                   >
                     Batal
                   </button>
 
                   <button
-                    type="button"
-                    onClick={handleDeleteConfirm}
-                    disabled={deleting}
-                    className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
+                    type="submit"
+                    disabled={manualSubmitting}
+                    className="bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
+                    style={{
+                      padding: "1px 10px",
+                    }}
                   >
-                    {deleting ? "Menghapus..." : "Ya, Hapus"}
+                    {manualSubmitting ? "Menyimpan..." : "Simpan"}
                   </button>
                 </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
-    </div>
+              </form>
+            </div>
+            {/* MODAL Konfirmasi Hapus */}
+            {rowToDelete && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+                <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
+                  <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
+                    <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                      Hapus Data
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      Apakah anda yakin ingin menghapus data advance atas nama{" "}
+                      <span className="font-medium text-gray-700">
+                        {rowToDelete.nama_user}
+                      </span>{" "}
+                    </p>
+
+                    {deleteError && (
+                      <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                        {deleteError}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px", marginTop: "10px" }}>
+                    <button
+                      type="button"
+                      onClick={handleDeleteCancel}
+                      disabled={deleting}
+                      className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
+                    >
+                      Batal
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleDeleteConfirm}
+                      disabled={deleting}
+                      className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
+                    >
+                      {deleting ? "Menghapus..." : "Ya, Hapus"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      }
+
+    </div >
   );
 }
