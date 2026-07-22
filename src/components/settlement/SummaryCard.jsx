@@ -13,6 +13,7 @@ const cards = [
     {
         title: "Total Settlement",
         key: "total",
+        altKey: "total_settlement",
         border: "border-gray-300",
         iconBg: "bg-gray-100",
         iconColor: "text-gray-600",
@@ -23,6 +24,7 @@ const cards = [
     {
         title: "Advance Settlement",
         key: "advance",
+        altKey: "total_advance",
         border: "border-gray-300",
         iconBg: "bg-gray-100",
         iconColor: "text-gray-600",
@@ -33,6 +35,7 @@ const cards = [
     {
         title: "Reimbursement Settlement",
         key: "reimbursement",
+        altKey: "total_reimbursement",
         border: "border-gray-300",
         iconBg: "bg-gray-100",
         iconColor: "text-gray-600",
@@ -42,7 +45,8 @@ const cards = [
     },
     {
         title: "Total Amount Settlement",
-        key: "totalAmount",
+        key: "total_amount",
+        altKey: "total_settlement_amount",
         border: "border-gray-300",
         iconBg: "bg-gray-100",
         iconColor: "text-gray-600",
@@ -52,22 +56,6 @@ const cards = [
     },
 ];
 
-// ======================================================================
-// data yang diharapkan komponen ini (dikirim lewat props `data`),
-// berbentuk OBJECT (bukan array), key-nya HARUS cocok dengan `key`
-// di array `cards` di atas:
-//
-// {
-//   "total": 215,
-//   "advance": 140,
-//   "reimbursement": 75,
-//   "this_month": 23
-// }
-//
-// Kalau field dari backend namanya beda, tinggal mapping dulu
-// sebelum dikirim sebagai prop `data` ke komponen ini.
-// ======================================================================
-
 export default function SummaryCard({ data = {} }) {
     return (
         <div
@@ -75,13 +63,14 @@ export default function SummaryCard({ data = {} }) {
             style={{ marginBottom: "20px", marginTop: "20px", paddingLeft: "20px", paddingRight: "20px" }}
         >
             {cards.map((item) => {
-                const value = data[item.key];
+                const value = data[item.key] ?? data[item.altKey];
                 const displayValue =
                     value !== undefined && value !== null
                         ? item.currency
                             ? formatRupiah(value)
                             : value
                         : "-";
+
 
                 return (
                     <div

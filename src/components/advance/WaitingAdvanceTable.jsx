@@ -13,7 +13,8 @@ import {
 //     deleteAdvanceRequest,
 //     cancelAdvanceRequest,
 //     generatePPCNumber,
-//     submitSettlement
+//     submitSettlement,
+//     getSettlementReceipt
 // } from "../../api/advance";
 
 const STATUS_STYLE = {
@@ -146,7 +147,7 @@ const initialForm = {
 };
 
 // Detail popup untuk row dengan status SETTLED (settlement receipt)
-function SettlementReceiptModal({ row, onClose }) {
+function SettlementReceiptModal({ row, receiptData, receiptLoading, onClose }) {
     if (!row) return null;
 
     const Line = ({ label, value }) => (
@@ -165,22 +166,29 @@ function SettlementReceiptModal({ row, onClose }) {
                     </h3>
                     <div className="border-b border-gray-300 mb-4" />
 
-                    <Line label="PPC No" value={row.ppc_no} />
-                    <Line label="Employee" value={row.nama_user} />
-                    <Line label="Advance Amount" value={formatRupiah(row.jumlah)} />
-                    <Line
-                        label="Settlement Amount"
-                        value={
-                            row.settlement_amount !== undefined &&
-                                row.settlement_amount !== null
-                                ? formatRupiah(row.settlement_amount)
-                                : "-"
-                        }
-                    />
-                    <Line label="Settlement Date" value={formatDate(row.tgl_penyelesaian)} />
-                    <Line label="Description" value={row.keterangan} />
-                    <Line label="Created By" value={row.created_by} />
-                    <Line label="Status" value={row.status?.toUpperCase()} />
+                    {receiptLoading ? (
+                        <div className="text-sm text-gray-400 text-center py-4">Memuat data...</div>
+                    ) : receiptData ? (
+                        <>
+                            <Line label="PPC No" value={receiptData.ppc_no} />
+                            <Line label="Employee" value={receiptData.employee_name} />
+                            <Line label="Advance Amount" value={formatRupiah(row.jumlah)} />
+                            <Line
+                                label="Settlement Amount"
+                                value={
+                                    receiptData.settlement_amount !== undefined &&
+                                        receiptData.settlement_amount !== null
+                                        ? formatRupiah(receiptData.settlement_amount)
+                                        : "-"
+                                }
+                            />
+                            <Line label="Settlement Date" value={formatDate(receiptData.settlement_date)} />
+                            <Line label="Description" value={receiptData.description} />
+                            <Line label="Status" value="SETTLED" />
+                        </>
+                    ) : (
+                        <div className="text-sm text-red-500 text-center py-4">Gagal memuat data receipt.</div>
+                    )}
                 </div>
 
                 <div className="flex justify-end px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px", marginTop: "10px" }}>
@@ -344,6 +352,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
     // STATUS DETAIL POPUP (Settled)
     const [rowToShowSettlement, setRowToShowSettlement] = useState(null);
+    const [receiptData, setReceiptData] = useState(null);
+    const [receiptLoading, setReceiptLoading] = useState(false);
 
     // STATUS FORM POPUP (Active / Overdue -> submit settlement)
     const [rowToSettle, setRowToSettle] = useState(null);
@@ -624,9 +634,20 @@ export default function Table({ startDate, endDate, refreshKey }) {
     };
 
     // STATUS BADGE CLICK
-    const handleStatusClick = (row) => {
+    const handleStatusClick = async (row) => {
         if (row.status === "Settled") {
             setRowToShowSettlement(row);
+            setReceiptData(null);
+            setReceiptLoading(true);
+            try {
+                const data = await getSettlementReceipt(row.id);
+                setReceiptData(data);
+            } catch (err) {
+                console.error("Gagal memuat receipt:", err);
+                setReceiptData(null);
+            } finally {
+                setReceiptLoading(false);
+            }
         } else if (row.status === "Active" || row.status === "Overdue") {
             setRowToSettle(row);
             setSettlementForm({
@@ -1178,7 +1199,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 {/* MODAL Detail Settlement (klik status Settled) */}
                 <SettlementReceiptModal
                     row={rowToShowSettlement}
-                    onClose={() => setRowToShowSettlement(null)}
+                    receiptData={receiptData}
+                    receiptLoading={receiptLoading}
+                    onClose={() => {
+                        setRowToShowSettlement(null);
+                        setReceiptData(null);
+                    }}
                 />
 
                 {/* MODAL Form Settlement (klik status Active / Overdue) */}

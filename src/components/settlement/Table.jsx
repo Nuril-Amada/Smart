@@ -6,6 +6,14 @@ import {
   FaTrash,
 } from "react-icons/fa";
 
+// import {
+//   getSettlementList,
+//   createReimbursement,
+//   deleteReimbursement,
+//   toggleSettlementCheck,
+// } from "../../api/settlement";
+// import { generatePPCNumber } from "../../api/advance";
+
 // STYLE
 const SOURCE_STYLE = {
   Advance: "bg-green-100 text-green-700",
@@ -162,14 +170,18 @@ export default function Table({ startDate, endDate, refreshKey }) {
   const [manualError, setManualError] = useState("");
   const [manualForm, setManualForm] = useState(initialForm);
 
-  // SAP CHECKBOX (key = no_ppc, biar konsisten walau pindah halaman/filter)
-  const [sapChecked, setSapChecked] = useState({});
-
-  const toggleSap = (key) => {
-    setSapChecked((prev) => ({
-      ...prev,
-      [key]: !prev[key],
-    }));
+  // SAP CHECKBOX — state disimpan di backend via is_checked
+  const toggleSap = async (row) => {
+    try {
+      const updatedRow = await toggleSettlementCheck(row.id);
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === row.id ? { ...r, is_checked: updatedRow.is_checked } : r
+        )
+      );
+    } catch (err) {
+      console.error("Gagal update checklist:", err);
+    }
   };
 
   // DELETE CONFIRM
@@ -190,6 +202,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
             endDate || undefined,
         });
       const data = result.map((item) => ({
+        id:
+          item.id,
         tanggal:
           item.settlement_date,
         no_ppc:
@@ -206,6 +220,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
           item.source === "ADVANCE"
             ? "Advance"
             : "Reimbursement",
+        is_checked:
+          item.is_checked,
       }));
 
       setRows(data);
@@ -272,54 +288,35 @@ export default function Table({ startDate, endDate, refreshKey }) {
       .slice(0, 8);
   }, [rows, filterCostCenter]);
 
-  const handleRequestChange = async (e) => {
+  // MANUAL INPUT REIMBURSEMENT
+  const handleManualChange = async (e) => {
     const { name, value } = e.target;
 
-    // Jika field selain request_date
-    if (name !== "request_date") {
-      setRequestForm((prev) => ({
+    if (name !== "settlement_date") {
+      setManualForm((prev) => ({
         ...prev,
         [name]: value,
       }));
       return;
     }
-    // AUTO GENERATE PPC NUMBER
 
-    try {
-      const response = await generatePPCNumber(
-        value
-      );
-
-      setRequestForm((prev) => ({
-        ...prev,
-        request_date: value,
-        due_date: dueDate,
-        ppc_no: response.ppc_no,
-      }));
-
-    } catch (error) {
-
-      console.error(
-        "Gagal generate PPC Number",
-        error
-      );
-
-      setRequestForm((prev) => ({
-        ...prev,
-        request_date: value,
-        due_date: dueDate,
-      }));
+    let ppcNo = "";
+    if (value) {
+      try {
+        const response = await generatePPCNumber(value);
+        ppcNo = response.ppc_no;
+      } catch (error) {
+        console.error("Gagal generate PPC Number", error);
+      }
     }
-  };
 
-  // MANUAL INPUT
-  const handleManualChange = (e) => {
-    const { name, value } = e.target;
     setManualForm((prev) => ({
       ...prev,
-      [name]: value,
+      settlement_date: value,
+      ppc_no: ppcNo,
     }));
   };
+
 
   const handleManualClose = () => {
     setManualInputOpen(false);
@@ -335,10 +332,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
       await createReimbursement({
         settlement_date:
           manualForm.settlement_date,
-        ppc_no:
-          manualForm.no_ppc,
         employee_name:
-          manualForm.nama_user,
+          manualForm.employee_name,
         cost_center:
           manualForm.cost_center,
         description:
@@ -380,29 +375,22 @@ export default function Table({ startDate, endDate, refreshKey }) {
     if (!rowToDelete) return;
 
     try {
-
       setDeleting(true);
       setDeleteError("");
 
-      await deleteAdvanceRequest(
-        rowToDelete.id
-      );
+      await deleteReimbursement(rowToDelete.id);
 
       setRowToDelete(null);
 
       loadData();
 
     } catch (err) {
-
       setDeleteError(
         err.response?.data?.detail ||
         "Gagal menghapus data."
       );
-
     } finally {
-
       setDeleting(false);
-
     }
   };
 
@@ -539,7 +527,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
                       {formatDate(row.tanggal)}
                     </td>
-                    <td className="p-3 text-gray-700 border border-gray-300">{row.ppc_no}</td>
+                    <td className="p-3 text-gray-700 border border-gray-300">{row.no_ppc}</td>
                     <td className="p-3 text-gray-700 border border-gray-300">{row.nama_user}</td>
                     <td className="p-3 text-gray-700 border border-gray-300">{row.cost_center}</td>
                     <td className="p-3 text-gray-700 border border-gray-300">{row.description}</td>
@@ -560,8 +548,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
                       <div className="flex items-center justify-center gap-2">
                         <input
                           type="checkbox"
-                          checked={!!sapChecked[row.no_ppc]}
-                          onChange={() => toggleSap(row.no_ppc)}
+                          checked={!!row.is_checked}
+                          onChange={() => toggleSap(row)}
                           className="w-4 h-4 accent-gray-600 cursor-pointer"
                         />
 
@@ -677,6 +665,20 @@ export default function Table({ startDate, endDate, refreshKey }) {
                   marginBottom: "10px",
                 }}
               >
+                <div>
+                  <label className="block text-sm text-gray-600 mb-1">
+                    PPC Number
+                  </label>
+                  <input
+                    type="text"
+                    value={
+                      manualForm.ppc_no ||
+                      "Pilih tanggal terlebih dahulu"
+                    }
+                    readOnly
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-600"
+                  />
+                </div>
 
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">
@@ -693,6 +695,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                   />
                 </div>
 
+
                 <div>
                   <label className="block text-sm text-gray-600 mb-1">
                     Nama User
@@ -700,8 +703,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
                   <input
                     type="text"
-                    name="nama_user"
-                    value={manualForm.nama_user}
+                    name="employee_name"
+                    value={manualForm.employee_name || ""}
                     onChange={handleManualChange}
                     required
                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
