@@ -557,16 +557,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
                       </span>
                     </td>
                     <td className="p-3 border border-gray-300">
-                      <span
-                        className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap ${SOURCE_STYLE[
-                          row.source
-                        ]
-                          }`}
-                      >
-                        {row.source}
-                      </span>
-                    </td>
-                    <td className="p-3 border border-gray-300">
                       <div className="flex items-center justify-center gap-2">
                         <input
                           type="checkbox"
@@ -650,7 +640,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
         )
       }
 
-      {/* ================= MODAL ================= */}
+      {/* ================= MODAL MANUAL INPUT ================= */}
       {
         manualInputOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
@@ -811,50 +801,56 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
               </form>
             </div>
-            {/* MODAL Konfirmasi Hapus */}
-            {rowToDelete && (
-              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
-                  <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
-                    <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                      Hapus Data
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      Apakah anda yakin ingin menghapus data advance atas nama{" "}
-                      <span className="font-medium text-gray-700">
-                        {rowToDelete.nama_user}
-                      </span>{" "}
-                    </p>
+          </div>
+        )
+      }
 
-                    {deleteError && (
-                      <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                        {deleteError}
-                      </div>
-                    )}
+      {/* ================= MODAL KONFIRMASI HAPUS ================= */}
+      {/* FIX: dipindah keluar dari blok manualInputOpen, jadi sibling langsung */}
+      {/* dari elemen di atas, supaya bisa muncul terlepas dari status modal */}
+      {/* Manual Input / Reimbursement */}
+      {
+        rowToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
+              <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                  Hapus Data
+                </h3>
+                <p className="text-sm text-gray-500">
+                  Apakah anda yakin ingin menghapus data settlement atas nama{" "}
+                  <span className="font-medium text-gray-700">
+                    {rowToDelete.nama_user}
+                  </span>{" "}
+                </p>
+
+                {deleteError && (
+                  <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    {deleteError}
                   </div>
-
-                  <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px", marginTop: "10px" }}>
-                    <button
-                      type="button"
-                      onClick={handleDeleteCancel}
-                      disabled={deleting}
-                      className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
-                    >
-                      Batal
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleDeleteConfirm}
-                      disabled={deleting}
-                      className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
-                    >
-                      {deleting ? "Menghapus..." : "Ya, Hapus"}
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
-            )}
+
+              <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px", marginTop: "10px" }}>
+                <button
+                  type="button"
+                  onClick={handleDeleteCancel}
+                  disabled={deleting}
+                  className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
+                >
+                  Batal
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDeleteConfirm}
+                  disabled={deleting}
+                  className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
+                >
+                  {deleting ? "Menghapus..." : "Ya, Hapus"}
+                </button>
+              </div>
+            </div>
           </div>
         )
       }
