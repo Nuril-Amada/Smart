@@ -666,11 +666,12 @@ const TABS = [
         searchKey: "employee_name",
         searchLabel: "Nama Employee",
         searchPlaceholder: "Cari Nama Employee...",
-        initialForm: { employee_name: "", email: "" },
+        initialForm: { employee_name: "", employee_email: "", department_email: "" },
         initialRows: [],
         fields: [
             { name: "employee_name", label: "Nama Employee", placeholder: "Andi Pratama" },
-            { name: "email", label: "Email", type: "email", placeholder: "andi.pratama@company.com" },
+            { name: "employee_email", label: "Email User", type: "email", placeholder: "andi.pratama@company.com" },
+            { name: "department_email", label: "Email Department", type: "email", placeholder: "finance@company.com" },
         ],
         columns: [
             { key: "employee_name", label: "Name" },
@@ -744,7 +745,7 @@ const TABS = [
 
 // ================= PAGE: MASTER DATA =================
 export default function MasterData() {
-    const [activeTab, setActiveTab] = useState(null);
+    const [activeTab, setActiveTab] = useState("employee");
 
     const activeConfig = TABS.find((t) => t.id === activeTab);
 
@@ -767,7 +768,7 @@ export default function MasterData() {
                         <button
                             key={tab.id}
                             type="button"
-                            onClick={() => setActiveTab(isActive ? null : tab.id)}
+                            onClick={() => setActiveTab(tab.id)}
                             style={{
                                 position: "relative",
                                 display: "flex",
@@ -919,24 +920,6 @@ export default function MasterData() {
                         createData={activeTab === "employee" ? createEmployee : null}
                         deleteData={activeTab === "employee" ? deleteEmployee : null}
                     />
-                </div>
-            )}
-
-            {/* Placeholder saat belum ada tab dipilih */}
-            {!activeConfig && (
-                <div
-                    style={{
-                        marginTop: "20px",
-                        textAlign: "center",
-                        padding: "60px 24px",
-                        color: "#d1d5db",
-                        fontSize: "14px",
-                        background: "#fafbff",
-                        borderRadius: "20px",
-                        border: "2px dashed #e5e7eb",
-                    }}
-                >
-                    Pilih salah satu kategori di atas untuk melihat datanya
                 </div>
             )}
         </div>
