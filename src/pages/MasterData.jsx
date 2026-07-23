@@ -138,6 +138,7 @@ function MasterDataSection({
     const [submitError, setSubmitError] = useState("");
     const [rowToDelete, setRowToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
+    const [successMessage, setSuccessMessage] = useState("");
     // PAGINATION
     const [page, setPage] = useState(1);
     const perPage = 10;
@@ -212,7 +213,7 @@ function MasterDataSection({
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        const isEmpty = fields.some((field) => !form[field.name]?.trim());
+        const isEmpty = fields.some((field) => field.required !== false && !form[field.name]?.trim());
         if (isEmpty) {
             setSubmitError("Semua field wajib diisi.");
             return;
@@ -221,6 +222,8 @@ function MasterDataSection({
         const newRow = { id: Date.now(), ...form };
         setRows((prev) => [...prev, newRow]);
         handleClose();
+        setSuccessMessage("Data baru berhasil disimpan");
+        setTimeout(() => setSuccessMessage(""), 3000);
     };
 
     const handleDeleteClick = (row) => setRowToDelete(row);
@@ -241,7 +244,35 @@ function MasterDataSection({
                     from { opacity: 0; transform: translateY(-12px); }
                     to   { opacity: 1; transform: translateY(0); }
                 }
+                @keyframes toastIn {
+                    from { opacity: 0; transform: translate(-50%, -12px); }
+                    to   { opacity: 1; transform: translate(-50%, 0); }
+                }
             `}</style>
+
+            {/* Notifikasi berhasil simpan */}
+            {successMessage && (
+                <div
+                    style={{
+                        position: "fixed",
+                        top: "20px",
+                        left: "50%",
+                        transform: "translate(-50%, 0)",
+                        zIndex: 100,
+                        background: "#ecfdf5",
+                        border: "1.5px solid #6ee7b7",
+                        color: "#047857",
+                        borderRadius: "10px",
+                        padding: "10px 18px",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        boxShadow: "0 8px 24px rgba(16,185,129,0.25)",
+                        animation: "toastIn 0.25s ease",
+                    }}
+                >
+                    {successMessage}
+                </div>
+            )}
 
             {/* Header filter search + tombol tambah */}
             <div
@@ -670,8 +701,8 @@ const TABS = [
         initialRows: [],
         fields: [
             { name: "employee_name", label: "Nama Employee", placeholder: "Andi Pratama" },
-            { name: "employee_email", label: "Email User", type: "email", placeholder: "andi.pratama@company.com" },
-            { name: "department_email", label: "Email Department", type: "email", placeholder: "finance@company.com" },
+            { name: "employee_email", label: "Email User", type: "email", placeholder: "andi.pratama@company.com", required: false },
+            { name: "department_email", label: "Email Department", type: "email", placeholder: "finance@company.com", required: false },
         ],
         columns: [
             { key: "employee_name", label: "Name" },
@@ -759,6 +790,12 @@ export default function MasterData() {
                     gridTemplateColumns: "repeat(4, 1fr)",
                     gap: "12px",
                     marginBottom: "8px",
+                    position: "sticky",
+                    top: 0,
+                    zIndex: 20,
+                    background: "#fff",
+                    paddingTop: "8px",
+                    paddingBottom: "8px",
                 }}
             >
                 {TABS.map((tab) => {
