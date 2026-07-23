@@ -326,7 +326,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
     const [error, setError] = useState("");
 
     const [page, setPage] = useState(1);
-    const perPage = 15;
+    const perPage = 10;
 
     const [filterUser, setFilterUser] = useState("");
     const [filterCostCenter, setFilterCostCenter] = useState("");
@@ -836,8 +836,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 <th className="p-3 font-medium border border-gray-300">No PPC</th>
                                 <th className="p-3 font-medium border border-gray-300">Nama User</th>
                                 <th className="p-3 font-medium border border-gray-300">Cost Center</th>
-                                <th className="p-3 font-medium border border-gray-300">Keterangan</th>
-                                <th className="p-3 font-medium border border-gray-300">Jumlah</th>
+                                <th className="p-3 font-medium border border-gray-300">Description</th>
+                                <th className="p-3 font-medium border border-gray-300">Amount</th>
                                 <th className="p-3 font-medium border border-gray-300">Due Date</th>
                                 <th className="p-3 font-medium border border-gray-300">Status</th>
                                 <th className="p-3 font-medium border border-gray-300">Action</th>

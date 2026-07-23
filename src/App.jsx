@@ -9,6 +9,7 @@ import CetakCek from "./pages/CetakCek";
 import BuatCekBaru from "./pages/BuatCekBaru";
 import Settlement from "./pages/Settlement";
 import Advance from "./pages/Advance";
+import MasterData from "./pages/MasterData";
 
 function App() {
   return (
@@ -28,6 +29,9 @@ function App() {
 
         {/* Advance */}
         <Route path="/Advance" element={<MainLayout><Advance /></MainLayout>} />
+
+        {/* Master Data */}
+        <Route path="/MasterData" element={<MainLayout><MasterData /></MainLayout>} />
 
       </Routes>
     </BrowserRouter>

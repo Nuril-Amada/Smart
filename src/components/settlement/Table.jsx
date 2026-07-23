@@ -154,7 +154,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
   // PAGINATION
   const [page, setPage] = useState(1);
-  const perPage = 15;
+  const perPage = 10;
 
   // FILTER
   const [filterUser, setFilterUser] = useState("");

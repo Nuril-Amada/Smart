@@ -4,7 +4,7 @@ import {
   FaMoneyCheckAlt,
   FaWallet,
   FaFileInvoiceDollar,
-  FaFileExport,
+  FaDatabase,
 } from "react-icons/fa";
 
 import logo from "../../assets/LOGO.png";
@@ -52,9 +52,9 @@ const menu = [
     title: "",
     items: [
       {
-        name: "Export",
-        icon: <FaFileExport />,
-        path: "/Export",
+        name: "Master Data",
+        icon: <FaDatabase />,
+        path: "/MasterData",
       },
     ],
   },
@@ -68,21 +68,21 @@ export default function Sidebar() {
 
       <div className="h-24 border-b border-gray-600 flex items-center">
 
-        <div className="flex items-center" style={{ marginLeft: "15px" }}>
+        <div className="flex items-center gap-2.5" style={{ marginLeft: "15px" }}>
 
           <img
             src={logo}
             alt="Logo"
-            className="w-13 h-13 object-contain mr-4"
+            className="w-12 h-12 object-contain flex-shrink-0"
           />
 
           <div>
 
-            <h1 className="text-[22px] font-bold text-white leading-none">
+            <h1 className="text-[20px] font-bold text-white leading-none">
               Navicash
             </h1>
 
-            <p className="text-[13px] text-gray-300 mt-1">
+            <p className="text-[12px] text-gray-300 mt-1">
               PT. SMART Tbk.
             </p>
 

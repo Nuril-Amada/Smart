@@ -14,7 +14,7 @@ export default function Navbar() {
     "/CetakCekBaru": "Buat Cek Baru",
     "/Settlement": "Dashboard Settlement",
     "/Advance": "Dashboard Advance",
-    "/Export": "Export SAP",
+    "/MasterData": "Master Data",
   };
 
   return (
