@@ -789,11 +789,11 @@ export default function MasterData() {
                     display: "grid",
                     gridTemplateColumns: "repeat(4, 1fr)",
                     gap: "12px",
-                    marginBottom: "8px",
-                    position: "sticky",
+                    position: "fixed",
                     top: 0,
+                    left: "20px",
+                    right: "20px",
                     zIndex: 20,
-                    background: "#fff",
                     paddingTop: "8px",
                     paddingBottom: "8px",
                 }}
@@ -902,6 +902,9 @@ export default function MasterData() {
                     );
                 })}
             </div>
+
+            {/* Spacer agar konten tidak tertutup tombol yang fixed */}
+            <div style={{ height: "68px" }} />
 
             {/* ── Panel konten ── */}
             {activeConfig && (
