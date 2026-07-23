@@ -1,15 +1,12 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { FaPlus, FaTimes, FaTrash, FaUsers, FaBook, FaSitemap, FaBuilding, FaSearch } from "react-icons/fa";
+import { FaPlus, FaTimes, FaTrash, FaUsers, FaBook, FaSitemap, FaBuilding, FaSearch, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+// import {
 
-// CATATAN:
-// File ini untuk sementara BELUM terhubung ke backend/API apapun.
-// Data (tambah & hapus) disimpan di state lokal React saja, jadi akan
-// hilang lagi kalau halaman di-refresh. Nanti kalau API dari backend
-// sudah siap, tinggal ganti bagian:
-//   - handleSubmit  -> panggil fungsi create... ke API
-//   - handleDeleteConfirm -> panggil fungsi delete... ke API
-//   - tambahkan useEffect + fungsi list... untuk load data awal dari API
-// Struktur komponennya sudah disiapkan supaya gampang di-swap nanti.
+//     getEmployees,
+//     createEmployee,
+//     deleteEmployee
+
+// } from "../api/employee";
 
 // ================= AUTOCOMPLETE INPUT =================
 function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder }) {
@@ -58,6 +55,8 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
         }
     };
 
+
+
     return (
         <div className="relative" ref={containerRef}>
             <div className="relative">
@@ -97,9 +96,8 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
                                 e.preventDefault();
                                 handleSelect(s);
                             }}
-                            className={`px-3 py-2 text-sm cursor-pointer border-b border-gray-50 last:border-0 ${
-                                i === highlight ? "bg-gray-100 font-semibold text-gray-900" : "text-gray-700 hover:bg-gray-50"
-                            }`}
+                            className={`px-3 py-2 text-sm cursor-pointer border-b border-gray-50 last:border-0 ${i === highlight ? "bg-gray-100 font-semibold text-gray-900" : "text-gray-700 hover:bg-gray-50"
+                                }`}
                         >
                             {s}
                         </li>
@@ -111,14 +109,61 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
 }
 
 // ================= GENERIC MASTER DATA SECTION =================
-function MasterDataSection({ addLabel, initialForm, fields, columns, initialRows = [], searchKey, searchLabel, searchPlaceholder }) {
+function MasterDataSection({
+    addLabel,
+    initialForm,
+    fields,
+    columns,
+    initialRows = [],
+    searchKey,
+    searchLabel,
+    searchPlaceholder,
+    fetchData,
+    createData,
+    deleteData
+}) {
     const [rows, setRows] = useState(initialRows);
+    const loadData = async () => {
+        if (!fetchData) return;
+        try {
+            const data = await fetchData(searchTerm);
+            setRows(data);
+        }
+        catch (error) {
+            console.log(error);
+        }
+    };
     const [modalOpen, setModalOpen] = useState(false);
     const [form, setForm] = useState(initialForm);
     const [submitError, setSubmitError] = useState("");
     const [rowToDelete, setRowToDelete] = useState(null);
-
     const [searchTerm, setSearchTerm] = useState("");
+    // PAGINATION
+    const [page, setPage] = useState(1);
+    const perPage = 10;
+    useEffect(() => { loadData(); }, []);
+    useEffect(() => {
+        loadData();
+
+    }, []);
+
+
+    useEffect(() => {
+
+        const timeout = setTimeout(() => {
+
+            handleSearch();
+
+        }, 300);
+
+
+        return () => {
+
+            clearTimeout(timeout);
+
+        }
+
+    }, [searchTerm]);
 
     const filteredRows = useMemo(() => {
         if (!searchTerm.trim() || !searchKey) return rows;
@@ -127,6 +172,20 @@ function MasterDataSection({ addLabel, initialForm, fields, columns, initialRows
             (row[searchKey] || "").toString().toLowerCase().includes(q)
         );
     }, [rows, searchTerm, searchKey]);
+
+    // PAGINATION (mengikuti pola pada tabel Settlement)
+    useEffect(() => {
+        setPage(1);
+    }, [searchTerm, rows]);
+
+    const total = filteredRows.length;
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+    const currentRows = filteredRows.slice((page - 1) * perPage, page * perPage);
+    const startEntry = total === 0 ? 0 : (page - 1) * perPage + 1;
+    const endEntry = Math.min(page * perPage, total);
+
+    const visiblePages = [];
+    for (let i = 1; i <= totalPages; i++) visiblePages.push(i);
 
     const suggestions = useMemo(() => {
         if (!searchTerm || !searchKey) return [];
@@ -173,6 +232,7 @@ function MasterDataSection({ addLabel, initialForm, fields, columns, initialRows
         setRows((prev) => prev.filter((r) => r.id !== rowToDelete.id));
         setRowToDelete(null);
     };
+
 
     return (
         <div style={{ animation: "slideDown 0.3s ease" }}>
@@ -275,9 +335,9 @@ function MasterDataSection({ addLabel, initialForm, fields, columns, initialRows
 
                     {filteredRows.length > 0 && (
                         <tbody>
-                            {filteredRows.map((row, idx) => (
+                            {currentRows.map((row, idx) => (
                                 <tr key={row.id} className="hover:bg-gray-50">
-                                    <td className="p-3 text-gray-700 border border-gray-300">{idx + 1}</td>
+                                    <td className="p-3 text-gray-700 border border-gray-300">{(page - 1) * perPage + idx + 1}</td>
                                     {columns.map((col) => (
                                         <td key={col.key} className="p-3 text-gray-700 border border-gray-300">
                                             {row[col.key] ?? "-"}
@@ -300,6 +360,54 @@ function MasterDataSection({ addLabel, initialForm, fields, columns, initialRows
                     )}
                 </table>
             </div>
+
+            {/* ================= PAGINATION (seperti tabel Settlement) ================= */}
+            {filteredRows.length > 0 && (
+                <div
+                    className="flex items-center justify-between mt-4 text-sm text-gray-500"
+                    style={{
+                        marginLeft: "10px",
+                        marginRight: "10px",
+                        marginTop: "10px",
+                        marginBottom: "10px",
+                    }}
+                >
+                    <span>
+                        Showing {startEntry} to {endEntry} of {total} entries
+                    </span>
+
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={() => setPage((p) => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 disabled:opacity-40 hover:bg-gray-50"
+                        >
+                            <FaChevronLeft className="text-xs" />
+                        </button>
+
+                        {visiblePages.map((p) => (
+                            <button
+                                key={p}
+                                onClick={() => setPage(p)}
+                                className={`w-8 h-8 flex items-center justify-center rounded-md text-sm ${page === p
+                                    ? "bg-gray-600 text-white"
+                                    : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                                    }`}
+                            >
+                                {p}
+                            </button>
+                        ))}
+
+                        <button
+                            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                            className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 disabled:opacity-40 hover:bg-gray-50"
+                        >
+                            <FaChevronRight className="text-xs" />
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {/* MODAL TAMBAH */}
             {modalOpen && (
@@ -565,8 +673,9 @@ const TABS = [
             { name: "email", label: "Email", type: "email", placeholder: "andi.pratama@company.com" },
         ],
         columns: [
-            { key: "employee_name", label: "Nama Employee" },
-            { key: "email", label: "Email" },
+            { key: "employee_name", label: "Name" },
+            { key: "employee_email", label: "Email User" },
+            { key: "department_email", label: "Email Department" },
         ],
     },
     {
@@ -806,6 +915,9 @@ export default function MasterData() {
                         searchKey={activeConfig.searchKey}
                         searchLabel={activeConfig.searchLabel}
                         searchPlaceholder={activeConfig.searchPlaceholder}
+                        fetchData={activeTab === "employee" ? getEmployees : null}
+                        createData={activeTab === "employee" ? createEmployee : null}
+                        deleteData={activeTab === "employee" ? deleteEmployee : null}
                     />
                 </div>
             )}
