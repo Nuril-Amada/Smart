@@ -531,7 +531,7 @@ function MasterDataSection({
                                         }}
                                         onFocus={(e) => {
                                             e.target.style.borderColor = "#59616F";
-                                            e.target.style.boxShadow = "0 0 0 3px #59616F)";
+                                            e.target.style.boxShadow = "0 0 0 3px rgba(89,97,111,0.15)";
                                         }}
                                         onBlur={(e) => {
                                             e.target.style.borderColor = "#e5e7eb";
@@ -593,7 +593,7 @@ function MasterDataSection({
                                         color: "#fff",
                                         cursor: "pointer",
                                         fontWeight: 600,
-                                        boxShadow: "0 4px 12px #59616F)",
+                                        boxShadow: "0 4px 12px rgba(89,97,111,0.35)",
                                     }}
                                 >
                                     Simpan
@@ -780,22 +780,45 @@ export default function MasterData() {
 
     const activeConfig = TABS.find((t) => t.id === activeTab);
 
-    return (
-        <div style={{ padding: "20px 20px 20px", minHeight: "100vh" }}>
+    // Guard: fungsi API opsional, aman walau belum di-import (mencegah ReferenceError)
+    const safeGetEmployees = typeof getEmployees !== "undefined" ? getEmployees : null;
+    const safeCreateEmployee = typeof createEmployee !== "undefined" ? createEmployee : null;
+    const safeDeleteEmployee = typeof deleteEmployee !== "undefined" ? deleteEmployee : null;
 
-            {/* ── 4 Tab Buttons ── */}
+    return (
+        // Container luar: scroll terjadi DI SINI (bukan di window), supaya bar tab
+        // yang "sticky" punya konteks scroll yang jelas dan benar-benar diam/beku.
+        <div
+            style={{
+                padding: "0 20px 20px",
+                minHeight: "100vh",
+                maxHeight: "100vh",
+                overflowY: "auto",
+                boxSizing: "border-box",
+            }}
+        >
+
+            {/* ── 4 Tab Buttons: benar-benar beku di posisi semula, tanpa kotak putih di belakangnya ── */}
             <div
                 style={{
+                    position: "sticky",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    zIndex: 30,
+                    isolation: "isolate",
+                    // Tanpa background solid putih. Pakai lapisan tipis blur supaya
+                    // konten tabel yang scroll di baliknya tidak "menumpuk"/terlihat tembus,
+                    // tapi tidak lagi berupa kotak putih polos.
+                    background: "rgba(255,255,255,0.6)",
+                    backdropFilter: "blur(10px)",
+                    WebkitBackdropFilter: "blur(10px)",
                     display: "grid",
                     gridTemplateColumns: "repeat(4, 1fr)",
                     gap: "12px",
-                    marginBottom: "8px",
-                    position: "sticky",
-                    top: 0,
-                    zIndex: 20,
-                    background: "#fff",
-                    paddingTop: "8px",
+                    paddingTop: "20px",
                     paddingBottom: "8px",
+                    marginBottom: "8px",
                 }}
             >
                 {TABS.map((tab) => {
@@ -822,11 +845,10 @@ export default function MasterData() {
                                     ? `linear-gradient(135deg, ${tab.color}15, ${tab.color}06)`
                                     : "#fff",
                                 cursor: "pointer",
-                                transform: isActive ? "translateY(-5px)" : "translateY(0)",
                                 boxShadow: isActive
                                     ? `0 10px 28px ${tab.color}28, 0 4px 10px ${tab.color}18`
                                     : "0 2px 6px rgba(0,0,0,0.06)",
-                                transition: "transform 0.25s cubic-bezier(.34,1.56,.64,1), box-shadow 0.25s ease, border-color 0.2s, background 0.2s",
+                                transition: "box-shadow 0.2s ease, border-color 0.2s, background 0.2s",
                                 outline: "none",
                                 zIndex: isActive ? 2 : 1,
                                 textAlign: "left",
@@ -835,14 +857,12 @@ export default function MasterData() {
                             }}
                             onMouseEnter={(e) => {
                                 if (!isActive) {
-                                    e.currentTarget.style.transform = "translateY(-2px)";
                                     e.currentTarget.style.boxShadow = `0 6px 16px ${tab.color}18`;
                                     e.currentTarget.style.borderColor = `${tab.color}50`;
                                 }
                             }}
                             onMouseLeave={(e) => {
                                 if (!isActive) {
-                                    e.currentTarget.style.transform = "translateY(0)";
                                     e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.06)";
                                     e.currentTarget.style.borderColor = "#e5e7eb";
                                 }
@@ -915,6 +935,8 @@ export default function MasterData() {
                         boxShadow: `0 8px 32px ${activeConfig.color}12`,
                         padding: "24px",
                         animation: "slideDown 0.3s cubic-bezier(.34,1.56,.64,1)",
+                        position: "relative",
+                        zIndex: 1,
                     }}
                 >
                     {/* Header panel */}
@@ -953,9 +975,9 @@ export default function MasterData() {
                         searchKey={activeConfig.searchKey}
                         searchLabel={activeConfig.searchLabel}
                         searchPlaceholder={activeConfig.searchPlaceholder}
-                        fetchData={activeTab === "employee" ? getEmployees : null}
-                        createData={activeTab === "employee" ? createEmployee : null}
-                        deleteData={activeTab === "employee" ? deleteEmployee : null}
+                        fetchData={activeTab === "employee" ? safeGetEmployees : null}
+                        createData={activeTab === "employee" ? safeCreateEmployee : null}
+                        deleteData={activeTab === "employee" ? safeDeleteEmployee : null}
                     />
                 </div>
             )}
