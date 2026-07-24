@@ -158,8 +158,8 @@ function SettlementReceiptModal({ row, receiptData, receiptLoading, onClose }) {
     );
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm font-mono">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-none shadow-lg w-full max-w-sm font-mono">
                 <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
                     <h3 className="text-base font-semibold text-gray-700 mb-1">
                         Settlement Receipt
@@ -226,8 +226,8 @@ function SettlementFormModal({
     );
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-none shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
                 <div
                     className="px-8 py-7"
                     style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}
@@ -242,7 +242,7 @@ function SettlementFormModal({
 
                     <form onSubmit={onSubmit} className="flex flex-col gap-4">
                         <div>
-                            <label className="block text-sm text-gray-600 mb-1">
+                            <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
                                 Settlement Date
                             </label>
                             <input
@@ -251,12 +251,13 @@ function SettlementFormModal({
                                 value={form.settlement_date}
                                 onChange={onChange}
                                 required
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm text-gray-600 mb-1">
+                            <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
                                 Settlement Amount
                             </label>
                             <input
@@ -267,12 +268,13 @@ function SettlementFormModal({
                                 placeholder="0"
                                 min="0"
                                 required
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-sm text-gray-600 mb-1">
+                            <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
                                 Description
                             </label>
                             <textarea
@@ -282,7 +284,8 @@ function SettlementFormModal({
                                 rows={3}
                                 placeholder="Contoh: Biaya transport dan akomodasi"
                                 required
-                                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none resize-none"
+                                className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none resize-none"
+                                style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                             />
                         </div>
 
@@ -771,7 +774,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                             suggestions={userSuggestions}
                             placeholder="Cari Nama User..."
                             wrapperStyle={{ marginLeft: "20px" }}
-                            inputStyle={{ marginBottom: "10px" }}
+                            inputStyle={{ marginBottom: "10px", padding: "1px 5px" }}
                         />
                     </div>
 
@@ -791,7 +794,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                             }}
                             suggestions={costCenterSuggestions}
                             placeholder="Cari Cost Center..."
-                            inputStyle={{ marginBottom: "10px" }}
+                            inputStyle={{ marginBottom: "10px", padding: "1px 5px" }}
                         />
                     </div>
 
@@ -804,7 +807,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 setPage(1);
                             }}
                             className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-200"
-                            style={{ marginBottom: "10px" }}
+                            style={{ marginBottom: "10px", padding: "1px 5px" }}
                         >
                             <option>All Status</option>
                             <option>Active</option>
@@ -961,9 +964,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
                 {/* MODAL New Request (Advance) */}
                 {requestOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-                        <div className="bg-white rounded-2xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
-                            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200" style={{ marginRight: "20px" }}>
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                        <div className="bg-white rounded-none shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
+                            <div
+                                className="flex items-center justify-between border-b border-gray-200"
+                                style={{ padding: "20px 24px 16px", marginRight: "20px" }}
+                            >
                                 <h3 className="text-lg font-semibold text-gray-700" style={{ marginLeft: "20px" }}>
                                     New Request
                                 </h3>
@@ -978,7 +984,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px" }}
                             >
                                 <div>
-                                    <label className="block text-sm text-gray-600 mb-1">
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
                                         PPC Number
                                     </label>
                                     <input
@@ -988,22 +994,24 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                             "Pilih tanggal terlebih dahulu"
                                         }
                                         readOnly
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50"
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] bg-gray-50"
+                                        style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Tanggal</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Tanggal</label>
                                     <input
                                         type="date"
                                         name="request_date"
                                         value={requestForm.request_date}
                                         onChange={handleRequestChange}
                                         required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                        style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Nama User</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Nama User</label>
                                     <input
                                         type="text"
                                         name="employee_name"
@@ -1011,25 +1019,26 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         onChange={handleRequestChange}
                                         placeholder="Andi Pratama"
                                         required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                        style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Cost Center</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Cost Center</label>
                                     <input
                                         type="text"
                                         name="cost_center"
                                         value={requestForm.cost_center}
                                         onChange={handleRequestChange}
-                                        placeholder="Finance"
                                         required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                        style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Keterangan</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Keterangan</label>
                                     <textarea
                                         name="purpose"
                                         value={requestForm.purpose}
@@ -1037,12 +1046,13 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         rows={3}
                                         placeholder="Contoh: Advance perjalanan dinas"
                                         required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none resize-none"
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none resize-none"
+                                        style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Jumlah</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Jumlah</label>
                                     <input
                                         type="number"
                                         name="amount"
@@ -1051,24 +1061,26 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         placeholder="0"
                                         min="0"
                                         required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                        style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Due Date</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Due Date</label>
                                     <input
                                         type="date"
                                         name="due_date"
                                         value={requestForm.due_date}
                                         onChange={handleRequestChange}
                                         required
-                                        className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                        style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm text-gray-600 mb-1">Status</label>
-                                    <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500">
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Status</label>
+                                    <div className="w-full border border-gray-200 bg-gray-50 rounded-[10px] text-[13px] text-gray-500" style={{ padding: "9px 12px" }}>
                                         Active
                                         <span className="block text-xs text-gray-400 mt-0.5">
                                             Request baru selalu dimulai dengan status Active. Berubah otomatis oleh sistem (Settled saat reimbursement selesai, Overdue jika melewati 2 hari). Tgl Penyelesaian ikut ke-isi otomatis saat status jadi Settled.
@@ -1108,8 +1120,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
                 {/* MODAL Konfirmasi Batal */}
                 {rowToCancel && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" >
-                        <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" >
+                        <div className="bg-white rounded-none shadow-lg w-full max-w-sm">
                             <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
                                 <h3 className="text-lg font-semibold text-gray-700 mb-2">
                                     Batalkan Request
@@ -1153,8 +1165,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
                 {/* MODAL Konfirmasi Hapus */}
                 {rowToDelete && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-                        <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+                        <div className="bg-white rounded-none shadow-lg w-full max-w-sm">
                             <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
                                 <h3 className="text-lg font-semibold text-gray-700 mb-2">
                                     Hapus Data

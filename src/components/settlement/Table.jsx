@@ -4,6 +4,7 @@ import {
   FaChevronLeft,
   FaChevronRight,
   FaTrash,
+  FaPlus
 } from "react-icons/fa";
 
 // import {
@@ -453,7 +454,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
             suggestions={userSuggestions}
             placeholder="Cari Nama User..."
             wrapperStyle={{ marginLeft: "20px" }}
-            inputStyle={{ marginBottom: "10px" }}
+            inputStyle={{ marginBottom: "10px", padding: "1px 5px" }}
           />
 
         </div>
@@ -471,7 +472,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
             onSelect={setFilterCostCenter}
             suggestions={costCenterSuggestions}
             placeholder="Cari Cost Center..."
-            inputStyle={{ marginBottom: "10px" }}
+            inputStyle={{ marginBottom: "10px", padding: "1px 5px" }}
           />
 
         </div>
@@ -483,10 +484,11 @@ export default function Table({ startDate, endDate, refreshKey }) {
           onClick={() =>
             setManualInputOpen(true)
           }
-          className="border border-gray-200 hover:bg-gray-50 text-gray-700 text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          style={{ marginRight: "20px", marginBottom: "10px", marginTop: "10px", padding: "5px 12px" }}
+          className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+          style={{ marginBottom: "10px", marginRight: "20px", padding: "5px 10px" }}
         >
-          Manual Input
+          <FaPlus className="text-xs" />
+          New Reimburse
         </button>
 
       </div>
@@ -631,13 +633,13 @@ export default function Table({ startDate, endDate, refreshKey }) {
       {/* ================= MODAL MANUAL INPUT ================= */}
       {
         manualInputOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="bg-white rounded-2xl shadow-lg w-full max-w-lg max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+            <div className="bg-white rounded-none shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
 
               {/* Header */}
               <div
-                className="flex items-center justify-between px-6 py-4 border-b border-gray-200"
-                style={{ marginRight: "20px" }}
+                className="flex items-center justify-between border-b border-gray-200"
+                style={{ padding: "20px 24px 16px", marginRight: "20px" }}
               >
                 <h3
                   className="text-lg font-semibold text-gray-700"
@@ -666,7 +668,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 }}
               >
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
                     PPC Number
                   </label>
                   <input
@@ -676,12 +678,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
                       "Pilih tanggal terlebih dahulu"
                     }
                     readOnly
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-gray-50 text-gray-600"
+                    className="w-full border border-gray-200 rounded-[10px] text-[13px] bg-gray-50 text-gray-600" style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
                     Settlement Date
                   </label>
 
@@ -691,13 +693,13 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     value={manualForm.settlement_date}
                     onChange={handleManualChange}
                     required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none" style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                   />
                 </div>
 
 
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
                     Nama User
                   </label>
 
@@ -707,12 +709,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     value={manualForm.employee_name || ""}
                     onChange={handleManualChange}
                     required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none" style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
                     Cost Center
                   </label>
 
@@ -722,12 +724,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     value={manualForm.cost_center}
                     onChange={handleManualChange}
                     required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none" style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
                     Description
                   </label>
 
@@ -737,12 +739,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     value={manualForm.description}
                     onChange={handleManualChange}
                     required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none resize-none"
+                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none resize-none" style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
                     Settlement Amount
                   </label>
 
@@ -753,12 +755,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     value={manualForm.settlement_amount}
                     onChange={handleManualChange}
                     required
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-600 outline-none"
+                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none" style={{ padding: "9px 12px", borderWidth: "1.5px" }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm text-gray-600 mb-1">
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
                     Source
                   </label>
 
@@ -815,7 +817,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
       {
         rowToDelete && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-white rounded-2xl shadow-lg w-full max-w-sm">
+            <div className="bg-white rounded-none shadow-lg w-full max-w-sm">
               <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">
                   Hapus Data
