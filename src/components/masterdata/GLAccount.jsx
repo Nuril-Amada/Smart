@@ -19,7 +19,7 @@ const columns = [
 ];
 const searchKey = "gl_account_no";
 
-function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder }) {
+function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder, wrapperStyle, inputStyle }) {
     const [open, setOpen] = useState(false);
     const [highlight, setHighlight] = useState(-1);
     const containerRef = useRef(null);
@@ -65,7 +65,7 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
     };
 
     return (
-        <div className="relative" ref={containerRef}>
+        <div className="relative" ref={containerRef} style={wrapperStyle}>
             <div className="relative">
                 <input
                     type="text"
@@ -76,6 +76,7 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
                     placeholder={placeholder}
                     autoComplete="off"
                     className="border border-gray-300 rounded-lg text-sm pl-3 pr-8 py-2 text-gray-700 w-64 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
+                    style={inputStyle}
                 />
                 {value ? (
                     <button
@@ -241,6 +242,7 @@ export default function GLAccount() {
                         onSelect={setSearchTerm}
                         suggestions={suggestions}
                         placeholder="Cari No GL Account..."
+                        inputStyle={{ padding: "1px 5px" }}
                     />
                 </div>
 
