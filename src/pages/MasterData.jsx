@@ -1,13 +1,13 @@
 import { useState } from "react";
 import Employee, { meta as employeeMeta } from "../components/masterdata/Employee";
-import GLAccount, { meta as glAccountMeta } from "../components/masterdata/GLAccount";
-import CostCenter, { meta as costCenterMeta } from "../components/masterdata/CostCenter";
+// import GLAccount, { meta as glAccountMeta } from "../components/masterdata/GLAccount";
+// import CostCenter, { meta as costCenterMeta } from "../components/masterdata/CostCenter";
 import Vendor, { meta as vendorMeta } from "../components/masterdata/Vendor";
 
 const TABS = [
     { ...employeeMeta, Component: Employee },
-    { ...glAccountMeta, Component: GLAccount },
-    { ...costCenterMeta, Component: CostCenter },
+    // { ...glAccountMeta, Component: GLAccount },
+    // { ...costCenterMeta, Component: CostCenter },
     { ...vendorMeta, Component: Vendor },
 ];
 
