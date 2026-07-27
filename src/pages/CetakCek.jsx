@@ -1,41 +1,7 @@
-import { useState, useEffect } from "react";
-import { FaPrint, FaRedo, FaBan, FaFileSignature, FaMoneyBillWave, FaExchangeAlt } from "react-icons/fa";
-
-// ======================================================================
-// KONFIGURASI TEMPLATE CEK PER BANK
-// ======================================================================
-const BANK_TEMPLATES = {
-  "Bank Mandiri": {
-    label: "Bank Mandiri (001)",
-    branch: "Cab. Jakarta Thamrin",
-    widthCm: 21,
-    heightCm: 10,
-    accentBg: "bg-sky-50",
-    accentBorder: "border-sky-200",
-    headerText: "text-sky-900",
-    signaturePosition: "right",
-  },
-  "Bank Sinarmas": {
-    label: "Bank Sinarmas",
-    branch: "Cab. Jakarta Sudirman",
-    widthCm: 21,
-    heightCm: 9.5,
-    accentBg: "bg-amber-50",
-    accentBorder: "border-amber-200",
-    headerText: "text-amber-900",
-    signaturePosition: "left",
-  },
-  Maybank: {
-    label: "Maybank Indonesia",
-    branch: "Cab. Jakarta Senayan",
-    widthCm: 21,
-    heightCm: 10.5,
-    accentBg: "bg-yellow-50",
-    accentBorder: "border-yellow-300",
-    headerText: "text-yellow-900",
-    signaturePosition: "right",
-  },
-};
+import { useState } from "react";
+import { FaPrint, FaRedo, FaBan, FaFileSignature } from "react-icons/fa";
+import CheckForm from "../components/cetakcek/CheckForm";
+import CheckPreview from "../components/cetakcek/CheckPreview";
 
 // Helper konversi angka ke terbilang bahasa Indonesia
 function angkaKeTerbilang(angka) {
@@ -59,51 +25,12 @@ function angkaKeTerbilang(angka) {
   return (convert(num) + " Rupiah").replace(/\s+/g, " ").trim();
 }
 
-// Counter global sederhana untuk nomor cek otomatis (pengganti input manual)
-let cekCounter = 21;
+// Counter lokal sederhana untuk nomor cek (sebaiknya nanti nomor cek
+// digenerate oleh backend, ini hanya fallback sementara)
+let cekCounter = 1;
 
-// Data awal Daftar Cetak Cek (dummy)
-const initialDataCek = [
-  {
-    id: 1,
-    nomor: "CK-000001",
-    jenisCek: "Tarik Tunai",
-    tanggal: "2025-07-01",
-    vendor: "PT ABC Indonesia",
-    bank: "Bank Mandiri",
-    bankPenerima: "-",
-    nomorRekening: "-",
-    nominal: "25.000.000",
-    terbilang: "Dua Puluh Lima Juta Rupiah",
-    status: "Belum Dicetak",
-  },
-  {
-    id: 2,
-    nomor: "CK-000002",
-    jenisCek: "Transfer",
-    tanggal: "2025-07-02",
-    vendor: "PT Sinar Jaya",
-    bank: "Bank Sinarmas",
-    bankPenerima: "BCA",
-    nomorRekening: "8830129481",
-    nominal: "10.500.000",
-    terbilang: "Sepuluh Juta Lima Ratus Ribu Rupiah",
-    status: "Sudah Dicetak",
-  },
-  {
-    id: 3,
-    nomor: "CK-000003",
-    jenisCek: "Tarik Tunai",
-    tanggal: "2025-07-03",
-    vendor: "PT Maju Bersama",
-    bank: "Maybank",
-    bankPenerima: "-",
-    nomorRekening: "-",
-    nominal: "45.000.000",
-    terbilang: "Empat Puluh Lima Juta Rupiah",
-    status: "Belum Dicetak",
-  },
-];
+// Data awal Daftar Cetak Cek — kosong, akan diisi dari backend/database
+const initialDataCek = [];
 
 const initialForm = {
   bank: "",
@@ -134,8 +61,9 @@ export default function CetakCek() {
     });
   };
 
-  // Template preview aktif berdasarkan bank yang dipilih di form
-  const activeTemplate = BANK_TEMPLATES[form.bank] || null;
+  const handleJenisCekChange = (jenis) => {
+    setForm((prev) => ({ ...prev, jenisCek: jenis }));
+  };
 
   // ================= DAFTAR CETAK CEK =================
   const [dataCek, setDataCek] = useState(initialDataCek);
@@ -264,276 +192,10 @@ export default function CetakCek() {
     <div className="space-y-8">
 
       {/* ================= 1. INFORMASI CEK ================= */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200" style={{ margin: "20px", padding: "20px" }}>
-        <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
-          <div>
-            <h2 className="text-lg font-bold text-gray-800">Pencetakan Cek</h2>
-            <p className="text-xs text-gray-500 mt-0.5">Pilih bank dan jenis transaksi (Tarik Tunai / Transfer) untuk mencetak cek</p>
-          </div>
-          {form.jenisCek && (
-            <span className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${form.jenisCek === "Tarik Tunai" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-blue-50 text-blue-700 border border-blue-200"
-              }`}>
-              {form.jenisCek === "Tarik Tunai" ? <FaMoneyBillWave /> : <FaExchangeAlt />}
-              Mode: {form.jenisCek}
-            </span>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-          {/* KOLOM KIRI */}
-          <div className="space-y-5">
-            {/* STEP 1: Pilih Bank */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                1. Pilih Bank <span className="text-red-500">*</span>
-              </label>
-              <select
-                name="bank"
-                value={form.bank}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm font-medium bg-white"
-              >
-                <option value="">-- Pilih Bank Terlebih Dahulu --</option>
-                <option value="Bank Mandiri">Bank Mandiri</option>
-                <option value="Bank Sinarmas">Bank Sinarmas</option>
-                <option value="Maybank">Maybank Indonesia</option>
-              </select>
-            </div>
-
-            {/* STEP 2: Pilih Jenis Cetak Cek (Tarik Tunai vs Transfer) */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                2. Pilih Jenis Cetak Cek <span className="text-red-500">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, jenisCek: "Tarik Tunai" }))}
-                  className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium border transition-all ${form.jenisCek === "Tarik Tunai"
-                    ? "bg-gray-800 text-white border-gray-800 shadow-sm"
-                    : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
-                    }`}
-                >
-                  <FaMoneyBillWave />
-                  Tarik Tunai
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, jenisCek: "Transfer" }))}
-                  className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-medium border transition-all ${form.jenisCek === "Transfer"
-                    ? "bg-gray-800 text-white border-gray-800 shadow-sm"
-                    : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
-                    }`}
-                >
-                  <FaExchangeAlt />
-                  Transfer
-                </button>
-              </div>
-            </div>
-
-            {/* STEP 3: Tanggal Cek */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Tanggal Cek <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="date"
-                name="tanggal"
-                value={form.tanggal}
-                onChange={handleChange}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm"
-              />
-            </div>
-
-            {/* STEP 4: Nama Vendor / PT */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Nama Vendor / PT <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="vendor"
-                value={form.vendor}
-                onChange={handleChange}
-                placeholder="Contoh: PT SMART Tbk / PT ABC Indonesia"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm"
-              />
-            </div>
-
-            {/* KHUSUS TRANSFER: Nama Bank & Nomor Rekening */}
-            {form.jenisCek === "Transfer" && (
-              <div className="p-4 bg-blue-50/60 rounded-xl border border-blue-100 space-y-4 animate-fadeIn">
-                <div className="flex items-center gap-2 text-xs font-bold text-blue-800 uppercase tracking-wide">
-                  <FaExchangeAlt /> Informasi Rekening Penerima (Transfer)
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Nama Bank Penerima <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="bankPenerima"
-                      value={form.bankPenerima}
-                      onChange={handleChange}
-                      placeholder="Contoh: BCA / Mandiri"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">
-                      Nomor Rekening <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      name="nomorRekening"
-                      value={form.nomorRekening}
-                      onChange={handleChange}
-                      placeholder="Contoh: 1234567890"
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* KOLOM KANAN */}
-          <div className="space-y-5">
-            {/* Jumlah Nominal */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Jumlah Nominal (Rp) <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="number"
-                name="nominal"
-                value={form.nominal}
-                onChange={handleChange}
-                placeholder="Masukkan nominal angka (misal: 25000000)"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm font-semibold text-gray-800"
-              />
-            </div>
-
-            {/* Terbilang */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">
-                Terbilang <span className="text-red-500">*</span>
-              </label>
-              <textarea
-                name="terbilang"
-                value={form.terbilang}
-                onChange={handleChange}
-                rows="2"
-                placeholder="Terbilang dari nominal (otomatis terisi)"
-                className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-sm bg-gray-50/50"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      <CheckForm form={form} onChange={handleChange} onJenisCekChange={handleJenisCekChange} />
 
       {/* ================= 2. PREVIEW CETAK CEK ================= */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden" style={{ margin: "20px", padding: "20px" }}>
-        <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-          <h2 className="font-bold text-gray-800">Preview Layout Cek Fisik</h2>
-          {activeTemplate && (
-            <span className="text-xs text-gray-500">
-              Format: <strong className="text-gray-700">{activeTemplate.label}</strong> ({activeTemplate.widthCm}cm × {activeTemplate.heightCm}cm)
-            </span>
-          )}
-        </div>
-        <div className="p-6 flex justify-center overflow-x-auto bg-gray-50/50">
-          {!activeTemplate ? (
-            <div
-              className="rounded-2xl border-2 border-dashed border-gray-300 bg-white flex flex-col items-center justify-center p-8 text-center"
-              style={{ width: "21cm", height: "9.5cm" }}
-            >
-              <p className="text-gray-400 text-sm font-medium">
-                ⚠️ Silakan pilih Bank pada form di atas untuk menampilkan simulasi cetak cek
-              </p>
-            </div>
-          ) : (
-            <div
-              className={`${activeTemplate.accentBg} border ${activeTemplate.accentBorder} rounded-xl p-6 flex flex-col justify-between transition-all duration-300 shrink-0 shadow-md relative`}
-              style={{
-                width: `${activeTemplate.widthCm}cm`,
-                height: `${activeTemplate.heightCm}cm`,
-              }}
-            >
-              {/* Watermark Jenis Cek */}
-              <div className="absolute top-3 right-4 opacity-15 text-xs font-extrabold uppercase tracking-widest pointer-events-none">
-                [{form.jenisCek}]
-              </div>
-
-              {/* Header Cek */}
-              <div className="flex justify-between">
-                <div>
-                  <h3 className={`font-bold text-base ${activeTemplate.headerText}`}>
-                    PT SMART Tbk.
-                  </h3>
-                  <p className="text-xs text-gray-600">
-                    Jl. Rungkut Industri Raya No. 19, Surabaya
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-600">
-                    TGL: {form.tanggal ? new Date(form.tanggal).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-"}
-                  </p>
-                </div>
-              </div>
-
-              {/* Penerima Cek */}
-              <div>
-                <div className="flex justify-between items-baseline text-xs mb-1 font-semibold text-gray-600">
-                  <span>BAYAR KEPADA / PAY TO THE ORDER OF:</span>
-                  <span className="font-bold text-gray-800">{form.vendor || "____________________"}</span>
-                </div>
-                <div className="border-b border-gray-400 h-1"></div>
-              </div>
-
-              {/* Khusus Transfer */}
-              {form.jenisCek === "Transfer" && (
-                <div className="text-xs text-blue-900 bg-blue-100/70 px-3 py-1 rounded border border-blue-200 flex justify-between font-mono">
-                  <span>TRANSFER TO: <strong>{form.bankPenerima || "-"}</strong></span>
-                  <span>NO. REK: <strong>{form.nomorRekening || "-"}</strong></span>
-                </div>
-              )}
-
-              {/* Sum Of & Amount */}
-              <div className="flex justify-between items-center gap-4">
-                <div className="flex-1">
-                  <p className="text-[11px] font-semibold text-gray-600 mb-0.5">TERBILANG / THE SUM OF:</p>
-                  <p className="text-xs italic font-medium text-gray-800 border-b border-gray-400 pb-1">
-                    # {form.terbilang || "...................................................................."} #
-                  </p>
-                </div>
-                <div className="border-2 border-gray-800 px-4 py-2 font-bold text-sm bg-white rounded shadow-sm whitespace-nowrap">
-                  Rp {form.nominal ? Number(form.nominal).toLocaleString("id-ID") : "0"}
-                </div>
-              </div>
-
-              {/* Footer Bank & Signature */}
-              <div
-                className={`flex items-end ${activeTemplate.signaturePosition === "left" ? "justify-between flex-row-reverse" : "justify-between"
-                  }`}
-              >
-                <div>
-                  <p className={`font-bold text-xs ${activeTemplate.headerText}`}>
-                    {activeTemplate.label}
-                  </p>
-                  <p className="text-[11px] text-gray-500">{activeTemplate.branch}</p>
-                </div>
-                <div className="text-center">
-                  <div className="w-36 border-b border-gray-800 mb-1"></div>
-                  <p className="text-[10px] font-semibold text-gray-600">AUTHORIZED SIGNATURE</p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <CheckPreview form={form} />
 
       {/* ================= 3. DAFTAR CETAK CEK ================= */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden" style={{ margin: "20px", padding: "20px" }}>
