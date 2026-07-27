@@ -150,7 +150,7 @@ export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = 
                             name="bank"
                             value={form.bank}
                             onChange={onChange}
-                            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-xs font-medium bg-white text-gray-600" style={{ padding: "1px 5px" }}
+                            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-xs font-medium bg-white text-gray-600" style={{ padding: "2px 5px" }}
                         >
                             <option value="">Pilih Bank Terlebih Dahulu</option>
                             <option value="Bank Mandiri">Bank Mandiri</option>
@@ -169,10 +169,10 @@ export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = 
                             <button
                                 type="button"
                                 onClick={() => onJenisCekChange("Tarik Tunai")}
-                                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-medium border transition-all ${form.jenisCek === "Tarik Tunai"
+                                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-xs font-medium border transition-all ${form.jenisCek === "Tarik Tunai"
                                     ? "bg-gray-600 text-white border-gray-600 shadow-sm"
                                     : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
-                                    }`} style={{ padding: "1px 5px" }}
+                                    }`} style={{ padding: "2px 5px" }}
                             >
                                 <FaMoneyBillWave />
                                 Tarik Tunai
@@ -180,10 +180,10 @@ export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = 
                             <button
                                 type="button"
                                 onClick={() => onJenisCekChange("Transfer")}
-                                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-xs font-medium border transition-all ${form.jenisCek === "Transfer"
+                                className={`flex items-center justify-center gap-2 py-2.5 px-4 rounded-lg text-xs font-medium border transition-all ${form.jenisCek === "Transfer"
                                     ? "bg-gray-600 text-white border-gray-600 shadow-sm"
                                     : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
-                                    }`} style={{ padding: "1px 5px" }}
+                                    }`} style={{ padding: "2px 5px" }}
                             >
                                 <FaExchangeAlt />
                                 Transfer
@@ -201,7 +201,7 @@ export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = 
                             name="tanggal"
                             value={form.tanggal}
                             onChange={onChange}
-                            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-xs" style={{ padding: "1px 5px" }}
+                            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-xs" style={{ padding: "2px 5px" }}
                         />
                     </div>
 
@@ -216,8 +216,8 @@ export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = 
                             onChange={(val) => setField("vendor", val)}
                             suggestions={vendorSuggestions}
                             placeholder="Contoh: PT SMART Tbk"
-                            className="w-full border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-gray-400 text-xs"
-                            inputStyle={{ padding: "1px 5px" }}
+                            className="w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 text-xs"
+                            inputStyle={{ padding: "2px 5px" }}
                         />
                     </div>
 
@@ -239,7 +239,7 @@ export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = 
                                         suggestions={bankPenerimaSuggestions}
                                         placeholder="Contoh: BCA / Mandiri"
                                         className="w-full border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                        inputStyle={{ padding: "1px 5px" }}
+                                        inputStyle={{ padding: "2px 5px" }}
                                     />
                                 </div>
                                 <div>
@@ -253,7 +253,7 @@ export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = 
                                         suggestions={nomorRekeningSuggestions}
                                         placeholder="Contoh: 1234567890"
                                         className="w-full border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                        inputStyle={{ padding: "1px 5px" }}
+                                        inputStyle={{ padding: "2px 5px" }}
                                     />
                                 </div>
                             </div>
@@ -274,7 +274,7 @@ export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = 
                             value={form.nominal}
                             onChange={onChange}
                             placeholder="Masukkan nominal angka (misal: 25000000)"
-                            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-xs font-semibold text-gray-800" style={{ padding: "1px 5px" }}
+                            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-xs font-semibold text-gray-800" style={{ padding: "2px 5px" }}
                         />
                     </div>
 
@@ -289,7 +289,7 @@ export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = 
                             onChange={onChange}
                             rows="2"
                             placeholder="Terbilang dari nominal (otomatis terisi)"
-                            className="w-full border border-gray-300 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-xs bg-gray-50/50" style={{ padding: "1px 5px" }}
+                            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-xs bg-gray-50/50" style={{ padding: "2px 5px" }}
                         />
                     </div>
                 </div>

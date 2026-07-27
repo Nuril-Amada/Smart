@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-export default function FilterDashboard({
+export default function FilterAdvance({
     tanggalAwal,
     setTanggalAwal,
     tanggalAkhir,
