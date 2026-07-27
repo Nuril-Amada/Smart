@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FaMoneyBillWave, FaExchangeAlt } from "react-icons/fa";
+import { FaMoneyBillWave, FaExchangeAlt, FaPrint } from "react-icons/fa";
 
 // ======================================================================
 // AutocompleteInput — input teks dengan dropdown saran otomatis.
@@ -104,7 +104,7 @@ function getSuggestions(dataCek, field, query) {
         .slice(0, 8);
 }
 
-export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = [] }) {
+export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = [], onSimpanCek }) {
     // Saran otomatis diambil dari Daftar Cetak Cek yang sudah pernah diinput sebelumnya
     const vendorSuggestions = useMemo(
         () => getSuggestions(dataCek, "vendor", form.vendor),
@@ -293,6 +293,19 @@ export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = 
                         />
                     </div>
                 </div>
+            </div>
+
+            {/* Tombol Simpan Cek — pojok kanan bawah */}
+            <div className="flex justify-end" style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid #f3f4f6" }}>
+                <button
+                    type="button"
+                    onClick={onSimpanCek}
+                    className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white rounded-xl text-sm font-semibold transition shadow-sm"
+                    style={{ padding: "5px 10px" }}
+                >
+                    <FaPrint />
+                    Simpan Cek
+                </button>
             </div>
         </div>
     );

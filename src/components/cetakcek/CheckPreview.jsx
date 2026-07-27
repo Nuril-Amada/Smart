@@ -31,7 +31,7 @@ export default function CheckPreview({ form }) {
                         style={{ width: "21cm", height: "9.5cm" }}
                     >
                         <p className="text-gray-400 text-sm font-medium">
-                            Silakan pilih Bank pada form di atas untuk menampilkan simulasi cetak cek
+                            Silakan pilih Bank pada form di atas untuk menampilkan cetak cek
                         </p>
                     </div>
                 ) : (

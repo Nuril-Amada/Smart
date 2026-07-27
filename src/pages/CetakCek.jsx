@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FaPrint, FaRedo, FaBan, FaFileSignature } from "react-icons/fa";
+import { FaRedo, FaBan, FaFileSignature } from "react-icons/fa";
 import CheckForm from "../components/cetakcek/CheckForm";
 import CheckPreview from "../components/cetakcek/CheckPreview";
 
@@ -192,7 +192,7 @@ export default function CetakCek() {
     <div className="space-y-8">
 
       {/* ================= 1. INFORMASI CEK ================= */}
-      <CheckForm form={form} onChange={handleChange} onJenisCekChange={handleJenisCekChange} />
+      <CheckForm form={form} onChange={handleChange} onJenisCekChange={handleJenisCekChange} dataCek={dataCek} onSimpanCek={handleCetakCek} />
 
       {/* ================= 2. PREVIEW CETAK CEK ================= */}
       <CheckPreview form={form} />
@@ -200,7 +200,7 @@ export default function CetakCek() {
       {/* ================= 3. DAFTAR CETAK CEK ================= */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden" style={{ margin: "20px", padding: "20px" }}>
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-base font-bold text-gray-600">Daftar Cetak Cek</h2>
+          <h2 className="text-base font-bold text-gray-800">Daftar Cetak Cek</h2>
         </div>
 
         <div className="overflow-x-auto">
@@ -265,13 +265,6 @@ export default function CetakCek() {
       {/* ================= BUTTON ACTION ================= */}
       <div className="flex flex-wrap justify-end gap-3 pt-2" style={{ marginRight: "20px", marginBottom: "20px" }}>
         <button
-          onClick={handleCetakCek}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gray-800 hover:bg-gray-700 text-white rounded-xl text-sm font-semibold transition shadow-sm" style={{ padding: "5px 15px" }}
-        >
-          <FaPrint />
-          Simpan Cek
-        </button>
-        <button
           onClick={handleCetakFisik}
           disabled={!selected || selected.status !== "Belum Dicetak"}
           className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition shadow-sm" style={{ padding: "5px 15px" }}
@@ -282,7 +275,7 @@ export default function CetakCek() {
         <button
           onClick={handleCetakUlang}
           disabled={!selected || selected.status !== "Sudah Dicetak"}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gray-500 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition shadow-sm" style={{ padding: "5px 15px" }}
+          className="flex items-center gap-2 px-5 py-2.5 bg-gray-600 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition shadow-sm" style={{ padding: "5px 15px" }}
         >
           <FaRedo />
           Cetak Ulang
