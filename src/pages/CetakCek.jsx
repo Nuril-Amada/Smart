@@ -200,7 +200,7 @@ export default function CetakCek() {
       {/* ================= 3. DAFTAR CETAK CEK ================= */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden" style={{ margin: "20px", padding: "20px" }}>
         <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-base font-bold text-gray-800">Daftar Cetak Cek</h2>
+          <h2 className="text-base font-bold text-gray-600">Daftar Cetak Cek</h2>
         </div>
 
         <div className="overflow-x-auto">

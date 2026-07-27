@@ -17,7 +17,7 @@ export default function CheckPreview({ form }) {
     return (
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden" style={{ margin: "20px", padding: "20px" }}>
             <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-                <h2 className="font-bold text-gray-800">Preview Layout Cek Fisik</h2>
+                <h2 className="font-bold text-gray-600">Preview Layout Cek Fisik</h2>
                 {form.bank && (
                     <span className="text-xs text-gray-500">
                         Format: <strong className="text-gray-700">{form.bank}</strong>
