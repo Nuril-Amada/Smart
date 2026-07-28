@@ -8,15 +8,17 @@ export const meta = {
     color: "#363D48",
 };
 
-const initialForm = { vendor_name: "", bank_name: "", bank_account_no: "" };
+const initialForm = { vendor_name: "", bank_name: "", bank_account_name: "", bank_account_no: "" };
 const fields = [
     { name: "vendor_name", label: "Nama Vendor", placeholder: "PT SMART Tbk" },
     { name: "bank_name", label: "Nama Bank", placeholder: "BCA" },
+    { name: "bank_account_name", label: "Nama Akun Bank", placeholder: "PT SMART Tbk" },
     { name: "bank_account_no", label: "No Rekening", placeholder: "1234567890" },
 ];
 const columns = [
     { key: "vendor_name", label: "Nama Vendor" },
     { key: "bank_name", label: "Nama Bank" },
+    { key: "bank_account_name", label: "Nama Akun Bank" },
     { key: "bank_account_no", label: "No Rekening" },
 ];
 const searchKey = "vendor_name";
