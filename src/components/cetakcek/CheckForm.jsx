@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { FaMoneyBillWave, FaExchangeAlt, FaPrint } from "react-icons/fa";
+import { useState } from "react";
+import { FaMoneyBillWave, FaExchangeAlt, FaSave } from "react-icons/fa";
 
 // ======================================================================
 // AutocompleteInput — input teks dengan dropdown saran otomatis.
@@ -86,39 +86,32 @@ function AutocompleteInput({
     );
 }
 
-// Helper: ambil daftar nilai unik dari histori cek yang cocok dengan
-// query yang sedang diketik user (mengikuti pola suggestion di tabel Settlement)
-function getSuggestions(dataCek, field, query) {
-    if (!query) return [];
-    const q = query.toLowerCase();
-    const unique = Array.from(
-        new Set(
-            dataCek
-                .map((item) => item[field])
-                .filter((v) => v && v !== "-")
-        )
-    );
-    return unique
-        .filter((v) => v.toLowerCase().includes(q))
-        .filter((v) => v.toLowerCase() !== q)
-        .slice(0, 8);
-}
+// Catatan: saran (suggestions) untuk Nama Vendor, Nama Bank Penerima, dan
+// Nomor Rekening TIDAK lagi dihitung dari histori lokal — nantinya akan
+// diambil dari database backend, lalu dioper ke komponen ini lewat props
+// `vendorSuggestions`, `bankPenerimaSuggestions`, `nomorRekeningSuggestions`.
+// Contoh nanti (setelah backend siap):
+//
+//   const [vendorSuggestions, setVendorSuggestions] = useState([]);
+//   useEffect(() => {
+//     searchVendor(form.vendor).then(setVendorSuggestions);
+//   }, [form.vendor]);
+//
+// Catatan tambahan: field `nomorCek` di bawah ini SENGAJA input manual biasa
+// (tanpa autocomplete/suggestion). Nilainya TIDAK dikirim ke komponen preview
+// cetak cek (MandiriCheck) — nomor cek hanya dipakai saat data disimpan ke
+// tabel history cetak cek lewat tombol "Simpan".
 
-export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = [], onSimpanCek }) {
-    // Saran otomatis diambil dari Daftar Cetak Cek yang sudah pernah diinput sebelumnya
-    const vendorSuggestions = useMemo(
-        () => getSuggestions(dataCek, "vendor", form.vendor),
-        [dataCek, form.vendor]
-    );
-    const bankPenerimaSuggestions = useMemo(
-        () => getSuggestions(dataCek, "bankPenerima", form.bankPenerima),
-        [dataCek, form.bankPenerima]
-    );
-    const nomorRekeningSuggestions = useMemo(
-        () => getSuggestions(dataCek, "nomorRekening", form.nomorRekening),
-        [dataCek, form.nomorRekening]
-    );
 
+export default function CheckForm({
+    form,
+    onChange,
+    onJenisCekChange,
+    onSimpan,
+    vendorSuggestions = [],
+    bankPenerimaSuggestions = [],
+    nomorRekeningSuggestions = [],
+}) {
     const setField = (name, value) => onChange({ target: { name, value } });
 
     return (
@@ -205,7 +198,24 @@ export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = 
                         />
                     </div>
 
-                    {/* STEP 4: Nama Vendor / PT — dengan autocomplete dari histori cek */}
+                    {/* STEP 4: Nomor Cek — input manual biasa, TANPA autocomplete/rekomendasi.
+                        Tidak dipakai di preview cetak (MandiriCheck), hanya untuk tabel history. */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                            Nomor Cek <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                            type="text"
+                            name="nomorCek"
+                            value={form.nomorCek || ""}
+                            onChange={onChange}
+                            autoComplete="off"
+                            placeholder="Contoh: JL 919116"
+                            className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-xs" style={{ padding: "2px 5px" }}
+                        />
+                    </div>
+
+                    {/* STEP 5: Nama Vendor / PT — dengan autocomplete dari histori cek */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
                             Nama Vendor / PT <span className="text-red-500">*</span>
@@ -295,16 +305,15 @@ export default function CheckForm({ form, onChange, onJenisCekChange, dataCek = 
                 </div>
             </div>
 
-            {/* Tombol Simpan Cek — pojok kanan bawah */}
-            <div className="flex justify-end" style={{ marginTop: "20px", paddingTop: "16px", borderTop: "1px solid #f3f4f6" }}>
+            {/* Tombol Simpan — pojok kanan bawah */}
+            <div className="flex justify-end mt-6 pt-4 border-t border-gray-100">
                 <button
                     type="button"
-                    onClick={onSimpanCek}
-                    className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white rounded-xl text-sm font-semibold transition shadow-sm"
-                    style={{ padding: "5px 10px" }}
+                    onClick={onSimpan}
+                    className="flex items-center gap-2 bg-gray-600 hover:bg-gray-900 text-white text-sm font-semibold rounded-lg px-5 py-2.5 shadow-sm transition-all" style={{ padding: "5px 10px" }}
                 >
-                    <FaPrint />
-                    Simpan Cek
+                    <FaSave />
+                    Simpan
                 </button>
             </div>
         </div>

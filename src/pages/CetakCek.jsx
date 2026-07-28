@@ -1,7 +1,32 @@
-import { useState } from "react";
-import { FaRedo, FaBan, FaFileSignature } from "react-icons/fa";
+import { useMemo, useState } from "react";
+import {
+  FaPrint,
+  FaFileExport,
+  FaTrash,
+  FaChevronLeft,
+  FaChevronRight,
+} from "react-icons/fa";
 import CheckForm from "../components/cetakcek/CheckForm";
-import CheckPreview from "../components/cetakcek/CheckPreview";
+import MandiriCheck from "../components/cetakcek/MandiriCheck";
+import BCACheck from "../components/cetakcek/BCACheck";
+import SinarmasCheck from "../components/cetakcek/SinarmasCheck";
+import MaybankCheck from "../components/cetakcek/MaybankCheck";
+
+// Peta nama bank (sesuai value pada <select> di CheckForm) ke komponennya
+const BANK_COMPONENTS = {
+  "Bank Mandiri": MandiriCheck,
+  "Bank BCA": BCACheck,
+  "Bank Sinarmas": SinarmasCheck,
+  Maybank: MaybankCheck,
+};
+
+const BANK_OPTIONS = ["Bank Mandiri", "Bank BCA", "Bank Sinarmas", "Maybank"];
+
+// STYLE badge status, sama pola dengan SOURCE_STYLE di tabel Settlement
+const STATUS_STYLE = {
+  "Tarik Tunai": "bg-green-100 text-green-700",
+  Transfer: "bg-purple-100 text-purple-700",
+};
 
 // Helper konversi angka ke terbilang bahasa Indonesia
 function angkaKeTerbilang(angka) {
@@ -25,18 +50,60 @@ function angkaKeTerbilang(angka) {
   return (convert(num) + " Rupiah").replace(/\s+/g, " ").trim();
 }
 
-// Counter lokal sederhana untuk nomor cek (sebaiknya nanti nomor cek
-// digenerate oleh backend, ini hanya fallback sementara)
-let cekCounter = 1;
+function formatDate(date) {
+  if (!date) return "-";
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(date));
+}
 
-// Data awal Daftar Cetak Cek — kosong, akan diisi dari backend/database
-const initialDataCek = [];
+function formatRupiah(amount) {
+  return new Intl.NumberFormat("id-ID", {
+    style: "currency",
+    currency: "IDR",
+    minimumFractionDigits: 0,
+  }).format(Number(amount || 0));
+}
+
+// Konversi list history -> file CSV lalu trigger download di browser.
+function exportToCSV(rows) {
+  const header = ["Tanggal", "Nomor Cek", "Vendor", "Nominal", "Bank", "Rekening", "Status"];
+  const escape = (val) => `"${String(val ?? "").replace(/"/g, '""')}"`;
+
+  const lines = [header.join(",")];
+  rows.forEach((r) => {
+    lines.push(
+      [
+        escape(r.tanggal),
+        escape(r.nomorCek),
+        escape(r.vendor),
+        escape(r.nominal),
+        escape(r.bank),
+        escape(r.nomorRekening || "-"),
+        escape(r.jenisCek),
+      ].join(",")
+    );
+  });
+
+  const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `history-cetak-cek-${new Date().toISOString().split("T")[0]}.csv`;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
 
 const initialForm = {
   bank: "",
   jenisCek: "Tarik Tunai", // "Tarik Tunai" | "Transfer"
   tanggal: new Date().toISOString().split("T")[0],
   mataUang: "IDR",
+  nomorCek: "",
   vendor: "",
   bankPenerima: "",
   nomorRekening: "",
@@ -48,6 +115,33 @@ const initialForm = {
 export default function CetakCek() {
   // ================= FORM INFORMASI CEK =================
   const [form, setForm] = useState(initialForm);
+
+  // ================= HISTORY CETAK CEK =================
+  // Catatan: nantinya di-fetch dari backend (mis. lewat useEffect saat mount)
+  // dan handleSimpan/handleDeleteConfirm di bawah tinggal diganti jadi
+  // pemanggilan API.
+  const [history, setHistory] = useState([]);
+
+  // Filter tabel history
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [filterBank, setFilterBank] = useState("");
+
+  // Pagination tabel history
+  const [page, setPage] = useState(1);
+  const perPage = 10;
+
+  // Modal konfirmasi hapus history (pola sama seperti tabel Settlement)
+  const [rowToDelete, setRowToDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Catatan: saran (suggestions) untuk Nama Vendor, Nama Bank Penerima,
+  // dan Nomor Rekening nantinya diambil dari database backend. Untuk
+  // sekarang masih kosong, tinggal diisi via API saat backend sudah siap
+  // (mis. lewat useEffect yang memanggil endpoint pencarian).
+  const [vendorSuggestions] = useState([]);
+  const [bankPenerimaSuggestions] = useState([]);
+  const [nomorRekeningSuggestions] = useState([]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -65,229 +159,390 @@ export default function CetakCek() {
     setForm((prev) => ({ ...prev, jenisCek: jenis }));
   };
 
-  // ================= DAFTAR CETAK CEK =================
-  const [dataCek, setDataCek] = useState(initialDataCek);
-  const [selectedId, setSelectedId] = useState(null);
+  // Komponen bank yang aktif sesuai pilihan form.bank, untuk preview
+  const SelectedCheck = form.bank ? BANK_COMPONENTS[form.bank] : null;
 
-  const selected = dataCek.find((item) => item.id === selectedId) || null;
-
-  // ================= AKSI CEK =================
-  const handleCetakCek = () => {
+  // Validasi field wajib, dipakai bareng oleh Simpan & Cetak
+  const validateForm = () => {
     if (!form.bank) {
       alert("Silakan pilih Bank terlebih dahulu.");
-      return;
+      return false;
+    }
+    if (!form.nomorCek) {
+      alert("Silakan isi Nomor Cek.");
+      return false;
     }
     if (!form.vendor) {
       alert("Silakan isi atau pilih Nama Vendor / PT.");
-      return;
+      return false;
     }
     if (form.jenisCek === "Transfer") {
       if (!form.bankPenerima || !form.nomorRekening) {
         alert("Untuk transaksi Transfer, Nama Bank Penerima dan Nomor Rekening wajib diisi.");
-        return;
+        return false;
       }
     }
     if (!form.nominal || Number(form.nominal) <= 0) {
       alert("Masukkan Jumlah Nominal yang valid.");
-      return;
+      return false;
     }
+    return true;
+  };
 
-    const nomorCekOtomatis = String(cekCounter++).padStart(6, "0");
+  // ================= AKSI SIMPAN KE HISTORY =================
+  const handleSimpan = () => {
+    if (!validateForm()) return;
 
-    const newItem = {
+    const entry = {
       id: Date.now(),
-      nomor: `CK-${nomorCekOtomatis}`,
-      jenisCek: form.jenisCek,
       tanggal: form.tanggal,
+      nomorCek: form.nomorCek,
       vendor: form.vendor,
+      nominal: form.nominal,
       bank: form.bank,
-      bankPenerima: form.jenisCek === "Transfer" ? form.bankPenerima : "-",
-      nomorRekening: form.jenisCek === "Transfer" ? form.nomorRekening : "-",
-      nominal: Number(form.nominal).toLocaleString("id-ID"),
-      terbilang: form.terbilang || angkaKeTerbilang(form.nominal),
-      status: "Belum Dicetak",
+      nomorRekening: form.jenisCek === "Transfer" ? form.nomorRekening : "",
+      jenisCek: form.jenisCek,
     };
 
-    setDataCek((prev) => [newItem, ...prev]);
-    alert(`Cek (${form.jenisCek}) berhasil disimpan ke daftar. Pilih di tabel di bawah untuk Cetak Fisik.`);
+    // Nanti di sini tinggal panggil API backend untuk menyimpan entry ini.
+    setHistory((prev) => [entry, ...prev]);
+
+    alert("Data cek berhasil disimpan ke history.");
     setForm(initialForm);
   };
 
-  const handleCetakFisik = () => {
-    if (!selected) {
-      alert("Pilih salah satu cek di Daftar Cetak Cek terlebih dahulu.");
-      return;
-    }
-    if (selected.status !== "Belum Dicetak") {
-      alert("Cek ini sudah pernah dicetak. Gunakan tombol Cetak Ulang.");
-      return;
-    }
+  // ================= AKSI HAPUS HISTORY (dengan modal konfirmasi) =================
+  const handleDeleteClick = (item) => {
+    setRowToDelete(item);
+  };
 
-    const confirmPrint = window.confirm(`Cetak fisik cek ${selected.nomor} (${selected.jenisCek}) sekarang?`);
+  const handleDeleteCancel = () => {
+    setRowToDelete(null);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!rowToDelete) return;
+    setDeleting(true);
+
+    // Nanti di sini tinggal panggil API backend untuk menghapus data ini.
+    setHistory((prev) => prev.filter((h) => h.id !== rowToDelete.id));
+
+    setDeleting(false);
+    setRowToDelete(null);
+  };
+
+  const filteredHistory = useMemo(() => {
+    return history.filter((item) => {
+      if (dateFrom && item.tanggal < dateFrom) return false;
+      if (dateTo && item.tanggal > dateTo) return false;
+      if (filterBank && item.bank !== filterBank) return false;
+      return true;
+    });
+  }, [history, dateFrom, dateTo, filterBank]);
+
+  // Pagination
+  const total = filteredHistory.length;
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
+  const currentRows = filteredHistory.slice((page - 1) * perPage, page * perPage);
+  const startEntry = total === 0 ? 0 : (page - 1) * perPage + 1;
+  const endEntry = Math.min(page * perPage, total);
+  const visiblePages = [];
+  for (let i = 1; i <= totalPages; i++) visiblePages.push(i);
+
+  // ================= AKSI CETAK LANGSUNG =================
+  const handleCetak = () => {
+    if (!validateForm()) return;
+
+    const confirmPrint = window.confirm(
+      `Cetak cek (${form.jenisCek}) untuk ${form.vendor} sebesar Rp ${Number(form.nominal).toLocaleString("id-ID")} sekarang?`
+    );
     if (!confirmPrint) return;
 
-    setDataCek((prev) =>
-      prev.map((item) =>
-        item.id === selected.id ? { ...item, status: "Sudah Dicetak" } : item
-      )
-    );
-    alert(`Cek ${selected.nomor} berhasil dicetak.`);
-  };
+    // Nanti di sini tinggal panggil API backend untuk kirim data cek
+    // sekaligus memicu proses cetak fisik (mis. lewat printer driver / PDF).
+    window.print();
 
-  const handleCetakUlang = () => {
-    if (!selected) {
-      alert("Pilih salah satu cek di Daftar Cetak Cek terlebih dahulu.");
-      return;
-    }
-    if (selected.status !== "Sudah Dicetak") {
-      alert("Cetak Ulang hanya berlaku untuk cek yang sudah dicetak sebelumnya.");
-      return;
-    }
-    alert(`Mencetak ulang cek ${selected.nomor}...`);
-  };
-
-  const handleBatalkanCek = () => {
-    if (!selected) {
-      alert("Pilih salah satu cek di Daftar Cetak Cek terlebih dahulu.");
-      return;
-    }
-    if (selected.status === "Dibatalkan") {
-      alert("Cek ini sudah dibatalkan.");
-      return;
-    }
-
-    const confirmCancel = window.confirm(`Yakin ingin membatalkan cek ${selected.nomor}?`);
-    if (!confirmCancel) return;
-
-    setDataCek((prev) =>
-      prev.map((item) =>
-        item.id === selected.id ? { ...item, status: "Dibatalkan" } : item
-      )
-    );
-  };
-
-  const statusBadge = (status) => {
-    if (status === "Sudah Dicetak") {
-      return (
-        <span className="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-medium">
-          Sudah Dicetak
-        </span>
-      );
-    }
-    if (status === "Dibatalkan") {
-      return (
-        <span className="bg-gray-800 text-white px-3 py-1 rounded-full text-xs font-medium">
-          Dibatalkan
-        </span>
-      );
-    }
-    return (
-      <span className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-xs font-medium">
-        Belum Dicetak
-      </span>
-    );
+    alert("Cek berhasil dicetak.");
+    setForm(initialForm);
   };
 
   return (
     <div className="space-y-8">
 
       {/* ================= 1. INFORMASI CEK ================= */}
-      <CheckForm form={form} onChange={handleChange} onJenisCekChange={handleJenisCekChange} dataCek={dataCek} onSimpanCek={handleCetakCek} />
+      <CheckForm
+        form={form}
+        onChange={handleChange}
+        onJenisCekChange={handleJenisCekChange}
+        onSimpan={handleSimpan}
+        vendorSuggestions={vendorSuggestions}
+        bankPenerimaSuggestions={bankPenerimaSuggestions}
+        nomorRekeningSuggestions={nomorRekeningSuggestions}
+      />
 
       {/* ================= 2. PREVIEW CETAK CEK ================= */}
-      <CheckPreview form={form} />
-
-      {/* ================= 3. DAFTAR CETAK CEK ================= */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden" style={{ margin: "20px", padding: "20px" }}>
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h2 className="text-base font-bold text-gray-800">Daftar Cetak Cek</h2>
+        <div className="border-b border-gray-100 px-6 py-4 flex items-center justify-between" style={{ marginBottom: "10px" }}>
+          <h2 className="font-bold text-gray-600">Preview Layout Cek Fisik</h2>
+          {form.bank && (
+            <span className="text-xs text-gray-500">
+              Format: <strong className="text-gray-700">{form.bank}</strong>
+            </span>
+          )}
+        </div>
+        <div className="p-6 flex justify-center overflow-x-auto bg-gray-50/50">
+          {!SelectedCheck ? (
+            <div
+              className="rounded-2xl border-2 border-dashed border-gray-300 bg-white flex flex-col items-center justify-center p-8 text-center"
+              style={{ width: "21cm", height: "9.5cm" }}
+            >
+              <p className="text-gray-400 text-sm font-medium">
+                Silakan pilih Bank pada form di atas untuk menampilkan cetak cek
+              </p>
+            </div>
+          ) : (
+            <SelectedCheck form={form} />
+          )}
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm border-collapse border border-gray-300 text-center">
+        {/* Tombol Cetak Cek — di dalam container preview, pojok kanan bawah */}
+        <div className="flex justify-end px-6 pb-6" style={{ marginTop: "20px" }}>
+          <button
+            type="button"
+            onClick={handleCetak}
+            className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg text-sm font-semibold transition shadow-sm"
+            style={{ padding: "5px 10px" }}
+          >
+            <FaPrint />
+            Cetak Cek
+          </button>
+        </div>
+      </div>
+
+      {/* ================= 3. HISTORY CETAK CEK ================= */}
+      <div
+        className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5"
+        style={{ marginLeft: "20px", marginRight: "20px", marginBottom: "20px" }}
+      >
+        <div className="mb-4" style={{ marginLeft: "20px", marginRight: "20px", marginTop: "20px" }}>
+          <h2 className="font-bold text-gray-600">History Cetak Cek</h2>
+          <p className="text-xs text-gray-500 mt-0.5">Daftar cek yang sudah pernah disimpan / dicetak</p>
+        </div>
+
+        {/* ================= FILTER ================= */}
+        <div className="flex flex-wrap items-end gap-4 mb-5" style={{ marginLeft: "20px", marginRight: "20px", marginTop: "10px", marginBottom: "10px" }}>
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Dari Tanggal</label>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setPage(1);
+              }}
+              className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
+              style={{ padding: "1px 5px" }}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Sampai Tanggal</label>
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setPage(1);
+              }}
+              className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
+              style={{ padding: "1px 5px" }}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-500">Filter Bank</label>
+            <select
+              value={filterBank}
+              onChange={(e) => {
+                setFilterBank(e.target.value);
+                setPage(1);
+              }}
+              className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-300 focus:border-gray-300"
+              style={{ padding: "1px 5px" }}
+            >
+              <option value="">Semua Bank</option>
+              {BANK_OPTIONS.map((bank) => (
+                <option key={bank} value={bank}>
+                  {bank}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex-1" />
+
+          <button
+            type="button"
+            onClick={() => exportToCSV(filteredHistory)}
+            className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
+            style={{ padding: "5px 10px" }}
+          >
+            <FaFileExport className="text-xs" />
+            Export
+          </button>
+        </div>
+
+        {/* ================= TABLE ================= */}
+        <div className="overflow-x-auto" style={{ marginLeft: "10px", marginRight: "10px" }}>
+          <table className="w-full text-sm border border-gray-300 text-center">
             <thead>
               <tr className="text-xs uppercase tracking-wide bg-gray-50">
-                <th className="p-3 font-medium border border-gray-300 text-center">No. Cek</th>
-                <th className="p-3 font-medium border border-gray-300 text-center">Jenis Cek</th>
                 <th className="p-3 font-medium border border-gray-300 text-center">Tanggal</th>
-                <th className="p-3 font-medium border border-gray-300 text-center">Vendor / Penerima</th>
-                <th className="p-3 font-medium border border-gray-300 text-center">Bank & Rekening</th>
-                <th className="p-3 font-medium border border-gray-300 text-center">Nominal (Rp)</th>
+                <th className="p-3 font-medium border border-gray-300 text-center">Bank</th>
+                <th className="p-3 font-medium border border-gray-300 text-center">Nomor Cek</th>
+                <th className="p-3 font-medium border border-gray-300 text-center">Nominal</th>
+                <th className="p-3 font-medium border border-gray-300 text-center">Vendor</th>
+                <th className="p-3 font-medium border border-gray-300 text-center">No Rek</th>
                 <th className="p-3 font-medium border border-gray-300 text-center">Status</th>
+                <th className="p-3 font-medium border border-gray-300 text-center">Aksi</th>
               </tr>
             </thead>
-            <tbody>
-              {dataCek.length === 0 ? (
+
+            {currentRows.length === 0 ? (
+              <tbody>
                 <tr>
-                  <td colSpan={7} className="p-8 text-center text-gray-400 border border-gray-300">
-                    Belum ada data cetak cek.
+                  <td colSpan={8} className="p-8 text-center text-gray-400 border border-gray-300">
+                    Belum ada data history cek.
                   </td>
                 </tr>
-              ) : (
-                dataCek.map((item) => (
-                  <tr
-                    key={item.id}
-                    onClick={() => setSelectedId(item.id)}
-                    className={`hover:bg-gray-50 cursor-pointer transition ${selectedId === item.id ? "bg-blue-50/60 font-medium" : ""
-                      }`}
-                  >
-                    <td className="p-3 text-gray-700 border border-gray-300 font-mono">{item.nomor}</td>
+              </tbody>
+            ) : (
+              <tbody>
+                {currentRows.map((item) => (
+                  <tr key={item.id} className="hover:bg-gray-50">
+                    <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
+                      {formatDate(item.tanggal)}
+                    </td>
+                    <td className="p-3 text-gray-700 border border-gray-300">{item.bank}</td>
+                    <td className="p-3 text-gray-700 border border-gray-300">{item.nomorCek || "-"}</td>
+                    <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
+                      {formatRupiah(item.nominal)}
+                    </td>
+                    <td className="p-3 text-gray-700 border border-gray-300">{item.vendor}</td>
+                    <td className="p-3 text-gray-700 border border-gray-300">{item.nomorRekening || "-"}</td>
                     <td className="p-3 border border-gray-300">
-                      <span className={`px-2.5 py-1 rounded-md text-xs font-semibold ${item.jenisCek === "Tarik Tunai" ? "bg-emerald-100 text-emerald-800" : "bg-blue-100 text-blue-800"
-                        }`}>
+                      <span
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap ${STATUS_STYLE[item.jenisCek]}`}
+                      >
                         {item.jenisCek}
                       </span>
                     </td>
-                    <td className="p-3 text-gray-700 border border-gray-300">{item.tanggal}</td>
-                    <td className="p-3 text-gray-700 border border-gray-300">{item.vendor}</td>
-                    <td className="p-3 text-gray-700 border border-gray-300 text-xs">
-                      <div><strong>{item.bank}</strong></div>
-                      {item.jenisCek === "Transfer" && (
-                        <div className="text-gray-500">{item.bankPenerima} - {item.nomorRekening}</div>
-                      )}
+                    <td className="p-3 border border-gray-300">
+                      <div className="flex items-center justify-center">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteClick(item)}
+                          className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-md"
+                          style={{ padding: "5px 5px" }}
+                          title="Hapus"
+                        >
+                          <FaTrash className="text-xs" />
+                        </button>
+                      </div>
                     </td>
-                    <td className="p-3 text-gray-700 border border-gray-300 font-semibold">Rp {item.nominal}</td>
-                    <td className="p-3 border border-gray-300">{statusBadge(item.status)}</td>
                   </tr>
-                ))
-              )}
-            </tbody>
+                ))}
+              </tbody>
+            )}
           </table>
         </div>
 
-        {selected && (
-          <div className="px-6 py-3 bg-gray-50 border-t border-gray-200 text-xs text-gray-600">
-            Terpilih: <strong className="text-gray-900">{selected.nomor}</strong> ({selected.jenisCek} - {selected.vendor})
+        {/* ================= PAGINATION ================= */}
+        <div
+          className="flex items-center justify-between mt-4 text-sm text-gray-500"
+          style={{
+            marginLeft: "10px",
+            marginRight: "10px",
+            marginTop: "10px",
+            marginBottom: "10px",
+          }}
+        >
+          <span>
+            Showing {startEntry} to {endEntry} of {total} entries
+          </span>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 disabled:opacity-40 hover:bg-gray-50"
+            >
+              <FaChevronLeft className="text-xs" />
+            </button>
+
+            {visiblePages.map((p) => (
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                className={`w-8 h-8 flex items-center justify-center rounded-md text-sm ${page === p
+                  ? "bg-gray-600 text-white"
+                  : "border border-gray-200 text-gray-600 hover:bg-gray-50"
+                  }`}
+              >
+                {p}
+              </button>
+            ))}
+
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="w-8 h-8 flex items-center justify-center rounded-md border border-gray-200 text-gray-500 disabled:opacity-40 hover:bg-gray-50"
+            >
+              <FaChevronRight className="text-xs" />
+            </button>
+          </div>
+        </div>
+
+        {/* ================= MODAL KONFIRMASI HAPUS ================= */}
+        {rowToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="bg-white rounded-none shadow-lg w-full max-w-sm">
+              <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
+                <h3 className="text-lg font-semibold text-gray-700 mb-2">Hapus Data</h3>
+                <p className="text-sm text-gray-500">
+                  Apakah anda yakin ingin menghapus data cek nomor{" "}
+                  <span className="font-medium text-gray-700">{rowToDelete.nomorCek || "-"}</span> atas nama{" "}
+                  <span className="font-medium text-gray-700">{rowToDelete.vendor}</span>?
+                </p>
+              </div>
+
+              <div
+                className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100"
+                style={{ marginBottom: "10px", marginRight: "10px", marginTop: "10px" }}
+              >
+                <button
+                  type="button"
+                  onClick={handleDeleteCancel}
+                  disabled={deleting}
+                  className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                  style={{ padding: "5px 7px" }}
+                >
+                  Batal
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleDeleteConfirm}
+                  disabled={deleting}
+                  className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
+                  style={{ padding: "5px 7px" }}
+                >
+                  {deleting ? "Menghapus..." : "Ya, Hapus"}
+                </button>
+              </div>
+            </div>
           </div>
         )}
-      </div>
-
-      {/* ================= BUTTON ACTION ================= */}
-      <div className="flex flex-wrap justify-end gap-3 pt-2" style={{ marginRight: "20px", marginBottom: "20px" }}>
-        <button
-          onClick={handleCetakFisik}
-          disabled={!selected || selected.status !== "Belum Dicetak"}
-          className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition shadow-sm" style={{ padding: "5px 15px" }}
-        >
-          <FaFileSignature />
-          Cetak Fisik
-        </button>
-        <button
-          onClick={handleCetakUlang}
-          disabled={!selected || selected.status !== "Sudah Dicetak"}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gray-600 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition shadow-sm" style={{ padding: "5px 15px" }}
-        >
-          <FaRedo />
-          Cetak Ulang
-        </button>
-        <button
-          onClick={handleBatalkanCek}
-          disabled={!selected || selected.status === "Dibatalkan"}
-          className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-sm font-semibold transition shadow-sm" style={{ padding: "5px 15px" }}
-        >
-          <FaBan />
-          Batalkan Cek
-        </button>
       </div>
     </div>
   );
