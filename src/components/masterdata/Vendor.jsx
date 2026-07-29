@@ -110,7 +110,7 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
                             }}
                             className={`py-2 text-sm cursor-pointer border-b border-gray-50 last:border-0 ${i === highlight ? "bg-gray-100 font-semibold text-gray-900" : "text-gray-700 hover:bg-gray-50"
                                 }`}
-                            style={{ paddingLeft: "20px", paddingRight: "12px" }}
+                            style={{ paddingLeft: "10px", paddingRight: "12px" }}
                         >
                             {s}
                         </li>
