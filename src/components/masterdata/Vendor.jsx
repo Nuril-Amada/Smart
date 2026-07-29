@@ -100,10 +100,7 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
             </div>
 
             {open && value && suggestions.length > 0 && (
-                <ul
-                    className="absolute z-30 mt-1 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl py-1"
-                    style={{ left: "12px", width: "calc(100% - 12px)" }}
-                >
+                <ul className="absolute z-30 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl py-1">
                     {suggestions.map((s, i) => (
                         <li
                             key={i}
@@ -111,8 +108,9 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
                                 e.preventDefault();
                                 handleSelect(s);
                             }}
-                            className={`px-3 py-2 text-sm cursor-pointer border-b border-gray-50 last:border-0 ${i === highlight ? "bg-gray-100 font-semibold text-gray-900" : "text-gray-700 hover:bg-gray-50"
+                            className={`py-2 text-sm cursor-pointer border-b border-gray-50 last:border-0 ${i === highlight ? "bg-gray-100 font-semibold text-gray-900" : "text-gray-700 hover:bg-gray-50"
                                 }`}
+                            style={{ paddingLeft: "20px", paddingRight: "12px" }}
                         >
                             {s}
                         </li>
