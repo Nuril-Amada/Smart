@@ -100,7 +100,10 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
             </div>
 
             {open && value && suggestions.length > 0 && (
-                <ul className="absolute z-30 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl py-1">
+                <ul
+                    className="absolute z-30 mt-1 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-xl py-1"
+                    style={{ left: "12px", width: "calc(100% - 12px)" }}
+                >
                     {suggestions.map((s, i) => (
                         <li
                             key={i}
