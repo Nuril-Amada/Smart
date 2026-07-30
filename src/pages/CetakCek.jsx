@@ -7,23 +7,42 @@ import {
   FaChevronRight,
   FaDownload,
 } from "react-icons/fa";
-import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 import CheckForm from "../components/cetakcek/CheckForm";
-import MandiriCheck from "../components/cetakcek/MandiriCheck";
-import BCACheck from "../components/cetakcek/BCACheck";
-import SinarmasCheck from "../components/cetakcek/SinarmasCheck";
-import MaybankCheck from "../components/cetakcek/MaybankCheck";
+import MandiriCheck, { MandiriLayout } from "../components/cetakcek/MandiriCheck";
+import BCACheck, { BCALayout } from "../components/cetakcek/BCACheck";
+import SinarmasCheck, { SinarmasLayout } from "../components/cetakcek/SinarmasCheck";
+import MaybankCheck, { MaybankLayout } from "../components/cetakcek/MaybankCheck";
 
 // Peta nama bank (sesuai value pada <select> di CheckForm) ke komponennya
 const BANK_COMPONENTS = {
   "Bank Mandiri": MandiriCheck,
+  Mandiri: MandiriCheck,
   "Bank BCA": BCACheck,
+  BCA: BCACheck,
   "Bank Sinarmas": SinarmasCheck,
+  Sinarmas: SinarmasCheck,
   Maybank: MaybankCheck,
+  "Maybank Indonesia": MaybankCheck,
+  "Bank Maybank": MaybankCheck,
 };
 
 const BANK_OPTIONS = ["Bank Mandiri", "Bank BCA", "Bank Sinarmas", "Maybank"];
+
+// Peta nama bank ke konfigurasi layout (widthCm x heightCm) masing-masing.
+// Ukuran PDF otomatis mengikuti layout masing-masing bank yang dipilih user.
+const BANK_LAYOUTS = {
+  "Bank Mandiri": MandiriLayout,
+  Mandiri: MandiriLayout,
+  "Bank BCA": BCALayout,
+  BCA: BCALayout,
+  "Bank Sinarmas": SinarmasLayout,
+  Sinarmas: SinarmasLayout,
+  Maybank: MaybankLayout,
+  "Maybank Indonesia": MaybankLayout,
+  "Bank Maybank": MaybankLayout,
+};
 
 // STYLE badge status, sama pola dengan SOURCE_STYLE di tabel Settlement
 const STATUS_STYLE = {
@@ -101,8 +120,6 @@ function exportToCSV(rows) {
   URL.revokeObjectURL(url);
 }
 
-// px -> cm dengan asumsi 96dpi (dipakai untuk konversi ukuran halaman PDF)
-const PX_PER_CM = 37.7952755906;
 
 const initialForm = {
   bank: "",
@@ -122,8 +139,8 @@ export default function CetakCek() {
   // ================= FORM INFORMASI CEK =================
   const [form, setForm] = useState(initialForm);
 
-  // Ref ke elemen preview cek (dipakai untuk export Download, tanpa
-  // mengubah struktur/kode di komponen MandiriCheck/BCACheck/dst).
+  // Ref ke elemen preview cek — dipakai oleh handleDownload() untuk
+  // menangkap seluruh tampilan komponen cek (garis + label + teks).
   const checkPreviewRef = useRef(null);
 
   // ================= HISTORY CETAK CEK =================
@@ -276,50 +293,91 @@ export default function CetakCek() {
     setForm(initialForm);
   };
 
-  // ================= AKSI DOWNLOAD (hanya tulisan yang diinput user) =================
-  // Cara kerja: clone elemen preview cek yang lagi tampil, lalu di clone
-  // itu SEMUA garis (border) & label statis (svg "Atas penyerahan...",
-  // "uang sejumlah...", dll) dihapus/ditransparankan — jadi yang tersisa
-  // cuma teks yang diinput user (tanggal, vendor, terbilang, nominal),
-  // dengan posisi yang PERSIS SAMA seperti tata letak preview aslinya.
-  // Tidak ada perubahan kode sama sekali di komponen MandiriCheck /
-  // BCACheck / SinarmasCheck / MaybankCheck.
+  // ================= AKSI DOWNLOAD =================
   const handleDownload = async () => {
     if (!validateForm()) return;
     if (!checkPreviewRef.current) return;
 
+    const layout = BANK_LAYOUTS[form.bank];
+    if (!layout) {
+      alert("Layout untuk bank ini belum tersedia.");
+      return;
+    }
+
+    const { widthCm, heightCm } = layout;
+
     const original = checkPreviewRef.current;
     const clone = original.cloneNode(true);
 
-    // Hapus semua label statis (dirender pakai <svg> di tiap komponen bank)
+    // Hapus semua label statis SVG
     clone.querySelectorAll("svg").forEach((el) => el.remove());
 
-    // Transparankan semua garis/border, biar cuma teks yang kelihatan
+    // Hapus label statis "Rp." yang ada di celah antara garis keempat & nominal
+    clone.querySelectorAll("div").forEach((el) => {
+      const txt = el.textContent.trim();
+      if (txt === "Rp." || txt === "Rp") {
+        el.remove();
+      }
+    });
+
+    // Transparankan semua garis/border & ubah overflow-hidden menjadi visible
+    // agar bagian bawah karakter/angka tidak terpotong (clipping) oleh html2canvas.
     clone.querySelectorAll("*").forEach((el) => {
       el.style.borderColor = "transparent";
       el.style.borderWidth = "0px";
+      el.style.boxShadow = "none";
+      el.style.outline = "none";
+      el.style.backgroundColor = "transparent";
+      el.style.overflow = "visible";
     });
     clone.style.border = "none";
     clone.style.boxShadow = "none";
+    clone.style.backgroundColor = "transparent";
 
-    // Render clone di luar layar (tidak terlihat user) supaya bisa di-capture
+    // Posisikan clone di (0,0) di belakang layar dengan zIndex -9999
+    // agar html2canvas bisa merender koordinat elemen dengan tepat
     clone.style.position = "fixed";
-    clone.style.top = "-9999px";
-    clone.style.left = "-9999px";
-    clone.style.margin = "0";
+    clone.style.top = "0px";
+    clone.style.left = "0px";
+    clone.style.zIndex = "-9999";
+    clone.style.opacity = "1";
+    clone.style.pointerEvents = "none";
     document.body.appendChild(clone);
 
     try {
       const canvas = await html2canvas(clone, {
         backgroundColor: null,
         scale: 3,
-      });
-      const imgData = canvas.toDataURL("image/png");
+        logging: false,
+        useCORS: true,
+        onclone: (clonedDoc) => {
+          // Solusi masalah Tailwind CSS v4 "oklch":
+          // Ganti ekspresi warna oklch(...) di dalam <style> tags menjadi warna Hex #000000
+          // TANPA menghapus aturan layout (position: absolute, top, left, width, height, flex, dll).
+          const styleElements = clonedDoc.querySelectorAll("style");
+          styleElements.forEach((styleEl) => {
+            if (styleEl.textContent && styleEl.textContent.includes("oklch")) {
+              styleEl.textContent = styleEl.textContent.replace(/oklch\([^)]+\)/g, "#000000");
+            }
+          });
 
-      // Ukuran halaman PDF disamakan dengan ukuran fisik cek (cm), supaya
-      // pas kalau dicetak di atas kertas cek fisik yang sudah ada garisnya.
-      const widthCm = original.offsetWidth / PX_PER_CM;
-      const heightCm = original.offsetHeight / PX_PER_CM;
+          Array.from(clonedDoc.styleSheets).forEach((sheet) => {
+            try {
+              const rules = sheet.cssRules || sheet.rules;
+              if (!rules) return;
+              for (let i = 0; i < rules.length; i++) {
+                if (rules[i].cssText && rules[i].cssText.includes("oklch")) {
+                  try {
+                    rules[i].style.cssText = rules[i].style.cssText.replace(/oklch\([^)]+\)/g, "#000000");
+                  } catch (e) {}
+                }
+              }
+            } catch (e) {}
+          });
+        },
+      });
+
+      const imgData = canvas.toDataURL("image/png");
 
       const pdf = new jsPDF({
         orientation: widthCm >= heightCm ? "landscape" : "portrait",
@@ -328,8 +386,13 @@ export default function CetakCek() {
       });
       pdf.addImage(imgData, "PNG", 0, 0, widthCm, heightCm);
       pdf.save(`cek-${form.bank || "preview"}-${form.nomorCek || Date.now()}.pdf`);
+    } catch (err) {
+      console.error("Gagal mendownload PDF:", err);
+      alert("Gagal membuat PDF: " + (err.message || err));
     } finally {
-      document.body.removeChild(clone);
+      if (document.body.contains(clone)) {
+        document.body.removeChild(clone);
+      }
     }
   };
 

@@ -6,6 +6,13 @@ const template = {
     heightCm: 7,
 };
 
+// Ekspor ukuran layout supaya handleDownload() di CetakCek.jsx
+// bisa membuat PDF dengan ukuran yang tepat tanpa hardcode.
+export const BCALayout = {
+    widthCm: template.widthCm,
+    heightCm: template.heightCm,
+};
+
 // Margin kiri/kanan umum untuk garis 2, 3, 4
 const MARGIN_LEFT_CM = 0.7;
 const MARGIN_RIGHT_CM = 0.4;

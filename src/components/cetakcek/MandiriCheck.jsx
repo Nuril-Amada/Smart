@@ -6,6 +6,13 @@ const template = {
     heightCm: 7,
 };
 
+// Ekspor ukuran layout supaya handleDownload() di CetakCek.jsx
+// bisa membuat PDF dengan ukuran yang tepat tanpa hardcode.
+export const MandiriLayout = {
+    widthCm: template.widthCm,
+    heightCm: template.heightCm,
+};
+
 // Perkiraan kapasitas karakter per baris (dipakai sebagai fallback SSR saja;
 // pemotongan sebenarnya sekarang pakai pengukuran canvas, lihat measureTextWidthCm).
 const CHAR_WIDTH_CM = 0.19;
