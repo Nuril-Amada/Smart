@@ -125,7 +125,7 @@ export default function CheckForm({
                     <span className={`px-3 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 ${form.jenisCek === "Tarik Tunai" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" : "bg-blue-50 text-blue-700 border border-blue-200"
                         }`} style={{ padding: "3px 5px" }}>
                         {form.jenisCek === "Tarik Tunai" ? <FaMoneyBillWave /> : <FaExchangeAlt />}
-                        Mode: {form.jenisCek}
+                        {form.jenisCek}
                     </span>
                 )}
             </div>

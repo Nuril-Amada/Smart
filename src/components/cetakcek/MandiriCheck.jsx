@@ -1,113 +1,478 @@
+import { useLayoutEffect, useRef, useState } from "react";
+
 // Konfigurasi tampilan cek Bank Mandiri
 const template = {
     widthCm: 17.8,
     heightCm: 7,
 };
 
-export default function MandiriCheck({ form }) {
+// Perkiraan kapasitas karakter per baris (dipakai sebagai fallback SSR saja;
+// pemotongan sebenarnya sekarang pakai pengukuran canvas, lihat measureTextWidthCm).
+const CHAR_WIDTH_CM = 0.19;
+
+// Ukuran font dasar (px) untuk teks terbilang, sesuai class "text-sm" (14px).
+const TERBILANG_BASE_FONT_PX = 14;
+
+// Batas minimum scale-down yang masih dianggap "wajar" untuk dipaksa muat
+// dalam 1 garis saja. Kalau untuk muat 1 garis teksnya harus di-scale lebih
+// kecil dari ini, baru dipecah ke garis keempat.
+const MIN_SINGLE_LINE_SCALE = 0.92;
+
+// Line 3: div pembungkus selebar 16.3cm, tapi span teksnya punya offset
+// left 3.3cm & right 2.8cm terhadap div, jadi lebar SPAN yang sebenarnya
+// = 16.3 - 3.3 - 2.8 = 10.2cm (bukan 16.3cm seperti sebelumnya).
+const LINE3_DIV_WIDTH_CM = 16.3;
+const LINE3_SPAN_LEFT_CM = 3.8;
+const LINE3_SPAN_RIGHT_CM = 0.6;
+const LINE3_WIDTH_CM = LINE3_DIV_WIDTH_CM - LINE3_SPAN_LEFT_CM - LINE3_SPAN_RIGHT_CM; // 10.2
+
+// Line 4: div punya width eksplisit 10.2cm, span teksnya punya offset
+// left 2.2cm terhadap div, jadi lebar SPAN yang sebenarnya
+// = 10.2 - 2.2 = 8.0cm (bukan 10.2cm seperti sebelumnya).
+const LINE4_DIV_WIDTH_CM = 10.3;
+const LINE4_SPAN_LEFT_CM = 2.2;
+const LINE4_SPAN_RIGHT_CM = 0.6;
+const LINE4_WIDTH_CM = LINE4_DIV_WIDTH_CM - LINE4_SPAN_LEFT_CM - LINE4_SPAN_RIGHT_CM; // 7.4
+
+// Line 2: div pembungkus selebar 16.4cm (sama seperti div garis ketiga).
+// Teks harus berhenti sebelum label "atau pembawa *" yang posisinya
+// mulai dari absolut x = 15.8cm, alias 1.5cm dari sisi kanan div ini.
+const LINE2_DIV_WIDTH_CM = 16.3;
+const LINE2_STOP_BEFORE_LABEL_CM = 1.8;
+const LINE2_TRANSFER_LEFT_CM = 4.2;
+const LINE2_TRANSFER_WIDTH_CM =
+    LINE2_DIV_WIDTH_CM - LINE2_TRANSFER_LEFT_CM - LINE2_STOP_BEFORE_LABEL_CM; // 10.7
+const LINE2_TUNAI_LEFT_CM = 4.2;
+const LINE2_TUNAI_WIDTH_CM =
+    LINE2_DIV_WIDTH_CM - LINE2_TUNAI_LEFT_CM - LINE2_STOP_BEFORE_LABEL_CM; // 6.9
+
+// Teks yang otomatis mengecilkan ukuran font (scale down) kalau lebar
+// teks aslinya melebihi maxWidthCm, supaya tidak pernah menumpuk/overflow
+// ke elemen lain di sebelah kanannya (mis. label "atau pembawa *").
+function FitText({ text, leftCm, maxWidthCm, bottomCm, className }) {
+    const wrapRef = useRef(null);
+    const textRef = useRef(null);
+    const [scale, setScale] = useState(1);
+
+    useLayoutEffect(() => {
+        const wrap = wrapRef.current;
+        const inner = textRef.current;
+        if (!wrap || !inner) return;
+
+        // Reset dulu supaya pengukuran lebar alami (tanpa scale) akurat
+        inner.style.transform = "scale(1)";
+        const wrapWidth = wrap.clientWidth;
+        const textWidth = inner.scrollWidth;
+
+        if (wrapWidth > 0 && textWidth > wrapWidth) {
+            setScale(wrapWidth / textWidth);
+        } else {
+            setScale(1);
+        }
+    }, [text, maxWidthCm]);
+
     return (
         <div
-            className="relative bg-white border border-gray-300 shrink-0 overflow-hidden font-sans"
+            ref={wrapRef}
+            className="absolute overflow-hidden"
+            style={{ left: `${leftCm}cm`, bottom: `${bottomCm}cm`, width: `${maxWidthCm}cm` }}
+        >
+            <span
+                ref={textRef}
+                className={className}
+                style={{
+                    display: "inline-block",
+                    whiteSpace: "nowrap",
+                    transform: `scale(${scale})`,
+                    transformOrigin: "left bottom",
+                }}
+            >
+                {text}
+            </span>
+        </div>
+    );
+}
+
+// Dipakai KHUSUS untuk kasus terbilang yang kepecah jadi 2 baris (garis 3 &
+// garis 4). Bedanya dengan FitText: di sini font-size di-set eksplisit
+// (fontSizePx, sama untuk kedua baris biar ukurannya identik), teksnya
+// dirender apa adanya (rapat, natural, rata kiri) — TANPA dipaksa
+// stretching/justify ke lebar penuh garis.
+function ScaledText({ text, leftCm, maxWidthCm, bottomCm, fontSizePx, className }) {
+    return (
+        <div
+            className="absolute overflow-hidden"
+            style={{ left: `${leftCm}cm`, bottom: `${bottomCm}cm`, width: `${maxWidthCm}cm` }}
+        >
+            <span
+                className={className}
+                style={{
+                    display: "inline-block",
+                    whiteSpace: "nowrap",
+                    fontSize: `${fontSizePx}px`,
+                    lineHeight: 1,
+                }}
+            >
+                {text}
+            </span>
+        </div>
+    );
+}
+
+// Ukur lebar teks (dalam cm) pakai canvas, jadi lebih akurat dari
+// estimasi CHAR_WIDTH_CM yang statis — dipakai untuk menentukan titik
+// potong terbaik antara line 1 & line 2 terbilang.
+const PX_PER_CM = 37.795275591; // 96dpi / 2.54cm
+
+let measureCtx = null;
+function getMeasureCtx() {
+    if (typeof document === "undefined") return null;
+    if (!measureCtx) measureCtx = document.createElement("canvas").getContext("2d");
+    return measureCtx;
+}
+
+function measureTextWidthCm(text, fontSizePx = 14, fontWeight = "500") {
+    const ctx = getMeasureCtx();
+    if (!ctx) return text.length * CHAR_WIDTH_CM; // fallback kalau SSR
+    ctx.font = `${fontWeight} ${fontSizePx}px "Arial Narrow", Arial, sans-serif`;
+    return ctx.measureText(text).width / PX_PER_CM;
+}
+
+// Pecah teks terbilang jadi 2 baris: baris pertama sepanjang garis ketiga,
+// sisanya (jika ada) lanjut ke garis keempat, tanpa memotong kata di tengah.
+function splitTerbilang(text) {
+    const clean = (text || "").trim().toUpperCase();
+    if (!clean) return { line1: "", line2: "", fontSizePx: null };
+
+    const fullWidthCm = measureTextWidthCm(clean);
+
+    // Kalau seluruh teks sudah muat pas di garis ketiga, nggak usah dipecah.
+    if (fullWidthCm <= LINE3_WIDTH_CM) {
+        return { line1: clean, line2: "", fontSizePx: null };
+    }
+
+    // Kalau teksnya masih bisa dipepetin (di-scale down) ke 1 garis dengan
+    // scale yang masih wajar, jangan dipecah dulu — biar FitText yang
+    // ngecilin fontnya, garis keempat tetap kosong.
+    const scaleIfSingleLine = LINE3_WIDTH_CM / fullWidthCm;
+    if (scaleIfSingleLine >= MIN_SINGLE_LINE_SCALE) {
+        return { line1: clean, line2: "", fontSizePx: null };
+    }
+
+    const words = clean.split(" ");
+    if (words.length === 1) {
+        // Satu kata super panjang, tidak ada titik potong yang valid;
+        // biarkan FitText yang men-scale semuanya di baris pertama.
+        return { line1: clean, line2: "", fontSizePx: null };
+    }
+
+    // Isi baris pertama (garis ketiga) SEPENUH MUNGKIN dulu, kata demi kata,
+    // baru sisanya lanjut ke baris kedua (garis keempat). Supaya ruang di
+    // garis ketiga nggak kebuang percuma gara-gara dipotong terlalu awal.
+    let splitIndex = 1;
+    for (let i = 1; i <= words.length; i++) {
+        const candidate = words.slice(0, i).join(" ");
+        const w = measureTextWidthCm(candidate);
+
+        if (w <= LINE3_WIDTH_CM) {
+            // Masih muat pas (tanpa perlu scale down), boleh lanjut coba kata berikutnya.
+            splitIndex = i;
+        } else {
+            // Sudah kelebihan; kalau splitIndex belum maju sama sekali (kata
+            // pertama saja sudah kepanjangan), tetap paksa 1 kata di baris 1
+            // supaya baris 1 nggak kosong, biar FitText yang men-scale.
+            break;
+        }
+    }
+
+    const line1 = words.slice(0, splitIndex).join(" ");
+    const line2 = words.slice(splitIndex).join(" ");
+
+    // Teks dipecah jadi 2 baris beneran → hitung SATU font-size bersama
+    // (px) supaya ukuran huruf garis 3 & garis 4 sama persis. Font-size
+    // ini dipilih sekecil yang dibutuhkan baris yang paling "sesak".
+    const w1 = measureTextWidthCm(line1, TERBILANG_BASE_FONT_PX, "500");
+    const w2 = measureTextWidthCm(line2, TERBILANG_BASE_FONT_PX, "500");
+    const scale1 = LINE3_WIDTH_CM / w1;
+    const scale2 = w2 > 0 ? LINE4_WIDTH_CM / w2 : Infinity;
+    const commonScale = Math.min(1, scale1, scale2);
+    const fontSizePx = TERBILANG_BASE_FONT_PX * commonScale;
+
+    return { line1, line2, fontSizePx };
+}
+
+function formatTanggalNumeric(tanggal) {
+    if (!tanggal) return "\u00A0";
+    const d = new Date(tanggal);
+    if (Number.isNaN(d.getTime())) return "\u00A0";
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+}
+
+export default function MandiriCheck({ form }) {
+    const { line1: terbilangLine1, line2: terbilangLine2, fontSizePx: terbilangFontPx } = splitTerbilang(form.terbilang);
+
+    return (
+        <div
+            className="relative bg-white border border-gray-300 shrink-0 overflow-hidden"
             style={{
                 width: `${template.widthCm}cm`,
                 height: `${template.heightCm}cm`,
+                fontFamily: '"Arial Narrow", Arial, sans-serif',
             }}
         >
             {/* ===== Tanggal ===== */}
             <div
                 className="absolute border-b border-gray-400 flex items-end justify-center"
-                style={{ top: "1.3cm", right: "0.5cm", width: "5.8cm", height: "0.5cm" }}
+                style={{ top: "0.8cm", right: "0.6cm", width: "5.8cm", height: "0.5cm" }}
             >
-                <span className="text-xs text-blue-900 font-medium">
-                    {form.tanggal
-                        ? new Date(form.tanggal).toLocaleDateString("id-ID", {
-                            day: "2-digit",
-                            month: "short",
-                            year: "numeric",
-                        })
-                        : "\u00A0"}
+                <span className="text-xs text-black font-medium">
+                    {formatTanggalNumeric(form.tanggal)}
                 </span>
             </div>
 
-            {/* ===== Atas penyerahan (penerima) ===== */}
-            <div className="absolute" style={{ top: "2.0cm", left: "0.9cm", width: "16.3cm" }}>
-                {/* Baris label: "Atas penyerahan..." dan "atau pembawa *" sejajar */}
-                <div className="flex justify-between items-baseline">
-                    <span
-                        className="text-[9px] font-bold text-gray-900 leading-tight"
-                        style={{ width: "4cm" }}
-                    >
-                        Atas penyerahan cek ini bayarlah kepada
-                    </span>
-                    <span
-                        className="text-[9px] font-bold text-gray-900 leading-tight text-right"
-                        style={{ width: "1.5cm" }}
-                    >
-                        atau pembawa *
-                    </span>
-                </div>
-
-                {/* Garis, tepat di bawah label, panjang penuh 16,3 cm */}
-                <div
-                    className="border-b border-gray-400 flex items-end mt-1"
-                    style={{ width: "16.3cm", height: "0.5cm" }}
-                >
-                    <span className="text-sm text-blue-900 italic font-medium">
-                        {form.vendor || ""}
-                    </span>
-                </div>
-
-                {/* Keterangan, di bawah garis */}
-                <p className="text-[10px] text-gray-400 italic mt-0.5">Pay to the order of</p>
-            </div>
-
-            {/* Info tambahan jika jenis cek Transfer */}
-            {form.jenisCek === "Transfer" && (
-                <div
-                    className="absolute text-[11px] text-blue-900 bg-blue-50 px-3 py-1 rounded border border-blue-200 flex justify-between font-mono"
-                    style={{ top: "3.5cm", left: "0.9cm", width: "16.3cm" }}
-                >
-                    <span>
-                        TRANSFER TO: <strong>{form.bankPenerima || "-"}</strong>
-                    </span>
-                    <span>
-                        NO. REK: <strong>{form.nomorRekening || "-"}</strong>
-                    </span>
-                </div>
-            )}
-
-            {/* ===== Uang sejumlah (terbilang) ===== */}
-            <div
+            {/* ===== Label di atas garis kedua (teks dipaksa pas 4cm pakai SVG textLength) ===== */}
+            <svg
                 className="absolute"
-                style={{
-                    top: form.jenisCek === "Transfer" ? "4.1cm" : "3.5cm",
-                    left: "0.9cm",
-                    width: "16.3cm",
-                }}
+                style={{ top: "1.6cm", left: "0.9cm" }}
+                width="4cm"
+                height="0.4cm"
+                viewBox="0 0 400 40"
+                preserveAspectRatio="none"
             >
-                <p className="text-xs font-bold text-gray-900">
-                    uang sejumlah Rupiah (dalam huruf)
-                </p>
-
-                {/* Garis, panjang penuh sama dengan garis penerima: 16,3 cm */}
-                <div
-                    className="border-b border-gray-400 flex items-end mt-1"
-                    style={{ width: "16.3cm", height: "0.5cm" }}
+                <text
+                    x="0"
+                    y="30"
+                    textLength="400"
+                    lengthAdjust="spacingAndGlyphs"
+                    fontSize="28"
+                    fontWeight="bold"
+                    fontFamily='"Arial Narrow", Arial, sans-serif'
+                    fill="#111827"
                 >
-                    <span className="text-sm text-blue-900 italic font-medium">
-                        {form.terbilang || ""}
-                    </span>
-                </div>
+                    Atas penyerahan cek ini bayarlah kepada
+                </text>
+            </svg>
 
-                <p className="text-[10px] text-gray-400 italic mt-0.5">The Sum of (in words)</p>
+            {/* ===== Label kanan di atas garis kedua (teks dipaksa pas 1.5cm) ===== */}
+            <svg
+                className="absolute"
+                style={{ top: "1.6cm", right: "0.6cm" }}
+                width="1.6cm"
+                height="0.4cm"
+                viewBox="0 0 150 40"
+                preserveAspectRatio="none"
+            >
+                <text
+                    x="0"
+                    y="30"
+                    textLength="150"
+                    lengthAdjust="spacingAndGlyphs"
+                    fontSize="28"
+                    fontWeight="bold"
+                    fontFamily='"Arial Narrow", Arial, sans-serif'
+                    fill="#111827"
+                >
+                    atau pembawa *
+                </text>
+            </svg>
+
+            {/* ===== Garis kedua (di bawah garis tanggal, jarak 0.7cm) ===== */}
+            <div
+                className="absolute border-b border-gray-400"
+                style={{ top: "2.0cm", left: "0.9cm", right: "0.6cm" }}
+            >
+                {/* Isi garis: Nama Vendor saja untuk Tarik Tunai (mulai dari tengah),
+                    + Bank & Rekening untuk Transfer. Font otomatis mengecil (FitText)
+                    kalau teksnya kepanjangan, dan selalu berhenti sebelum label
+                    "atau pembawa *" di sisi kanan. */}
+                {form.jenisCek === "Transfer" ? (
+                    <FitText
+                        text={`${form.vendor || ""} - ${form.bankPenerima || ""} - ${form.nomorRekening || ""}`}
+                        leftCm={LINE2_TRANSFER_LEFT_CM}
+                        maxWidthCm={LINE2_TRANSFER_WIDTH_CM}
+                        bottomCm={0.001}
+                        className="text-sm text-black font-medium"
+                    />
+                ) : (
+                    <FitText
+                        text={form.vendor || ""}
+                        leftCm={LINE2_TUNAI_LEFT_CM}
+                        maxWidthCm={LINE2_TUNAI_WIDTH_CM}
+                        bottomCm={0.001}
+                        className="text-sm text-black font-medium"
+                    />
+                )}
             </div>
 
-            {/* ===== Nominal ===== */}
-            <div className="absolute flex items-center gap-2" style={{ bottom: "0.4cm", right: "0.5cm" }}>
-                <span className="text-sm font-bold text-gray-800">Rp.</span>
-                <div className="min-w-[9rem] px-3 py-1.5 bg-blue-100 border border-blue-300 rounded text-right font-mono font-bold text-base text-gray-900">
+            {/* ===== Label di bawah garis kedua (teks dipaksa pas 1.3cm pakai SVG textLength) ===== */}
+            <svg
+                className="absolute"
+                style={{ top: "2.0cm", left: "0.9cm" }}
+                width="1.7cm"
+                height="0.35cm"
+                viewBox="0 0 130 35"
+                preserveAspectRatio="none"
+            >
+                <text
+                    x="0"
+                    y="26"
+                    textLength="130"
+                    lengthAdjust="spacingAndGlyphs"
+                    fontSize="24"
+                    fontFamily='"Arial Narrow", Arial, sans-serif'
+                    fill="#9ca3af"
+                >
+                    Pay to the order of
+                </text>
+            </svg>
+
+            {/* ===== Label kanan di bawah garis kedua (sejajar kiri dengan "atau pembawa *", teks dipaksa pas 0.3cm) ===== */}
+            <svg
+                className="absolute"
+                style={{ top: "2.0cm", left: "15.6cm" }}
+                width="0.8cm"
+                height="0.35cm"
+                viewBox="0 0 30 35"
+                preserveAspectRatio="none"
+            >
+                <text
+                    x="0"
+                    y="26"
+                    textLength="30"
+                    lengthAdjust="spacingAndGlyphs"
+                    fontSize="24"
+                    fontFamily='"Arial Narrow", Arial, sans-serif'
+                    fill="#9ca3af"
+                >
+                    or bearer
+                </text>
+            </svg>
+
+            {/* ===== Label di atas garis ketiga (teks dipaksa pas 3.1cm) ===== */}
+            <svg
+                className="absolute"
+                style={{ top: "2.3cm", left: "0.9cm" }}
+                width="3.6cm"
+                height="0.4cm"
+                viewBox="0 0 310 40"
+                preserveAspectRatio="none"
+            >
+                <text
+                    x="0"
+                    y="30"
+                    textLength="310"
+                    lengthAdjust="spacingAndGlyphs"
+                    fontSize="28"
+                    fontWeight="bold"
+                    fontFamily='"Arial Narrow", Arial, sans-serif'
+                    fill="#111827"
+                >
+                    uang sejumlah Rupiah (dalam huruf)
+                </text>
+            </svg>
+
+            {/* ===== Garis ketiga (di bawah garis kedua, jarak 0.7cm) ===== */}
+            <div
+                className="absolute border-b border-gray-400"
+                style={{ top: "2.7cm", left: "0.9cm", right: "0.6cm" }}
+            >
+                {/* Baris pertama terbilang — sepanjang garis ketiga, uppercase.
+                    Kalau tidak perlu dipecah (fontSizePx null), pakai FitText
+                    supaya font otomatis mengecil kalau kepanjangan. Kalau
+                    sudah dipecah jadi 2 baris, pakai ScaledText dengan
+                    fontSizePx yang sama seperti garis keempat. */}
+                {terbilangFontPx != null ? (
+                    <ScaledText
+                        text={terbilangLine1}
+                        leftCm={LINE3_SPAN_LEFT_CM}
+                        maxWidthCm={LINE3_WIDTH_CM}
+                        bottomCm={0.001}
+                        fontSizePx={terbilangFontPx}
+                        className="text-black font-medium uppercase"
+                    />
+                ) : (
+                    <FitText
+                        text={terbilangLine1}
+                        leftCm={LINE3_SPAN_LEFT_CM}
+                        maxWidthCm={LINE3_WIDTH_CM}
+                        bottomCm={0.001}
+                        className="text-sm text-black font-medium uppercase"
+                    />
+                )}
+            </div>
+
+            {/* ===== Label di bawah garis ketiga (teks dipaksa pas 2cm) ===== */}
+            <svg
+                className="absolute"
+                style={{ top: "2.7cm", left: "0.9cm" }}
+                width="2cm"
+                height="0.35cm"
+                viewBox="0 0 200 35"
+                preserveAspectRatio="none"
+            >
+                <text
+                    x="0"
+                    y="26"
+                    textLength="200"
+                    lengthAdjust="spacingAndGlyphs"
+                    fontSize="24"
+                    fontFamily='"Arial Narrow", Arial, sans-serif'
+                    fill="#9ca3af"
+                >
+                    The Sum of (in words)
+                </text>
+            </svg>
+
+            {/* ===== Garis keempat (di bawah garis ketiga, panjang 10.2cm) ===== */}
+            <div
+                className="absolute border-b border-gray-400"
+                style={{ top: "3.4cm", left: "0.9cm", right: "0.6cm", width: "10.3cm" }}
+            >
+                {/* Lanjutan terbilang jika baris pertama sudah penuh, uppercase.
+                    Sama seperti garis ketiga: pakai ScaledText dengan
+                    fontSizePx yang identik kalau sudah dipecah 2 baris,
+                    atau FitText sebagai fallback kalau tidak dipecah. */}
+                {terbilangLine2 && (
+                    terbilangFontPx != null ? (
+                        <ScaledText
+                            text={terbilangLine2}
+                            leftCm={LINE4_SPAN_LEFT_CM}
+                            maxWidthCm={LINE4_WIDTH_CM}
+                            bottomCm={0.001}
+                            fontSizePx={terbilangFontPx}
+                            className="text-black font-medium uppercase"
+                        />
+                    ) : (
+                        <FitText
+                            text={terbilangLine2}
+                            leftCm={LINE4_SPAN_LEFT_CM}
+                            maxWidthCm={LINE4_WIDTH_CM}
+                            bottomCm={0.001}
+                            className="text-sm text-black font-medium uppercase"
+                        />
+                    )
+                )}
+            </div>
+
+            {/* ===== Teks "Rp." di celah antara garis keempat & kotak nominal ===== */}
+            <div
+                className="absolute flex items-center justify-center text-[10px] font-semibold text-gray-600"
+                style={{ top: "2.9cm", left: "11.2cm", width: "0.7cm", height: "0.6cm" }}
+            >
+                Rp.
+            </div>
+
+            {/* ===== Kotak di samping garis keempat (sisi bawah kotak sejajar garis, jarak 0.6cm dari ujung garis) ===== */}
+            <div
+                className="absolute border border-gray-400 flex items-center justify-start"
+                style={{ top: "2.9cm", left: "11.9cm", right: "0.6cm", height: "0.5cm", width: "5.3cm", padding: "0 0.15cm" }}
+            >
+                <span className="text-sm font-bold font-mono text-gray-900 whitespace-nowrap">
                     {form.nominal ? Number(form.nominal).toLocaleString("id-ID") : ""}
-                </div>
+                </span>
             </div>
         </div>
     );

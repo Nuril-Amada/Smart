@@ -1,11 +1,14 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   FaPrint,
   FaFileExport,
   FaTrash,
   FaChevronLeft,
   FaChevronRight,
+  FaDownload,
 } from "react-icons/fa";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 import CheckForm from "../components/cetakcek/CheckForm";
 import MandiriCheck from "../components/cetakcek/MandiriCheck";
 import BCACheck from "../components/cetakcek/BCACheck";
@@ -98,6 +101,9 @@ function exportToCSV(rows) {
   URL.revokeObjectURL(url);
 }
 
+// px -> cm dengan asumsi 96dpi (dipakai untuk konversi ukuran halaman PDF)
+const PX_PER_CM = 37.7952755906;
+
 const initialForm = {
   bank: "",
   jenisCek: "Tarik Tunai", // "Tarik Tunai" | "Transfer"
@@ -115,6 +121,10 @@ const initialForm = {
 export default function CetakCek() {
   // ================= FORM INFORMASI CEK =================
   const [form, setForm] = useState(initialForm);
+
+  // Ref ke elemen preview cek (dipakai untuk export Download, tanpa
+  // mengubah struktur/kode di komponen MandiriCheck/BCACheck/dst).
+  const checkPreviewRef = useRef(null);
 
   // ================= HISTORY CETAK CEK =================
   // Catatan: nantinya di-fetch dari backend (mis. lewat useEffect saat mount)
@@ -266,6 +276,63 @@ export default function CetakCek() {
     setForm(initialForm);
   };
 
+  // ================= AKSI DOWNLOAD (hanya tulisan yang diinput user) =================
+  // Cara kerja: clone elemen preview cek yang lagi tampil, lalu di clone
+  // itu SEMUA garis (border) & label statis (svg "Atas penyerahan...",
+  // "uang sejumlah...", dll) dihapus/ditransparankan — jadi yang tersisa
+  // cuma teks yang diinput user (tanggal, vendor, terbilang, nominal),
+  // dengan posisi yang PERSIS SAMA seperti tata letak preview aslinya.
+  // Tidak ada perubahan kode sama sekali di komponen MandiriCheck /
+  // BCACheck / SinarmasCheck / MaybankCheck.
+  const handleDownload = async () => {
+    if (!validateForm()) return;
+    if (!checkPreviewRef.current) return;
+
+    const original = checkPreviewRef.current;
+    const clone = original.cloneNode(true);
+
+    // Hapus semua label statis (dirender pakai <svg> di tiap komponen bank)
+    clone.querySelectorAll("svg").forEach((el) => el.remove());
+
+    // Transparankan semua garis/border, biar cuma teks yang kelihatan
+    clone.querySelectorAll("*").forEach((el) => {
+      el.style.borderColor = "transparent";
+      el.style.borderWidth = "0px";
+    });
+    clone.style.border = "none";
+    clone.style.boxShadow = "none";
+
+    // Render clone di luar layar (tidak terlihat user) supaya bisa di-capture
+    clone.style.position = "fixed";
+    clone.style.top = "-9999px";
+    clone.style.left = "-9999px";
+    clone.style.margin = "0";
+    document.body.appendChild(clone);
+
+    try {
+      const canvas = await html2canvas(clone, {
+        backgroundColor: null,
+        scale: 3,
+      });
+      const imgData = canvas.toDataURL("image/png");
+
+      // Ukuran halaman PDF disamakan dengan ukuran fisik cek (cm), supaya
+      // pas kalau dicetak di atas kertas cek fisik yang sudah ada garisnya.
+      const widthCm = original.offsetWidth / PX_PER_CM;
+      const heightCm = original.offsetHeight / PX_PER_CM;
+
+      const pdf = new jsPDF({
+        orientation: widthCm >= heightCm ? "landscape" : "portrait",
+        unit: "cm",
+        format: [widthCm, heightCm],
+      });
+      pdf.addImage(imgData, "PNG", 0, 0, widthCm, heightCm);
+      pdf.save(`cek-${form.bank || "preview"}-${form.nomorCek || Date.now()}.pdf`);
+    } finally {
+      document.body.removeChild(clone);
+    }
+  };
+
   return (
     <div className="space-y-8">
 
@@ -301,12 +368,23 @@ export default function CetakCek() {
               </p>
             </div>
           ) : (
-            <SelectedCheck form={form} />
+            <div ref={checkPreviewRef}>
+              <SelectedCheck form={form} />
+            </div>
           )}
         </div>
 
-        {/* Tombol Cetak Cek — di dalam container preview, pojok kanan bawah */}
-        <div className="flex justify-end px-6 pb-6" style={{ marginTop: "20px" }}>
+        {/* Tombol Download & Cetak Cek — di dalam container preview, pojok kanan bawah */}
+        <div className="flex justify-end gap-2 px-6 pb-6" style={{ marginTop: "20px" }}>
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="flex items-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded-lg text-sm font-semibold transition shadow-sm"
+            style={{ padding: "5px 10px" }}
+          >
+            <FaDownload />
+            Download
+          </button>
           <button
             type="button"
             onClick={handleCetak}
