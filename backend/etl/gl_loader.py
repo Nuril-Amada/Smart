@@ -15,7 +15,7 @@ def load_gl(df, db: Session):
         gl_account = normalize_code(
             row["gl_account"]
         )
-        nama_gl_account = str(row["nama_gl_account"]).strip()
+        nama_gl_account = str(row["nama_gl_account"]).strip().title()
         existing = (
             db.query(GlAccount)
             .filter(GlAccount.gl_account == gl_account)

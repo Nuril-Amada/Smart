@@ -3,6 +3,7 @@ from enum import Enum as PyEnum
 from sqlalchemy import (
     Column,
     Integer,
+    Boolean,
     String,
     Float,
     Date,
@@ -30,6 +31,49 @@ class ReminderStatus(str, PyEnum):
 class SettlementSource(str, PyEnum):
     ADVANCE = "ADVANCE"
     REIMBURSEMENT = "REIMBURSEMENT"
+
+class CheckType(str, PyEnum):
+    CASH_WITHDRAWAL = "Tarik Tunai"
+    VENDOR_TRANSFER = "Transfer Vendor"
+
+class BankType(str, PyEnum):
+    MANDIRI = "Mandiri"
+    BCA = "BCA"
+    MAYBANK = "Maybank"
+    SINARMAS = "Sinarmas"
+
+# PPC SEQUENCE (audit trail semua nomor PPC yang pernah diissued)
+class PpcSequence(Base):
+    __tablename__ = "ppc_sequences"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    ppc_no = Column(
+        String(50),
+        unique=True,
+        nullable=False,
+        index=True
+    )
+
+    year = Column(
+        Integer,
+        nullable=False,
+        index=True
+    )
+
+    sequence = Column(
+        Integer,
+        nullable=False
+    )
+
+    issued_at = Column(
+        DateTime,
+        server_default=func.now()
+    )
 
 # TRANSACTIONS
 class Transaction(Base):
@@ -93,6 +137,83 @@ class Transaction(Base):
         ),
     )
 
+class TransactionPerak(Base):
+    __tablename__ = "transactions_perak"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    posting_date = Column(
+        Date,
+        nullable=False
+    )
+
+    document_no = Column(
+        String(50),
+        nullable=False
+    )
+
+    amount = Column(
+        Float,
+        nullable=False
+    )
+
+    currency = Column(
+        String(10),
+        nullable=False
+    )
+
+    gl_account = Column(
+        String(20),
+        nullable=False
+    )
+
+    cost_center = Column(
+        String(30)
+    )
+
+    reference = Column(
+        String(100)
+    )
+
+    transaction_type = Column(
+        String(100)
+    )
+
+    description = Column(
+        String(255)
+    )
+
+    month = Column(
+        Integer,
+        nullable=False
+    )
+
+    year = Column(
+        Integer,
+        nullable=False
+    )
+
+    uploaded_at = Column(
+        DateTime,
+        server_default=func.now(),
+        nullable=False
+    )
+
+
+    __table_args__ = (
+
+        UniqueConstraint(
+            "document_no",
+            "posting_date",
+            name="uq_transaction_perak_key"
+        ),
+
+    )
+
 # GL ACCOUNT
 class GlAccount(Base):
     __tablename__ = "gl_accounts"
@@ -140,7 +261,7 @@ class Employee(Base):
 
     department_email = Column(
         String(100),
-        nullable=False
+        nullable=True
     )
 
     created_at = Column(
@@ -316,5 +437,129 @@ class Settlement(Base):
     updated_at = Column(
         DateTime,
         server_default=func.now(),
+        onupdate=func.now()
+    )
+
+    is_checked = Column(
+        Boolean,
+        default=False,
+        nullable=False
+    )
+    
+    is_deleted = Column(
+        Boolean,
+        default=False,
+        nullable=False
+    )
+
+    deleted_at = Column(
+        DateTime,
+        nullable=True
+    )
+
+# CHECK
+class PrintedCheck(Base):
+    __tablename__ = "printed_checks"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    transaction_date = Column(
+        Date,
+        nullable=False
+    )
+
+    check_number = Column(
+        String(50),
+        nullable=False,
+        unique=True,
+        index=True
+    )
+
+    transaction_type = Column(
+        Enum(CheckType),
+        nullable=False
+    )
+
+    bank_type = Column(
+        Enum(BankType),
+        nullable=False
+    )
+
+    vendor_name = Column(
+        String(255),
+        nullable=False
+    )
+
+    amount = Column(
+        Float,
+        nullable=False
+    )
+
+    # Khusus Transfer Vendor
+    vendor_bank = Column(
+        String(100),
+        nullable=True
+    )
+
+    vendor_account_number = Column(
+        String(100),
+        nullable=True
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
+
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )
+
+# VENDOR
+class Vendor(Base):
+
+    __tablename__ = "vendors"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    vendor_name = Column(
+        String(255),
+        nullable=False
+    )
+
+    bank_name = Column(
+        String(100),
+        nullable=False
+    )
+
+    bank_account_name = Column(
+        String(255),
+        nullable=False
+    )
+
+    bank_account_no = Column(
+        String(100),
+        nullable=False,
+        unique=True
+    )
+
+    created_at = Column(
+        DateTime,
+        default=func.now()
+    )
+
+    updated_at = Column(
+        DateTime,
+        default=func.now(),
         onupdate=func.now()
     )

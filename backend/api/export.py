@@ -19,7 +19,7 @@ from database.models import (
     GlAccount,
     Settlement,
     AdvanceRequest,
-    Employee,
+    PrintedCheck,
 )
 from reportlab.platypus import (
     SimpleDocTemplate,
@@ -36,6 +36,11 @@ from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
 from reportlab.lib.pagesizes import A4
 
+from api.dashboard import (
+    DashboardSource,
+    get_transaction_model
+)
+
 router = APIRouter(
     prefix="/export",
     tags=["Export"]
@@ -45,53 +50,41 @@ router = APIRouter(
 # HELPER
 # ==========================================================
 
-def apply_date_filter(query, start_date, end_date):
-
+def apply_date_filter(
+        query,
+        model,
+        start_date,
+        end_date
+):
     if start_date:
         query = query.filter(
-            Transaction.posting_date >= start_date
+            model.posting_date >= start_date
         )
-
     if end_date:
         query = query.filter(
-            Transaction.posting_date <= end_date
+            model.posting_date <= end_date
         )
-
     return query
 
-
 def rupiah(value):
-
     return f"Rp {float(value or 0):,.0f}"
 
-
 def format_period(start_date, end_date):
-
     if not start_date and not end_date:
         return "All Data"
-
     if start_date and end_date:
         return f"{start_date} s/d {end_date}"
-
     if start_date:
         return f"{start_date} s/d Sekarang"
-
     return f"Sampai {end_date}"
 
-
 def count_workdays(start, end):
-
     days = 0
-
     current = start
-
     while current <= end:
-
         if current.weekday() < 5:
             days += 1
-
         current += timedelta(days=1)
-
     return days
 
 # PDF HELPER
@@ -194,27 +187,31 @@ TABLE_STYLE = TableStyle([
     ("BACKGROUND", (0, 1), (-1, -1), colors.whitesmoke),
 
 ])
-#=============================================================
-# EXPORT EXCEL
-# GET /export/excel
 
+# EXPORT EXCEL
 @router.get("/excel")
 def export_excel(
 
+    source: DashboardSource = DashboardSource.rungkut,
     start_date: Optional[date] = Query(None),
-
     end_date: Optional[date] = Query(None),
-
     db: Session = Depends(get_db)
 
 ):
 
     try:
 
-        query = db.query(Transaction)
+        TransactionModel = get_transaction_model(
+            source
+        )
+
+        query = db.query(
+            TransactionModel
+        )
 
         query = apply_date_filter(
             query,
+            TransactionModel,
             start_date,
             end_date
         )
@@ -222,7 +219,7 @@ def export_excel(
         transactions = (
             query
             .order_by(
-                Transaction.posting_date
+                TransactionModel.posting_date
             )
             .all()
         )
@@ -230,40 +227,58 @@ def export_excel(
         rows = []
 
         for row in transactions:
+
             rows.append({
+
                 "Posting Date":
                     row.posting_date,
+
                 "Document No":
                     row.document_no,
+
                 "Amount":
                     row.amount,
+
                 "Currency":
                     row.currency,
+
                 "GL Account":
                     row.gl_account,
+
                 "Cost Center":
                     row.cost_center,
+
                 "Reference":
                     row.reference,
+
                 "Transaction Type":
                     row.transaction_type,
+
                 "Description":
                     row.description,
+
                 "Month":
                     row.month,
+
                 "Year":
                     row.year,
+
                 "Uploaded At":
                     row.uploaded_at.strftime(
                         "%Y-%m-%d %H:%M:%S"
                     )
                     if row.uploaded_at
                     else ""
+
             })
 
         df = pd.DataFrame(rows)
+
+        # Jika tidak ada data
         if df.empty:
+
             df = pd.DataFrame(columns=[
+
                 "Posting Date",
                 "Document No",
                 "Amount",
@@ -276,6 +291,7 @@ def export_excel(
                 "Month",
                 "Year",
                 "Uploaded At"
+
             ])
 
         output = io.BytesIO()
@@ -284,22 +300,28 @@ def export_excel(
             output,
             engine="openpyxl"
         ) as writer:
+
             df.to_excel(
                 writer,
                 sheet_name="Transactions",
                 index=False
             )
 
-            worksheet = writer.sheets["Transactions"]
+            worksheet = writer.sheets[
+                "Transactions"
+            ]
 
             # Auto Width Column
-
             for column in worksheet.columns:
+
                 max_length = max(
+
                     len(str(cell.value))
                     if cell.value is not None
                     else 0
+
                     for cell in column
+
                 )
 
                 worksheet.column_dimensions[
@@ -307,51 +329,78 @@ def export_excel(
                 ].width = max_length + 3
 
         output.seek(0)
+
         filename = (
-            f"dashboard_export_"
-            f"{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            f"Export Dashboard_{source.value.title()}.xlsx"
         )
 
         return StreamingResponse(
+
             output,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+
+            media_type=(
+                "application/"
+                "vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+
             headers={
+
                 "Content-Disposition":
-                    f'attachment; filename="{filename}"'
+                f'attachment; filename="{filename}"'
+
             }
+
         )
 
     except Exception as e:
+
         raise HTTPException(
+
             status_code=500,
             detail=str(e)
+
         )
 
 # EXPORT PDF
-# GET /export/pdf
 @router.get("/pdf")
 def export_dashboard_pdf(
+    source: DashboardSource = DashboardSource.rungkut,
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     db: Session = Depends(get_db)
-):
 
+):
     try:
-    
+        TransactionModel = get_transaction_model(
+        source
+    )
         # SUMMARY
         summary_query = apply_date_filter(
-            db.query(Transaction),
+            db.query(
+                TransactionModel
+            ),
+            TransactionModel,
             start_date,
             end_date
         )
 
         summary = summary_query.with_entities(
-            func.sum(Transaction.amount),
-            func.count(Transaction.id),
-            func.count(func.distinct(Transaction.gl_account)),
-            func.count(func.distinct(Transaction.cost_center))
+            func.sum(TransactionModel.amount),
+            func.count(TransactionModel.id),
+            func.count(
+                func.distinct(
+                    TransactionModel.gl_account
+                )
+            ),
+            func.count(
+                func.distinct(
+                    TransactionModel.cost_center
+                )
+            )
 
         ).first()
+
         total_expense = float(summary[0] or 0)
         total_transaction = summary[1] or 0
         total_gl = summary[2] or 0
@@ -364,11 +413,11 @@ def export_dashboard_pdf(
             )
         else:
             first_date = db.query(
-                func.min(Transaction.posting_date)
+                func.min(TransactionModel.posting_date)
             ).scalar()
 
             last_date = db.query(
-                func.max(Transaction.posting_date)
+                func.max(TransactionModel.posting_date)
             ).scalar()
 
             if first_date and last_date:
@@ -390,18 +439,19 @@ def export_dashboard_pdf(
         # TOP GL ACCOUNT
         gl_query = (
             db.query(
-                Transaction.gl_account,
+                TransactionModel.gl_account,
                 GlAccount.nama_gl_account,
-                func.sum(Transaction.amount).label("total_amount")
+                func.sum(TransactionModel.amount).label("total_amount")
             )
             .outerjoin(
                 GlAccount,
-                Transaction.gl_account == GlAccount.gl_account
+                TransactionModel.gl_account == GlAccount.gl_account
             )
         )
 
         gl_query = apply_date_filter(
             gl_query,
+            TransactionModel,
             start_date,
             end_date
         )
@@ -409,62 +459,59 @@ def export_dashboard_pdf(
         gl = (
             gl_query
             .group_by(
-                Transaction.gl_account,
+                TransactionModel.gl_account,
                 GlAccount.nama_gl_account
             )
             .order_by(
-                func.sum(Transaction.amount).desc()
+                func.sum(TransactionModel.amount).desc()
             )
             .limit(10)
             .all()
         )
 
         # TOP COST CENTER
-    
         cc_query = db.query(
+            TransactionModel.cost_center,
 
-            Transaction.cost_center,
-
-            func.sum(Transaction.amount).label("total_amount")
-
+            func.sum(TransactionModel.amount).label("total_amount")
         )
-
         cc_query = apply_date_filter(
             cc_query,
+            TransactionModel,
             start_date,
             end_date
         )
 
         cc = (
             cc_query
-            .group_by(Transaction.cost_center)
+            .group_by(TransactionModel.cost_center)
             .order_by(
-                func.sum(Transaction.amount).desc()
+                func.sum(TransactionModel.amount).desc()
             )
             .limit(10)
             .all()
         )
 
         # TOP COST CENTER DETAIL
-        
         top_cc = (
             db.query(
-                Transaction.cost_center,
-                func.sum(Transaction.amount).label("total_amount")
+                TransactionModel.cost_center,
+                func.sum(TransactionModel.amount).label("total_amount")
             )
         )
 
         top_cc = apply_date_filter(
             top_cc,
+            TransactionModel,
             start_date,
             end_date
         )
 
         top_cc = (
             top_cc
-            .group_by(Transaction.cost_center)
+            .group_by(TransactionModel.cost_center)
             .order_by(
-                func.sum(Transaction.amount).desc()
+                func.sum(TransactionModel.amount).desc()
             )
             .first()
         )
@@ -472,24 +519,24 @@ def export_dashboard_pdf(
         detail = []
 
         if top_cc:
-
             detail_query = (
                 db.query(
-                    Transaction.gl_account,
+                    TransactionModel.gl_account,
                     GlAccount.nama_gl_account,
-                    func.sum(Transaction.amount).label("total_amount")
+                    func.sum(TransactionModel.amount).label("total_amount")
                 )
                 .outerjoin(
                     GlAccount,
-                    Transaction.gl_account == GlAccount.gl_account
+                    TransactionModel.gl_account == GlAccount.gl_account
                 )
                 .filter(
-                    Transaction.cost_center == top_cc.cost_center
+                    TransactionModel.cost_center == top_cc.cost_center
                 )
             )
 
             detail_query = apply_date_filter(
                 detail_query,
+                TransactionModel,
                 start_date,
                 end_date
             )
@@ -497,34 +544,31 @@ def export_dashboard_pdf(
             detail = (
                 detail_query
                 .group_by(
-                    Transaction.gl_account,
+                    TransactionModel.gl_account,
                     GlAccount.nama_gl_account
                 )
                 .order_by(
-                    func.sum(Transaction.amount).desc()
+                    func.sum(TransactionModel.amount).desc()
                 )
                 .all()
             )
 
         # TREND
-        
         trend_group = determine_trend_group(
             start_date,
             end_date
         )
 
         if trend_group == "day":
-
             trend_query = db.query(
-
-                func.date(Transaction.posting_date).label("period"),
-
-                func.sum(Transaction.amount).label("total_amount")
+                func.date(TransactionModel.posting_date).label("period"),
+                func.sum(TransactionModel.amount).label("total_amount")
 
             )
 
             trend_query = apply_date_filter(
                 trend_query,
+                TransactionModel,
                 start_date,
                 end_date
             )
@@ -532,10 +576,10 @@ def export_dashboard_pdf(
             trend = (
                 trend_query
                 .group_by(
-                    func.date(Transaction.posting_date)
+                    func.date(TransactionModel.posting_date)
                 )
                 .order_by(
-                    func.date(Transaction.posting_date)
+                    func.date(TransactionModel.posting_date)
                 )
                 .all()
             )
@@ -543,29 +587,29 @@ def export_dashboard_pdf(
         else:
 
             trend_query = db.query(
-                Transaction.year,
-                Transaction.month,
-                func.sum(Transaction.amount).label("total_amount")
+                TransactionModel.year,
+                TransactionModel.month,
+                func.sum(TransactionModel.amount).label("total_amount")
             )
             trend_query = apply_date_filter(
                 trend_query,
+                TransactionModel,
                 start_date,
                 end_date
             )
             trend = (
                 trend_query
                 .group_by(
-                    Transaction.year,
-                    Transaction.month
+                    TransactionModel.year,
+                    TransactionModel.month
                 )
                 .order_by(
-                    Transaction.year,
-                    Transaction.month
+                    TransactionModel.year,
+                    TransactionModel.month
                 )
                 .all()
             )
-
-                
+ 
         # BUILD PDF
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(
@@ -587,11 +631,7 @@ def export_dashboard_pdf(
                 styles["Title"]
             )
         )
-
-        story.append(
-            Spacer(1, 0.4 * cm)
-        )
-
+        story.append(Spacer(1, 0.4 * cm))
         story.append(
             Paragraph(
                 f"<b>Period :</b> {format_period(start_date, end_date)}",
@@ -606,9 +646,7 @@ def export_dashboard_pdf(
             )
         )
 
-        story.append(
-            Spacer(1, 0.6 * cm)
-        )
+        story.append(Spacer(1, 0.6 * cm))
 
         # DASHBOARD SUMMARY
         story.append(
@@ -849,7 +887,7 @@ def export_dashboard_pdf(
         doc.build(story)
         buffer.seek(0)
         filename = (
-            f"dashboard_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+            f"Export Dashboard_{source.value.title()}.pdf"
         )
         return StreamingResponse(
             buffer,
@@ -872,95 +910,98 @@ def export_settlement(
     end_date: Optional[date] = None,
     db: Session = Depends(get_db)
 ):
-    query = (
-        db.query(Settlement)
-        .options(
-            joinedload(Settlement.employee)
-        )
-    )
+    try:
+        query = db.query(Settlement)
 
-    # Filter Tanggal
-    if start_date:
-        query = query.filter(
-            Settlement.settlement_date >= start_date
+        # Filter Tanggal
+        if start_date:
+            query = query.filter(
+                Settlement.settlement_date >= start_date
+            )
+
+        if end_date:
+            query = query.filter(
+                Settlement.settlement_date <= end_date
+            )
+
+        settlements = (
+            query
+            .order_by(
+                Settlement.settlement_date.desc()
+            )
+            .all()
         )
 
-    if end_date:
-        query = query.filter(
-            Settlement.settlement_date <= end_date
-        )
+        if not settlements:
+            raise HTTPException(
+                status_code=404,
+                detail="Tidak ada data Settlement."
+            )
+        
+        rows = []
+        for item in settlements:
+            rows.append({
+                "PPC No": item.ppc_no,
+                "Settlement Date": item.settlement_date,
+                "Employee Name": item.employee_name,
+                "Cost Center": item.cost_center,
+                "Description": item.description or "",
+                "Settlement Amount": item.settlement_amount,
+                "Source": item.source.value if hasattr(item.source, "value") else str(item.source),
+                "Checked": "Yes" if item.is_checked else "No",
+            })
 
-    settlements = (
-        query
-        .order_by(
-            Settlement.settlement_date.desc()
-        )
-        .all()
-    )
+        df = pd.DataFrame(rows)
+        output = BytesIO()
 
-    if not settlements:
+        with pd.ExcelWriter(
+            output,
+            engine="openpyxl"
+        ) as writer:
 
-        raise HTTPException(
-            status_code=404,
-            detail="Tidak ada data Settlement."
-        )
-    
-    rows = []
-    for item in settlements:
-        rows.append({
-            "PPC No": item.ppc_no,
-            "Settlement Date": item.settlement_date,
-            "Employee Name": (
-                item.employee.employee_name
-                if item.employee
-                else ""
+            df.to_excel(
+                writer,
+                index=False,
+                sheet_name="Settlement"
+            )
+
+            # Auto fit column width
+            worksheet = writer.sheets["Settlement"]
+            for column_cells in worksheet.columns:
+                length = max(
+                    len(str(cell.value))
+                    if cell.value is not None else 0
+                    for cell in column_cells
+                )
+                worksheet.column_dimensions[
+                    column_cells[0].column_letter
+                ].width = max(length + 3, 15)
+
+        output.seek(0)
+        
+        filename = f"settlement_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+        return StreamingResponse(
+            output,
+            media_type=(
+                "application/"
+                "vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
             ),
-            "Email": item.email,
-            "Cost Center": item.cost_center,
-            "Description": item.description,
-            "Settlement Amount": item.settlement_amount,
-            "Source": item.source.value
-        })
-
-    df = pd.DataFrame(rows)
-    output = BytesIO()
-
-    with pd.ExcelWriter(
-        output,
-        engine="openpyxl"
-    ) as writer:
-
-        df.to_excel(
-            writer,
-            index=False,
-            sheet_name="Settlement"
+            headers={
+                "Content-Disposition":
+                f'attachment; filename="{filename}"'
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
         )
 
-    output.seek(0)
-    
-    return StreamingResponse(
-
-        output,
-
-        media_type=(
-            "application/"
-            "vnd.openxmlformats-officedocument."
-            "spreadsheetml.sheet"
-        ),
-
-        headers={
-
-            "Content-Disposition":
-            "attachment; filename=settlement_export.xlsx"
-        }
-    )
-
-
 # EXPORT ADVANCE
-# ==========================================================
-# EXPORT ADVANCE
-# ==========================================================
-
 @router.get("/advance")
 def export_ppc(
     start_date: Optional[date] = Query(None),
@@ -997,7 +1038,7 @@ def export_ppc(
     for ppc in ppc_list:
 
         # Update status terlebih dahulu
-        update_ppc_status(ppc, db)
+        update_ppc_status(ppc)
 
         status = ppc.status.value
 
@@ -1060,4 +1101,118 @@ def export_ppc(
             "Content-Disposition":
             "attachment; filename=advance_export.xlsx"
         },
+    )
+
+# EXPORT CHECK
+@router.get("/check")
+def export_check(
+    start_date: Optional[date] = Query(None),
+    end_date: Optional[date] = Query(None),
+    transaction_type: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+
+    query = db.query(
+        PrintedCheck
+    )
+
+    if start_date:
+        query = query.filter(
+            PrintedCheck.transaction_date >=
+            start_date
+        )
+
+    if end_date:
+        query = query.filter(
+            PrintedCheck.transaction_date <=
+            end_date
+        )
+
+    if transaction_type:
+        query = query.filter(
+            PrintedCheck.transaction_type ==
+            transaction_type
+        )
+
+    checks = (
+        query
+        .order_by(
+            PrintedCheck.transaction_date.desc()
+        )
+        .all()
+    )
+
+    if not checks:
+        raise HTTPException(
+            status_code=404,
+            detail=
+            "Tidak ada data Check."
+        )
+
+    rows = []
+
+    for item in checks:
+        rows.append({
+            "Transaction Date":
+                item.transaction_date,
+            "Check Number":
+                item.check_number,
+            "Transaction Type":
+                item.transaction_type.value,
+            "Bank Type":
+                item.bank_type.value,
+            "Vendor Name":
+                item.vendor_name,
+            "Amount":
+                item.amount
+        })
+
+    df = pd.DataFrame(
+        rows
+    )
+    output = BytesIO()
+    with pd.ExcelWriter(
+        output,
+        engine="openpyxl"
+    ) as writer:
+        df.to_excel(
+            writer,
+            sheet_name="Check",
+            index=False
+        )
+
+        worksheet = writer.sheets[
+            "Check"
+        ]
+        for column_cells in worksheet.columns:
+            length = max(
+                len(str(cell.value))
+                if cell.value is not None
+                else 0
+                for cell in column_cells
+            )
+
+            worksheet.column_dimensions[
+                column_cells[0].column_letter
+            ].width = max(
+                length + 3,
+                15
+            )
+    output.seek(0)
+    filename = (
+        f"check_export_"
+        f"{date.today()}.xlsx"
+    )
+
+    return StreamingResponse(
+        output,
+        media_type=(
+            "application/"
+            "vnd.openxmlformats-officedocument."
+            "spreadsheetml.sheet"
+        ),
+        headers={
+            "Content-Disposition":
+            f'attachment; filename="{filename}"'
+        }
     )

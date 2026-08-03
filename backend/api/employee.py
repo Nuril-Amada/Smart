@@ -1,84 +1,162 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query
+)
+from typing import Optional
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-
 from database.connection import get_db
 from database.models import Employee
-
 
 router = APIRouter(
     prefix="/employees",
     tags=["Employee"]
 )
 
+# REQUEST SCHEMA
+class EmployeeCreate(BaseModel):
+    employee_name: str
+    employee_email: str
+    department_email: Optional[str] = None
 
-# ==========================================================
-# GET ALL EMPLOYEE
-# ==========================================================
+# GET ALL EMPLOYEE + SEARCH
 @router.get("/")
-def get_all_employees(
-    db: Session = Depends(get_db)
+def get_all_employee(
+
+    search: str = Query(
+        default=None
+    ),
+
+    db: Session = Depends(
+        get_db
+    )
+
 ):
 
-    employees = (
+    query = db.query(Employee)
 
-        db.query(Employee)
-        .order_by(Employee.employee_name.asc())
+    # search berdasarkan nama employee
+    if search:
+        query = (
+            query.filter(
+                func.lower(
+                    Employee.employee_name
+                ).contains(
+                    search.lower()
+                )
+            )
+        )
+
+    employees = (
+        query
+        .order_by(Employee.id.desc())
         .all()
 
     )
 
     return employees
 
+# CREATE EMPLOYEE
+@router.post("/")
+def create_employee(
+    employee: EmployeeCreate,
+    db: Session = Depends(
+        get_db
+    )
+):
+    # normalisasi data
+    employee_name = (
+        employee.employee_name
+        .strip()
+        .upper()
+    )
 
-# ==========================================================
-# GET EMPLOYEE BY ID
-# ==========================================================
-@router.get("/{id}")
-def get_employee_by_id(
+    employee_email = (
+        employee.employee_email
+        .strip()
+        .lower()
+    )
+
+    department_email = (
+        employee.department_email
+        .strip()
+        .lower()
+        if employee.department_email
+        else None
+    )
+
+    # cek duplicate employee
+    existing_employee = (
+        db.query(Employee)
+        .filter(
+            Employee.employee_name
+            ==
+            employee_name
+        )
+        .first()
+    )
+
+    if existing_employee:
+        raise HTTPException(
+            status_code=400,
+            detail=
+                "Employee sudah ada."
+        )
+
+    # insert data
+    new_employee = Employee(
+        employee_name=
+            employee_name,
+        employee_email=
+            employee_email,
+        department_email=
+            department_email
+    )
+
+    db.add(new_employee)
+    db.commit()
+    db.refresh(new_employee)
+
+    return {
+        "message":
+            "Employee berhasil ditambahkan.",
+
+        "data":
+            new_employee
+    }
+
+# DELETE EMPLOYEE
+@router.delete("/{id}")
+def delete_employee(
     id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(
+        get_db
+    )
 ):
 
     employee = (
-
         db.query(Employee)
-        .filter(Employee.id == id)
+        .filter(
+            Employee.id == id
+        )
         .first()
-
     )
 
     if not employee:
-
         raise HTTPException(
             status_code=404,
-            detail="Employee tidak ditemukan."
+            detail=(
+                "Employee tidak ditemukan."
+            )
         )
 
-    return employee
+    db.delete(employee)
+    db.commit()
 
-
-# ==========================================================
-# SEARCH EMPLOYEE
-# ==========================================================
-@router.get("/search/")
-def search_employee(
-    keyword: str = Query(...),
-    limit: int = 10,
-    db: Session = Depends(get_db)
-):
-
-    employees = (
-
-        db.query(Employee)
-        .filter(
-            func.lower(Employee.employee_name)
-            .contains(keyword.lower())
-        )
-        .order_by(Employee.employee_name.asc())
-        .limit(limit)
-        .all()
-
-    )
-
-    return employees
+    return {
+        "message":
+            "Employee berhasil dihapus."
+    }

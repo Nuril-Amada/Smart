@@ -1,154 +1,145 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query
+)
+
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from sqlalchemy import func, or_
+
 from database.connection import get_db
 from database.models import GlAccount
+
 
 router = APIRouter(
     prefix="/gl-account",
     tags=["GL Account"]
 )
 
-# =====================================================
-# Pydantic Schema
-# =====================================================
-
+# REQUEST SCHEMA
 class GlAccountCreate(BaseModel):
     gl_account: str
     nama_gl_account: str
 
-
-class GlAccountUpdate(BaseModel):
-    nama_gl_account: str
-
-
-# =====================================================
-# GET ALL GL ACCOUNT
-# =====================================================
-
+# GET ALL GL ACCOUNT + SEARCH
 @router.get("/")
-def get_gl_accounts(
-    search: str | None = Query(default=None),
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=20, ge=1, le=100),
-    db: Session = Depends(get_db)
+def get_all_gl_account(
+    search: str = Query(
+        default=None
+    ),
+
+    db: Session = Depends(
+        get_db
+    )
 ):
 
     query = db.query(GlAccount)
-
+    # search nomor/nama gl account
     if search:
-        query = query.filter(
-            or_(
-                GlAccount.gl_account.ilike(f"%{search}%"),
-                GlAccount.nama_gl_account.ilike(f"%{search}%")
+        query = (
+            query.filter(
+                or_(
+                    func.lower(
+                        GlAccount.gl_account
+                    ).contains(
+                        search.lower()
+                    ),
+                    func.lower(
+                        GlAccount.nama_gl_account
+                    ).contains(
+                        search.lower()
+                    )
+                )
             )
         )
 
-    total = query.count()
-
-    data = (
-        query.order_by(GlAccount.gl_account)
-        .offset((page - 1) * page_size)
-        .limit(page_size)
+    gl_accounts = (
+        query
+        .order_by(
+            GlAccount.gl_account.asc()
+        )
         .all()
     )
+    return gl_accounts
 
-    return {
-        "page": page,
-        "page_size": page_size,
-        "total_data": total,
-        "total_page": (total + page_size - 1) // page_size,
-        "data": data
-    }
-
-
-# =====================================================
-# GET DETAIL
-# =====================================================
-
-@router.get("/{id}")
-def get_gl_account(
-    id: int,
-    db: Session = Depends(get_db)
-):
-
-    gl = db.query(GlAccount).filter(
-        GlAccount.id == id
-    ).first()
-
-    if not gl:
-        raise HTTPException(
-            status_code=404,
-            detail="GL Account not found"
-        )
-
-    return gl
-
-
-# =====================================================
-# CREATE
-# =====================================================
-
+# CREATE GL ACCOUNT
 @router.post("/")
 def create_gl_account(
-    payload: GlAccountCreate,
-    db: Session = Depends(get_db)
+    gl_account: GlAccountCreate,
+    db: Session = Depends(
+        get_db
+    )
 ):
-
-    exists = db.query(GlAccount).filter(
-        GlAccount.gl_account == payload.gl_account
-    ).first()
-
-    if exists:
-        raise HTTPException(
-            status_code=400,
-            detail="GL Account already exists"
+    # cek duplicate nomor GL
+    existing_gl = (
+        db.query(GlAccount)
+        .filter(
+            func.lower(
+                GlAccount.gl_account
+            )
+            ==
+            gl_account.gl_account.lower()
         )
-
-    gl = GlAccount(
-        gl_account=payload.gl_account.strip(),
-        nama_gl_account=payload.nama_gl_account.strip()
+        .first()
     )
 
-    db.add(gl)
-    db.commit()
-    db.refresh(gl)
-
-    return {
-        "message": "GL Account created successfully",
-        "data": gl
-    }
-
-
-# =====================================================
-# UPDATE
-# =====================================================
-
-@router.put("/{id}")
-def update_gl_account(
-    id: int,
-    payload: GlAccountUpdate,
-    db: Session = Depends(get_db)
-):
-
-    gl = db.query(GlAccount).filter(
-        GlAccount.id == id
-    ).first()
-
-    if not gl:
+    if existing_gl:
         raise HTTPException(
-            status_code=404,
-            detail="GL Account not found"
+            status_code=400,
+            detail=(
+                "GL Account sudah ada."
+            )
         )
 
-    gl.nama_gl_account = payload.nama_gl_account.strip()
+    new_gl_account = GlAccount(
+        gl_account=
+            gl_account.gl_account.strip(),
+        nama_gl_account=
+            gl_account.nama_gl_account.strip().title()
+    )
 
+    db.add(new_gl_account)
     db.commit()
-    db.refresh(gl)
+    db.refresh(new_gl_account)
 
     return {
-        "message": "GL Account updated successfully",
-        "data": gl
+        "message":
+            "GL Account berhasil ditambahkan.",
+        "data":
+            new_gl_account
     }
-
+
+# DELETE GL ACCOUNT
+@router.delete("/{id}")
+def delete_gl_account(
+    id: int,
+    db: Session = Depends(
+        get_db
+    )
+):
+
+    gl_account = (
+        db.query(GlAccount)
+        .filter(
+            GlAccount.id == id
+        )
+        .first()
+    )
+
+    if not gl_account:
+        raise HTTPException(
+            status_code=404,
+            detail=(
+                "GL Account tidak ditemukan."
+            )
+        )
+
+    db.delete(gl_account)
+    db.commit()
+
+    return {
+        "message":
+            "GL Account berhasil dihapus."
+    }

@@ -1,72 +1,89 @@
 from datetime import date, timedelta
 from typing import Optional
 from enum import Enum
+import calendar
 from fastapi import (
     APIRouter,
-    Depends,
-    HTTPException
+    Depends
 )
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from database.connection import get_db
-from database.models import Transaction, GlAccount
+from database.models import (
+    Transaction,
+    TransactionPerak,
+    GlAccount
+)
 
 router = APIRouter(
     prefix="/dashboard",
     tags=["Dashboard"]
 )
+
 class TrendGroup(str, Enum):
     day = "day"
     month = "month"
     year = "year"
 
-# FILTER DATE
-def apply_date_filter(query, start_date, end_date):
+class DashboardSource(str, Enum):
+    rungkut = "rungkut"
+    perak = "perak"
 
+def get_transaction_model(
+        source: DashboardSource
+):
+    if source == DashboardSource.perak:
+        return TransactionPerak
+
+    return Transaction
+
+# FILTER DATE
+def apply_date_filter(query, model, start_date, end_date):
     if start_date:
         query = query.filter(
-            Transaction.posting_date >= start_date
+            model.posting_date >= start_date
         )
-
     if end_date:
         query = query.filter(
-            Transaction.posting_date <= end_date
+            model.posting_date <= end_date
         )
-
     return query
 
-# ====================================================
 # SUMMARY CARD
-# ====================================================
 @router.get("/summary")
 def dashboard_summary(
+    source: DashboardSource = DashboardSource.rungkut,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db)
 ):
 
-    query = db.query(Transaction)
+    TransactionModel = get_transaction_model(source)
+
+    query = db.query(
+        TransactionModel
+    )
 
     query = apply_date_filter(
         query,
+        TransactionModel,
         start_date,
         end_date
     )
 
     result = query.with_entities(
-
-        func.sum(Transaction.amount),
-
-        func.count(Transaction.id),
-
+        func.sum(TransactionModel.amount),
+        func.count(TransactionModel.id),
         func.count(
-            func.distinct(Transaction.gl_account)
+            func.distinct(
+                TransactionModel.gl_account
+            )
         ),
-
         func.count(
-            func.distinct(Transaction.cost_center)
+            func.distinct(
+                TransactionModel.cost_center
+            )
         )
-
     ).first()
 
     total_expense = float(result[0] or 0)
@@ -74,7 +91,7 @@ def dashboard_summary(
     total_gl_accounts = result[2] or 0
     total_cost_centers = result[3] or 0
 
-    # Average Daily Expense (5 Hari Kerja)
+    # Average Daily Expense (Hari Kerja)
     def count_workdays(start, end):
         days = 0
         current = start
@@ -83,11 +100,12 @@ def dashboard_summary(
             # Senin = 0 ... Jumat = 4
             if current.weekday() < 5:
                 days += 1
+
             current += timedelta(days=1)
 
         return days
 
-
+    # Jika user melakukan filter tanggal
     if start_date and end_date:
 
         total_days = count_workdays(
@@ -95,24 +113,45 @@ def dashboard_summary(
             end_date
         )
 
+    # Jika tidak ada filter
     else:
 
-        first_date = db.query(
-            func.min(Transaction.posting_date)
+        # Ambil tanggal transaksi terakhir
+        latest_date = db.query(
+            func.max(
+                TransactionModel.posting_date
+            )
         ).scalar()
 
-        last_date = db.query(
-            func.max(Transaction.posting_date)
-        ).scalar()
+        if latest_date:
 
-        if first_date and last_date:
+            # Awal bulan
+            first_date = date(
+                latest_date.year,
+                latest_date.month,
+                1
+            )
+
+            # Akhir bulan
+            last_day = calendar.monthrange(
+                latest_date.year,
+                latest_date.month
+            )[1]
+
+            last_date = date(
+                latest_date.year,
+                latest_date.month,
+                last_day
+            )
+
             total_days = count_workdays(
                 first_date,
                 last_date
             )
-        else:
-            total_days = 1
 
+        else:
+
+            total_days = 1
 
     average_daily_expense = (
         total_expense / total_days
@@ -121,55 +160,50 @@ def dashboard_summary(
     )
 
     return {
-
         "total_expense": total_expense,
-
         "total_transactions": total_transactions,
-
         "total_gl_accounts": total_gl_accounts,
-
         "total_cost_centers": total_cost_centers,
-
         "average_daily_expense": average_daily_expense
-
     }
 
 # BAR CHART
 # Pengeluaran per GL Account
-
 @router.get("/gl-account")
 def expense_per_gl(
+    source: DashboardSource = DashboardSource.rungkut,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db)
 ):
-
+    TransactionModel = get_transaction_model(source)
     query = (
         db.query(
-            Transaction.gl_account,
+            TransactionModel.gl_account,
             GlAccount.nama_gl_account,
-            func.sum(Transaction.amount).label("total_amount")
+            func.sum(TransactionModel.amount).label("total_amount")
         )
         .outerjoin(
             GlAccount,
-            Transaction.gl_account == GlAccount.gl_account
+            TransactionModel.gl_account == GlAccount.gl_account
         )
     )
 
     query = apply_date_filter(
-        query,
-        start_date,
-        end_date
+            query,
+            TransactionModel,
+            start_date,
+            end_date
     )
 
     result = (
         query
         .group_by(
-            Transaction.gl_account,
+            TransactionModel.gl_account,
             GlAccount.nama_gl_account
         )
         .order_by(
-            func.sum(Transaction.amount).desc()
+            func.sum(TransactionModel.amount).desc()
         )
         .limit(10)
         .all()
@@ -189,31 +223,33 @@ def expense_per_gl(
 # Top 10 Pengeluaran per Cost Center
 @router.get("/cost-center")
 def expense_per_cost_center(
+    source: DashboardSource = DashboardSource.rungkut,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db)
 ):
-
+    TransactionModel = get_transaction_model(source)
     query = (
         db.query(
-            Transaction.cost_center,
-            func.sum(Transaction.amount).label("total_amount")
+            TransactionModel.cost_center,
+            func.sum(TransactionModel.amount).label("total_amount")
         )
     )
 
     query = apply_date_filter(
-        query,
-        start_date,
-        end_date
+            query,
+            TransactionModel,
+            start_date,
+            end_date
     )
 
     result = (
         query
         .group_by(
-            Transaction.cost_center
+            TransactionModel.cost_center
         )
         .order_by(
-            func.sum(Transaction.amount).desc()
+            func.sum(TransactionModel.amount).desc()
         )
         .limit(10)
         .all()
@@ -230,30 +266,31 @@ def expense_per_cost_center(
 # Expense Detail by Top Cost Center
 @router.get("/top-cost-center")
 def top_cost_center(
+    source: DashboardSource = DashboardSource.rungkut,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db)
 ):
-
+    TransactionModel = get_transaction_model(source)
     # Cari Cost Center dengan total expense terbesar
-
     cost_center_query = (
         db.query(
-            Transaction.cost_center,
-            func.sum(Transaction.amount).label("total_cost_center")
+            TransactionModel.cost_center,
+            func.sum(TransactionModel.amount).label("total_cost_center")
         )
     )
 
     cost_center_query = apply_date_filter(
         cost_center_query,
+        TransactionModel,
         start_date,
         end_date
     )
 
     top_cc = (
         cost_center_query
-        .group_by(Transaction.cost_center)
-        .order_by(func.sum(Transaction.amount).desc())
+        .group_by(TransactionModel.cost_center)
+        .order_by(func.sum(TransactionModel.amount).desc())
         .first()
     )
 
@@ -268,35 +305,38 @@ def top_cost_center(
 
     detail_query = (
         db.query(
-            Transaction.gl_account,
+            TransactionModel.gl_account,
             GlAccount.nama_gl_account,
-            func.sum(Transaction.amount).label("total_amount")
+            func.sum(TransactionModel.amount).label("total_amount")
         )
         .outerjoin(
             GlAccount,
-            Transaction.gl_account == GlAccount.gl_account
+            TransactionModel.gl_account == GlAccount.gl_account
         )
         .filter(
-            Transaction.cost_center == top_cc.cost_center
+            TransactionModel.cost_center == top_cc.cost_center
         )
     )
 
     detail_query = apply_date_filter(
         detail_query,
+        TransactionModel,
         start_date,
         end_date
     )
 
     details = (
-        detail_query
-        .group_by(
-            Transaction.gl_account,
-            GlAccount.nama_gl_account
-        )
-        .order_by(
-            func.sum(Transaction.amount).desc()
-        )
-        .all()
+            detail_query
+            .group_by(
+                TransactionModel.gl_account,
+                GlAccount.nama_gl_account
+            )
+            .order_by(
+                func.sum(
+                    TransactionModel.amount
+                ).desc()
+            )
+            .all()
     )
 
     return {
@@ -316,25 +356,26 @@ def top_cost_center(
 # LINE CHART
 @router.get("/trend")
 def trend_pengeluaran(
+    source: DashboardSource = DashboardSource.rungkut,
     group_by: TrendGroup = TrendGroup.month,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
     db: Session = Depends(get_db)
 ):
-    # ==========================
+    
+    TransactionModel = get_transaction_model(source)
     # TREND HARIAN
-    # ==========================
-
     if group_by == TrendGroup.day:
 
         query = db.query(
-            func.date(Transaction.posting_date).label("periode"),
-            func.sum(Transaction.amount).label("total_amount")
+            func.date(TransactionModel.posting_date).label("periode"),
+            func.sum(TransactionModel.amount).label("total_amount")
         )
 
 
         query = apply_date_filter(
             query,
+            TransactionModel,
             start_date,
             end_date
         )
@@ -343,10 +384,10 @@ def trend_pengeluaran(
         result = (
             query
             .group_by(
-                func.date(Transaction.posting_date)
+                func.date(TransactionModel.posting_date)
             )
             .order_by(
-                func.date(Transaction.posting_date)
+                func.date(TransactionModel.posting_date)
             )
             .all()
         )
@@ -361,21 +402,19 @@ def trend_pengeluaran(
         ]
 
 
-    # ==========================
     # TREND BULANAN
-    # ==========================
-
     elif group_by == TrendGroup.month:
 
         query = db.query(
-            Transaction.year.label("year"),
-            Transaction.month.label("month"),
-            func.sum(Transaction.amount).label("total_amount")
+            TransactionModel.year.label("year"),
+            TransactionModel.month.label("month"),
+            func.sum(TransactionModel.amount).label("total_amount")
         )
 
 
         query = apply_date_filter(
             query,
+            TransactionModel,
             start_date,
             end_date
         )
@@ -384,12 +423,12 @@ def trend_pengeluaran(
         result = (
             query
             .group_by(
-                Transaction.year,
-                Transaction.month
+                TransactionModel.year,
+                TransactionModel.month
             )
             .order_by(
-                Transaction.year,
-                Transaction.month
+                TransactionModel.year,
+                TransactionModel.month
             )
             .all()
         )
@@ -404,19 +443,18 @@ def trend_pengeluaran(
         ]
 
 
-    # ==========================
     # TREND TAHUNAN
-    # ==========================
     elif group_by == TrendGroup.year:
 
         query = db.query(
-            Transaction.year.label("year"),
-            func.sum(Transaction.amount).label("total_amount")
+            TransactionModel.year.label("year"),
+            func.sum(TransactionModel.amount).label("total_amount")
         )
 
 
         query = apply_date_filter(
             query,
+            TransactionModel,
             start_date,
             end_date
         )
@@ -425,10 +463,10 @@ def trend_pengeluaran(
         result = (
             query
             .group_by(
-                Transaction.year
+                TransactionModel.year
             )
             .order_by(
-                Transaction.year
+                TransactionModel.year
             )
             .all()
         )

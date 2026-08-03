@@ -1,8 +1,29 @@
-from sqlalchemy import and_
-from database.models import Transaction
+from database.models import (
+    Transaction,
+    TransactionPerak,
+)
 from etl.utils.normalizer import normalize_code
 
-def load_to_db(df, db):
+# PILIH MODEL BERDASARKAN SOURCE
+def get_transaction_model(source):
+
+    if source == "perak":
+        return TransactionPerak
+
+    return Transaction
+
+
+# LOAD DATA KE DATABASE
+def load_to_db(
+    df,
+    source,
+    db
+):
+
+    TransactionModel = get_transaction_model(
+        source
+    )
+
     inserted = 0
     skipped = 0
 
@@ -10,44 +31,73 @@ def load_to_db(df, db):
 
         posting_date = (
             row["posting_date"].date()
-            if hasattr(row["posting_date"], "date")
+            if hasattr(
+                row["posting_date"],
+                "date"
+            )
             else row["posting_date"]
         )
 
         document_no = normalize_code(
-            row.get("document_no", "")
+            row.get(
+                "document_no",
+                ""
+            )
         )
 
         amount = round(
-            float(row.get("amount", 0)),
+            float(
+                row.get(
+                    "amount",
+                    0
+                )
+            ),
             2
         )
 
         currency = str(
-            row.get("currency", "")
+            row.get(
+                "currency",
+                ""
+            )
         ).strip()
 
         gl_account = normalize_code(
-            row.get("gl_account", "")
+            row.get(
+                "gl_account",
+                ""
+            )
         )
 
         cost_center = normalize_code(
-            row.get("cost_center", "")
+            row.get(
+                "cost_center",
+                ""
+            )
         )
 
         reference = normalize_code(
-            row.get("reference", "")
+            row.get(
+                "reference",
+                ""
+            )
         )
 
         transaction_type = str(
-            row.get("transaction_type", "")
+            row.get(
+                "transaction_type",
+                ""
+            )
         ).strip()
 
         description = str(
-            row.get("description", "")
+            row.get(
+                "description",
+                ""
+            )
         ).strip()
 
-        # Skip jika data penting kosong
+        # SKIP JIKA DATA PENTING KOSONG
         if not document_no:
             skipped += 1
             continue
@@ -57,11 +107,17 @@ def load_to_db(df, db):
             continue
 
         # CEK DUPLIKAT
+        # Duplicate hanya dicek pada tabel yang sesuai dengan source
         existing = (
-            db.query(Transaction)
+            db.query(
+                TransactionModel
+            )
             .filter(
-                Transaction.document_no == document_no,
-                Transaction.posting_date == posting_date,
+                TransactionModel.document_no
+                == document_no,
+
+                TransactionModel.posting_date
+                == posting_date,
             )
             .first()
         )
@@ -72,7 +128,9 @@ def load_to_db(df, db):
             continue
 
         # INSERT DATA BARU
-        transaction = Transaction(
+
+        transaction = TransactionModel(
+
             posting_date=posting_date,
             document_no=document_no,
             amount=amount,
@@ -82,16 +140,22 @@ def load_to_db(df, db):
             reference=reference,
             transaction_type=transaction_type,
             description=description,
-            month=int(row["month"]),
-            year=int(row["year"]),
+            month=int(
+                row["month"]
+            ),
+            year=int(
+                row["year"]
+            ),
+
         )
 
-        db.add(transaction)
+        db.add(
+            transaction
+        )
 
         inserted += 1
 
     db.commit()
-
     return {
         "inserted": inserted,
         "skipped": skipped

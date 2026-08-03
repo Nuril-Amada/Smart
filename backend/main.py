@@ -5,13 +5,18 @@ from api.advance import router as advance_router
 from api.settlement import router as settlement_router
 from api.employee import router as employee_router
 from api.gl_account import router as gl_router
+from api.vendor import router as vendor_router
+from api.check import router as check_router
 from api.upload import router as upload_router
 from api.reminder import router as reminder_router
 from api.export import router as export_router
 from scheduler.reminder_scheduler import (
+    startup_reminder,
     start_reminder_scheduler,
     stop_reminder_scheduler
 )
+
+
 
 app = FastAPI(
     title="REFCON API",
@@ -38,14 +43,28 @@ app.add_middleware(
 
 @app.on_event("startup")
 def startup_event():
-    from database.connection import SessionLocal
-    start_reminder_scheduler(SessionLocal)
+
+    from database.connection import (
+        SessionLocal
+    )
+
+    # hanya dijalankan apabila backend
+    # dinyalakan tepat pukul 13.00 WIB
+
+    startup_reminder(
+        SessionLocal
+    )
+
+    # mengaktifkan scheduler
+
+    start_reminder_scheduler(
+        SessionLocal
+    )
 
 
 @app.on_event("shutdown")
 def shutdown_event():
     stop_reminder_scheduler()
-
 
 @app.get("/", tags=["Root"])
 def root():
@@ -60,8 +79,8 @@ app.include_router(advance_router)
 app.include_router(settlement_router)
 app.include_router(employee_router)
 app.include_router(gl_router)
+app.include_router(vendor_router)
+app.include_router(check_router)
 app.include_router(upload_router)
 app.include_router(reminder_router)
 app.include_router(export_router)
-# app.include_router(dashboard_advance.router)
-# app.include_router(dashboard_settlement.router)

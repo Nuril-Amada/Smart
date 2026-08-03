@@ -14,6 +14,7 @@ from etl.settlement_loader import load_settlement
 from etl.advance_loader import load_advance
 from etl.employee_loader import load_employee
 from etl.utils.employee_mapper import map_columns as map_employee_columns
+from api.dashboard import DashboardSource
 
 router = APIRouter(
     tags=["Upload & Ingestion"]
@@ -21,9 +22,9 @@ router = APIRouter(
 UPLOAD_DIR = "uploads"
 
 # IMPORT SAP (Transactions)
-
 @router.post("/dashboard/import-sap")
 async def import_sap(
+    source: DashboardSource = DashboardSource.rungkut,
     file: UploadFile = File(...),
     db: Session = Depends(get_db)
 ):
@@ -49,8 +50,9 @@ async def import_sap(
             )
 
         result = run_pipeline(
-            file_path,
-            db
+            file_path=file_path,
+            db=db,
+            source=source
         )
 
         if result.get("message") == "ETL failed":
