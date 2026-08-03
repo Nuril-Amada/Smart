@@ -6,30 +6,37 @@ const template = {
     heightCm: 7,
 };
 
-// Ekspor ukuran layout supaya handleDownload() di CetakCek.jsx
-// bisa membuat PDF dengan ukuran yang tepat tanpa hardcode.
-export const MandiriLayout = {
-    widthCm: template.widthCm,
-    heightCm: template.heightCm,
-};
-
 // Perkiraan kapasitas karakter per baris (dipakai sebagai fallback SSR saja;
 // pemotongan sebenarnya sekarang pakai pengukuran canvas, lihat measureTextWidthCm).
 const CHAR_WIDTH_CM = 0.19;
 
+// ===== Posisi vertikal tiap garis =====
+const LINE_TANGGAL_TOP_CM = 1.2;
+
 // Ukuran font dasar (px) untuk teks terbilang, sesuai class "text-sm" (14px).
-const TERBILANG_BASE_FONT_PX = 14;
+const TERBILANG_BASE_FONT_PX = 12;
+
+// Jarak vertikal isi teks (vendor/terbilang) ke garisnya. Dibikin negatif
+// tipis supaya teksnya nempel rapat ke garis pas di-print (line-height
+// bawaan font bikin ada spasi kosong di bawah teks kalau bottomCm = 0).
+const CONTENT_BOTTOM_OFFSET_CM = -0.03;
 
 // Batas minimum scale-down yang masih dianggap "wajar" untuk dipaksa muat
 // dalam 1 garis saja. Kalau untuk muat 1 garis teksnya harus di-scale lebih
 // kecil dari ini, baru dipecah ke garis keempat.
 const MIN_SINGLE_LINE_SCALE = 0.92;
 
+// Padding horizontal di dalam kotak nominal. Sisi kiri dibikin lebih lebar
+// supaya angka nominal nggak nempel/nabrak garis kiri kotak pas di-print
+// (padding lama 0.15cm kelihatan mepet banget di hasil cetak).
+const KOTAK_NOMINAL_PADDING_LEFT_CM = 0.9;
+const KOTAK_NOMINAL_PADDING_RIGHT_CM = 0.15;
+
 // Line 3: div pembungkus selebar 16.3cm, tapi span teksnya punya offset
 // left 3.3cm & right 2.8cm terhadap div, jadi lebar SPAN yang sebenarnya
 // = 16.3 - 3.3 - 2.8 = 10.2cm (bukan 16.3cm seperti sebelumnya).
 const LINE3_DIV_WIDTH_CM = 16.3;
-const LINE3_SPAN_LEFT_CM = 3.8;
+const LINE3_SPAN_LEFT_CM = 3.9;
 const LINE3_SPAN_RIGHT_CM = 0.6;
 const LINE3_WIDTH_CM = LINE3_DIV_WIDTH_CM - LINE3_SPAN_LEFT_CM - LINE3_SPAN_RIGHT_CM; // 10.2
 
@@ -45,8 +52,8 @@ const LINE4_WIDTH_CM = LINE4_DIV_WIDTH_CM - LINE4_SPAN_LEFT_CM - LINE4_SPAN_RIGH
 // Teks harus berhenti sebelum label "atau pembawa *" yang posisinya
 // mulai dari absolut x = 15.8cm, alias 1.5cm dari sisi kanan div ini.
 const LINE2_DIV_WIDTH_CM = 16.3;
-const LINE2_STOP_BEFORE_LABEL_CM = 1.8;
-const LINE2_TRANSFER_LEFT_CM = 4.2;
+const LINE2_STOP_BEFORE_LABEL_CM = 2.5;
+const LINE2_TRANSFER_LEFT_CM = 4.3;
 const LINE2_TRANSFER_WIDTH_CM =
     LINE2_DIV_WIDTH_CM - LINE2_TRANSFER_LEFT_CM - LINE2_STOP_BEFORE_LABEL_CM; // 10.7
 const LINE2_TUNAI_LEFT_CM = 4.2;
@@ -138,7 +145,7 @@ function getMeasureCtx() {
     return measureCtx;
 }
 
-function measureTextWidthCm(text, fontSizePx = 14, fontWeight = "500") {
+function measureTextWidthCm(text, fontSizePx = 12, fontWeight = "500") {
     const ctx = getMeasureCtx();
     if (!ctx) return text.length * CHAR_WIDTH_CM; // fallback kalau SSR
     ctx.font = `${fontWeight} ${fontSizePx}px "Arial Narrow", Arial, sans-serif`;
@@ -233,9 +240,9 @@ export default function MandiriCheck({ form }) {
             {/* ===== Tanggal ===== */}
             <div
                 className="absolute border-b border-gray-400 flex items-end justify-center"
-                style={{ top: "0.8cm", right: "0.6cm", width: "5.8cm", height: "0.5cm" }}
+                style={{ top: "0.6cm", right: "0.6cm", width: "5.8cm", height: "0.5cm" }}
             >
-                <span className="text-xs text-black font-medium">
+                <span className="text-xs text-black font-bold">
                     {formatTanggalNumeric(form.tanggal)}
                 </span>
             </div>
@@ -300,16 +307,16 @@ export default function MandiriCheck({ form }) {
                         text={`${form.vendor || ""} - ${form.bankPenerima || ""} - ${form.nomorRekening || ""}`}
                         leftCm={LINE2_TRANSFER_LEFT_CM}
                         maxWidthCm={LINE2_TRANSFER_WIDTH_CM}
-                        bottomCm={0.001}
-                        className="text-sm text-black font-medium"
+                        bottomCm={CONTENT_BOTTOM_OFFSET_CM}
+                        className="text-sm text-black font-bold"
                     />
                 ) : (
                     <FitText
                         text={form.vendor || ""}
                         leftCm={LINE2_TUNAI_LEFT_CM}
                         maxWidthCm={LINE2_TUNAI_WIDTH_CM}
-                        bottomCm={0.001}
-                        className="text-sm text-black font-medium"
+                        bottomCm={CONTENT_BOTTOM_OFFSET_CM}
+                        className="text-sm text-black font-bold"
                     />
                 )}
             </div>
@@ -396,17 +403,17 @@ export default function MandiriCheck({ form }) {
                         text={terbilangLine1}
                         leftCm={LINE3_SPAN_LEFT_CM}
                         maxWidthCm={LINE3_WIDTH_CM}
-                        bottomCm={0.001}
+                        bottomCm={CONTENT_BOTTOM_OFFSET_CM}
                         fontSizePx={terbilangFontPx}
-                        className="text-black font-medium uppercase"
+                        className="text-black font-bold uppercase"
                     />
                 ) : (
                     <FitText
                         text={terbilangLine1}
                         leftCm={LINE3_SPAN_LEFT_CM}
                         maxWidthCm={LINE3_WIDTH_CM}
-                        bottomCm={0.001}
-                        className="text-sm text-black font-medium uppercase"
+                        bottomCm={CONTENT_BOTTOM_OFFSET_CM}
+                        className="text-sm text-black font-bold uppercase"
                     />
                 )}
             </div>
@@ -448,17 +455,17 @@ export default function MandiriCheck({ form }) {
                             text={terbilangLine2}
                             leftCm={LINE4_SPAN_LEFT_CM}
                             maxWidthCm={LINE4_WIDTH_CM}
-                            bottomCm={0.001}
+                            bottomCm={CONTENT_BOTTOM_OFFSET_CM}
                             fontSizePx={terbilangFontPx}
-                            className="text-black font-medium uppercase"
+                            className="text-black font-bold uppercase"
                         />
                     ) : (
                         <FitText
                             text={terbilangLine2}
                             leftCm={LINE4_SPAN_LEFT_CM}
                             maxWidthCm={LINE4_WIDTH_CM}
-                            bottomCm={0.001}
-                            className="text-sm text-black font-medium uppercase"
+                            bottomCm={CONTENT_BOTTOM_OFFSET_CM}
+                            className="text-sm text-black font-bold uppercase"
                         />
                     )
                 )}
@@ -475,9 +482,12 @@ export default function MandiriCheck({ form }) {
             {/* ===== Kotak di samping garis keempat (sisi bawah kotak sejajar garis, jarak 0.6cm dari ujung garis) ===== */}
             <div
                 className="absolute border border-gray-400 flex items-center justify-start"
-                style={{ top: "2.9cm", left: "11.9cm", right: "0.6cm", height: "0.5cm", width: "5.3cm", padding: "0 0.15cm" }}
+                style={{
+                    top: "2.75cm", left: "11.9cm", right: "0.6cm", height: "0.5cm", width: "5.3cm",
+                    padding: `0 ${KOTAK_NOMINAL_PADDING_RIGHT_CM}cm 0 ${KOTAK_NOMINAL_PADDING_LEFT_CM}cm`,
+                }}
             >
-                <span className="text-sm font-bold font-mono text-gray-900 whitespace-nowrap">
+                <span className="text-xs font-bold font-mono text-gray-900 whitespace-nowrap">
                     {form.nominal ? Number(form.nominal).toLocaleString("id-ID") : ""}
                 </span>
             </div>

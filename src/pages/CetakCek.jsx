@@ -7,13 +7,12 @@ import {
   FaChevronRight,
   FaDownload,
 } from "react-icons/fa";
-import jsPDF from "jspdf";
-import html2canvas from "html2canvas";
+import { generateCheckPdf } from "../utils/checkPdfExport";
 import CheckForm from "../components/cetakcek/CheckForm";
-import MandiriCheck, { MandiriLayout } from "../components/cetakcek/MandiriCheck";
-import BCACheck, { BCALayout } from "../components/cetakcek/BCACheck";
-import SinarmasCheck, { SinarmasLayout } from "../components/cetakcek/SinarmasCheck";
-import MaybankCheck, { MaybankLayout } from "../components/cetakcek/MaybankCheck";
+import MandiriCheck from "../components/cetakcek/MandiriCheck";
+import BCACheck from "../components/cetakcek/BCACheck";
+import SinarmasCheck from "../components/cetakcek/SinarmasCheck";
+import MaybankCheck from "../components/cetakcek/MaybankCheck";
 
 // Peta nama bank (sesuai value pada <select> di CheckForm) ke komponennya
 const BANK_COMPONENTS = {
@@ -33,15 +32,15 @@ const BANK_OPTIONS = ["Bank Mandiri", "Bank BCA", "Bank Sinarmas", "Maybank"];
 // Peta nama bank ke konfigurasi layout (widthCm x heightCm) masing-masing.
 // Ukuran PDF otomatis mengikuti layout masing-masing bank yang dipilih user.
 const BANK_LAYOUTS = {
-  "Bank Mandiri": MandiriLayout,
-  Mandiri: MandiriLayout,
-  "Bank BCA": BCALayout,
-  BCA: BCALayout,
-  "Bank Sinarmas": SinarmasLayout,
-  Sinarmas: SinarmasLayout,
-  Maybank: MaybankLayout,
-  "Maybank Indonesia": MaybankLayout,
-  "Bank Maybank": MaybankLayout,
+  "Bank Mandiri": { widthCm: 17.8, heightCm: 7 },
+  Mandiri: { widthCm: 17.8, heightCm: 7 },
+  "Bank BCA": { widthCm: 17.7, heightCm: 7 },
+  BCA: { widthCm: 17.7, heightCm: 7 },
+  "Bank Sinarmas": { widthCm: 17.7, heightCm: 7 },
+  Sinarmas: { widthCm: 17.7, heightCm: 7 },
+  Maybank: { widthCm: 17.8, heightCm: 7 },
+  "Maybank Indonesia": { widthCm: 17.8, heightCm: 7 },
+  "Bank Maybank": { widthCm: 17.8, heightCm: 7 },
 };
 
 // STYLE badge status, sama pola dengan SOURCE_STYLE di tabel Settlement
@@ -294,105 +293,15 @@ export default function CetakCek() {
   };
 
   // ================= AKSI DOWNLOAD =================
-  const handleDownload = async () => {
+  const handleDownload = () => {
     if (!validateForm()) return;
-    if (!checkPreviewRef.current) return;
-
-    const layout = BANK_LAYOUTS[form.bank];
-    if (!layout) {
-      alert("Layout untuk bank ini belum tersedia.");
-      return;
-    }
-
-    const { widthCm, heightCm } = layout;
-
-    const original = checkPreviewRef.current;
-    const clone = original.cloneNode(true);
-
-    // Hapus semua label statis SVG
-    clone.querySelectorAll("svg").forEach((el) => el.remove());
-
-    // Hapus label statis "Rp." yang ada di celah antara garis keempat & nominal
-    clone.querySelectorAll("div").forEach((el) => {
-      const txt = el.textContent.trim();
-      if (txt === "Rp." || txt === "Rp") {
-        el.remove();
-      }
-    });
-
-    // Transparankan semua garis/border & ubah overflow-hidden menjadi visible
-    // agar bagian bawah karakter/angka tidak terpotong (clipping) oleh html2canvas.
-    clone.querySelectorAll("*").forEach((el) => {
-      el.style.borderColor = "transparent";
-      el.style.borderWidth = "0px";
-      el.style.boxShadow = "none";
-      el.style.outline = "none";
-      el.style.backgroundColor = "transparent";
-      el.style.overflow = "visible";
-    });
-    clone.style.border = "none";
-    clone.style.boxShadow = "none";
-    clone.style.backgroundColor = "transparent";
-
-    // Posisikan clone di (0,0) di belakang layar dengan zIndex -9999
-    // agar html2canvas bisa merender koordinat elemen dengan tepat
-    clone.style.position = "fixed";
-    clone.style.top = "0px";
-    clone.style.left = "0px";
-    clone.style.zIndex = "-9999";
-    clone.style.opacity = "1";
-    clone.style.pointerEvents = "none";
-    document.body.appendChild(clone);
 
     try {
-      const canvas = await html2canvas(clone, {
-        backgroundColor: null,
-        scale: 3,
-        logging: false,
-        useCORS: true,
-        onclone: (clonedDoc) => {
-          // Solusi masalah Tailwind CSS v4 "oklch":
-          // Ganti ekspresi warna oklch(...) di dalam <style> tags menjadi warna Hex #000000
-          // TANPA menghapus aturan layout (position: absolute, top, left, width, height, flex, dll).
-          const styleElements = clonedDoc.querySelectorAll("style");
-          styleElements.forEach((styleEl) => {
-            if (styleEl.textContent && styleEl.textContent.includes("oklch")) {
-              styleEl.textContent = styleEl.textContent.replace(/oklch\([^)]+\)/g, "#000000");
-            }
-          });
-
-          Array.from(clonedDoc.styleSheets).forEach((sheet) => {
-            try {
-              const rules = sheet.cssRules || sheet.rules;
-              if (!rules) return;
-              for (let i = 0; i < rules.length; i++) {
-                if (rules[i].cssText && rules[i].cssText.includes("oklch")) {
-                  try {
-                    rules[i].style.cssText = rules[i].style.cssText.replace(/oklch\([^)]+\)/g, "#000000");
-                  } catch (e) {}
-                }
-              }
-            } catch (e) {}
-          });
-        },
-      });
-
-      const imgData = canvas.toDataURL("image/png");
-
-      const pdf = new jsPDF({
-        orientation: widthCm >= heightCm ? "landscape" : "portrait",
-        unit: "cm",
-        format: [widthCm, heightCm],
-      });
-      pdf.addImage(imgData, "PNG", 0, 0, widthCm, heightCm);
+      const pdf = generateCheckPdf(form);
       pdf.save(`cek-${form.bank || "preview"}-${form.nomorCek || Date.now()}.pdf`);
-    } catch (err) {
-      console.error("Gagal mendownload PDF:", err);
-      alert("Gagal membuat PDF: " + (err.message || err));
-    } finally {
-      if (document.body.contains(clone)) {
-        document.body.removeChild(clone);
-      }
+    } catch (error) {
+      console.error("Gagal membuat PDF:", error);
+      alert(`Terjadi kesalahan saat memproses PDF: ${error.message || error}`);
     }
   };
 

@@ -6,13 +6,6 @@ const template = {
     heightCm: 7,
 };
 
-// Ekspor ukuran layout supaya handleDownload() di CetakCek.jsx
-// bisa membuat PDF dengan ukuran yang tepat tanpa hardcode.
-export const SinarmasLayout = {
-    widthCm: template.widthCm,
-    heightCm: template.heightCm,
-};
-
 // Margin kiri/kanan umum untuk garis 2, 3, 4
 const MARGIN_LEFT_CM = 0.6;
 const MARGIN_RIGHT_CM = 0.6;
@@ -31,7 +24,7 @@ const LINE_SPACING_CM = 0.6;
 // NOTE (asumsi): jarak vertikal dari garis tanggal ke garis kedua tidak
 // disebutkan secara eksplisit di spek, jadi dipakai 2.0cm supaya ada ruang
 // yang cukup untuk label "tinggi bacaan" (0.5cm) di atas garis kedua.
-const LINE2_TOP_CM = 2.0;
+const LINE2_TOP_CM = 1.8;
 const LINE3_TOP_CM = LINE2_TOP_CM + LINE_SPACING_CM; // 2.6
 
 // Posisi garis keempat & kotak nominal ditentukan dari kotak nominal:
@@ -40,7 +33,7 @@ const LINE3_TOP_CM = LINE2_TOP_CM + LINE_SPACING_CM; // 2.6
 const KOTAK_NOMINAL_HEIGHT_CM = 0.6;
 const KOTAK_NOMINAL_GAP_FROM_LINE3_CM = 0.1;
 const KOTAK_NOMINAL_TOP_CM = LINE3_TOP_CM + KOTAK_NOMINAL_GAP_FROM_LINE3_CM; // 2.7
-const LINE4_TOP_CM = KOTAK_NOMINAL_TOP_CM + KOTAK_NOMINAL_HEIGHT_CM; // 3.3
+const LINE4_TOP_CM = LINE3_TOP_CM + LINE_SPACING_CM;
 
 // ===== Panjang garis =====
 const LINE23_WIDTH_CM = 16.5;
@@ -51,6 +44,12 @@ const KOTAK_NOMINAL_WIDTH_CM = 5.5;
 const KOTAK_NOMINAL_GAP_CM = 0.7; // jarak dari ujung garis 4 ke kotak nominal
 const KOTAK_NOMINAL_LEFT_CM = MARGIN_LEFT_CM + LINE4_WIDTH_CM + KOTAK_NOMINAL_GAP_CM; // 11.7
 
+// Padding horizontal di dalam kotak nominal. Sisi kiri dibikin lebih lebar
+// supaya angka nominal nggak nempel/nabrak garis kiri kotak pas di-print
+// (padding lama 0.15cm kelihatan mepet banget di hasil cetak).
+const KOTAK_NOMINAL_PADDING_LEFT_CM = 1.6;
+const KOTAK_NOMINAL_PADDING_RIGHT_CM = 0.15;
+
 // ===== Lebar label italic (uppercase) =====
 const LABEL_ATAS_PENYERAHAN_WIDTH_CM = 6;
 const LABEL_ATAU_PEMBAWA_WIDTH_CM = 2.2;
@@ -59,7 +58,7 @@ const LABEL_UANG_SEJUMLAH_WIDTH_CM = 5.3;
 // ===== Area teks isi (content) di dalam tiap garis =====
 // Garis 2: mulai setelah label "Atas penyerahan..." & berhenti sebelum label "atau pembawa *)"
 const LINE2_CONTENT_LEFT_CM = LABEL_ATAS_PENYERAHAN_WIDTH_CM + 0.2; // 6.2
-const LINE2_CONTENT_STOP_BEFORE_LABEL_CM = LABEL_ATAU_PEMBAWA_WIDTH_CM + 0.2; // 2.4
+const LINE2_CONTENT_STOP_BEFORE_LABEL_CM = LABEL_ATAU_PEMBAWA_WIDTH_CM + 0.7; // 2.4
 const LINE2_CONTENT_WIDTH_CM =
     LINE23_WIDTH_CM - LINE2_CONTENT_LEFT_CM - LINE2_CONTENT_STOP_BEFORE_LABEL_CM; // 7.9
 
@@ -69,7 +68,7 @@ const LINE3_SPAN_RIGHT_CM = 0.6;
 const LINE3_CONTENT_WIDTH_CM = LINE23_WIDTH_CM - LINE3_SPAN_LEFT_CM - LINE3_SPAN_RIGHT_CM; // 10.4
 
 // Garis 4 (terbilang baris 2, lanjutan)
-const LINE4_SPAN_LEFT_CM = 0.1;
+const LINE4_SPAN_LEFT_CM = 0.5;
 const LINE4_SPAN_RIGHT_CM = 0.6;
 const LINE4_CONTENT_WIDTH_CM = LINE4_WIDTH_CM - LINE4_SPAN_LEFT_CM - LINE4_SPAN_RIGHT_CM; // 9.6
 
@@ -77,13 +76,18 @@ const LINE4_CONTENT_WIDTH_CM = LINE4_WIDTH_CM - LINE4_SPAN_LEFT_CM - LINE4_SPAN_
 // pemotongan sebenarnya sekarang pakai pengukuran canvas, lihat measureTextWidthCm).
 const CHAR_WIDTH_CM = 0.19;
 
-// Ukuran font dasar (px) untuk teks terbilang, sesuai class "text-sm" (14px).
-const TERBILANG_BASE_FONT_PX = 14;
+// Ukuran font dasar (px) untuk teks terbilang, sesuai class "text-sm" (12px).
+const TERBILANG_BASE_FONT_PX = 12;
 
 // Batas minimum scale-down yang masih dianggap "wajar" untuk dipaksa muat
 // dalam 1 garis saja. Kalau untuk muat 1 garis teksnya harus di-scale lebih
 // kecil dari ini, baru dipecah ke garis keempat.
 const MIN_SINGLE_LINE_SCALE = 0.95;
+
+// Jarak vertikal isi teks (vendor/terbilang) ke garisnya. Dibikin negatif
+// tipis supaya teksnya nempel rapat ke garis pas di-print (line-height
+// bawaan font bikin ada spasi kosong di bawah teks kalau bottomCm = 0).
+const CONTENT_BOTTOM_OFFSET_CM = -0.05;
 
 // Teks yang otomatis mengecilkan ukuran font (scale down) kalau lebar
 // teks aslinya melebihi maxWidthCm, supaya tidak pernah menumpuk/overflow
@@ -122,6 +126,7 @@ function FitText({ text, leftCm, maxWidthCm, bottomCm, className }) {
                 style={{
                     display: "inline-block",
                     whiteSpace: "nowrap",
+                    lineHeight: 1,
                     transform: `scale(${scale})`,
                     transformOrigin: "left bottom",
                 }}
@@ -170,7 +175,7 @@ function getMeasureCtx() {
     return measureCtx;
 }
 
-function measureTextWidthCm(text, fontSizePx = 14, fontWeight = "500") {
+function measureTextWidthCm(text, fontSizePx = 12, fontWeight = "500") {
     const ctx = getMeasureCtx();
     if (!ctx) return text.length * CHAR_WIDTH_CM; // fallback kalau SSR
     ctx.font = `${fontWeight} ${fontSizePx}px "Arial Narrow", Arial, sans-serif`;
@@ -272,7 +277,7 @@ export default function SinarmasCheck({ form }) {
                     height: `${LINE_TANGGAL_BOX_HEIGHT_CM}cm`,
                 }}
             >
-                <span className="text-xs text-black font-medium">
+                <span className="text-xs text-black font-bold">
                     {formatTanggalNumeric(form.tanggal)}
                 </span>
             </div>
@@ -335,16 +340,16 @@ export default function SinarmasCheck({ form }) {
                         text={`${form.vendor || ""} - ${form.bankPenerima || ""} - ${form.nomorRekening || ""}`}
                         leftCm={LINE2_CONTENT_LEFT_CM}
                         maxWidthCm={LINE2_CONTENT_WIDTH_CM}
-                        bottomCm={0.001}
-                        className="text-sm text-black font-medium"
+                        bottomCm={CONTENT_BOTTOM_OFFSET_CM}
+                        className="text-sm text-black font-bold"
                     />
                 ) : (
                     <FitText
                         text={form.vendor || ""}
                         leftCm={LINE2_CONTENT_LEFT_CM}
                         maxWidthCm={LINE2_CONTENT_WIDTH_CM}
-                        bottomCm={0.001}
-                        className="text-sm text-black font-medium"
+                        bottomCm={CONTENT_BOTTOM_OFFSET_CM}
+                        className="text-sm text-black font-bold"
                     />
                 )}
             </div>
@@ -383,17 +388,17 @@ export default function SinarmasCheck({ form }) {
                         text={terbilangLine1}
                         leftCm={LINE3_SPAN_LEFT_CM}
                         maxWidthCm={LINE3_CONTENT_WIDTH_CM}
-                        bottomCm={0.001}
+                        bottomCm={CONTENT_BOTTOM_OFFSET_CM}
                         fontSizePx={terbilangFontPx}
-                        className="text-black font-medium uppercase"
+                        className="text-black font-bold uppercase"
                     />
                 ) : (
                     <FitText
                         text={terbilangLine1}
                         leftCm={LINE3_SPAN_LEFT_CM}
                         maxWidthCm={LINE3_CONTENT_WIDTH_CM}
-                        bottomCm={0.001}
-                        className="text-sm text-black font-medium uppercase"
+                        bottomCm={CONTENT_BOTTOM_OFFSET_CM}
+                        className="text-sm text-black font-bold uppercase"
                     />
                 )}
             </div>
@@ -409,17 +414,17 @@ export default function SinarmasCheck({ form }) {
                             text={terbilangLine2}
                             leftCm={LINE4_SPAN_LEFT_CM}
                             maxWidthCm={LINE4_CONTENT_WIDTH_CM}
-                            bottomCm={0.001}
+                            bottomCm={CONTENT_BOTTOM_OFFSET_CM}
                             fontSizePx={terbilangFontPx}
-                            className="text-black font-medium uppercase"
+                            className="text-black font-bold uppercase"
                         />
                     ) : (
                         <FitText
                             text={terbilangLine2}
                             leftCm={LINE4_SPAN_LEFT_CM}
                             maxWidthCm={LINE4_CONTENT_WIDTH_CM}
-                            bottomCm={0.001}
-                            className="text-sm text-black font-medium uppercase"
+                            bottomCm={CONTENT_BOTTOM_OFFSET_CM}
+                            className="text-sm text-black font-bold uppercase"
                         />
                     )
                 )}
@@ -446,10 +451,10 @@ export default function SinarmasCheck({ form }) {
                     left: `${KOTAK_NOMINAL_LEFT_CM}cm`,
                     width: `${KOTAK_NOMINAL_WIDTH_CM}cm`,
                     height: `${KOTAK_NOMINAL_HEIGHT_CM}cm`,
-                    padding: "0 0.15cm",
+                    padding: `0 ${KOTAK_NOMINAL_PADDING_RIGHT_CM}cm 0 ${KOTAK_NOMINAL_PADDING_LEFT_CM}cm`,
                 }}
             >
-                <span className="text-sm font-bold font-mono text-gray-900 whitespace-nowrap">
+                <span className="text-xs font-bold font-mono text-gray-900 whitespace-nowrap">
                     {form.nominal ? Number(form.nominal).toLocaleString("id-ID") : ""}
                 </span>
             </div>
