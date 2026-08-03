@@ -1,13 +1,20 @@
 import jsPDF from "jspdf";
+import { pdfLayout as mandiriPdfLayout } from "../components/cetakcek/MandiriCheck";
+import { pdfLayout as bcaPdfLayout } from "../components/cetakcek/BCACheck";
+import { pdfLayout as sinarmasPdfLayout } from "../components/cetakcek/SinarmasCheck";
+import { pdfLayout as maybankPdfLayout } from "../components/cetakcek/MaybankCheck";
 
 // =====================================================================
 // GENERATE PDF CEK — TEKS ASLI (bukan screenshot/gambar)
 // =====================================================================
-// File ini menggantikan pendekatan html2canvas + addImage. Semua garis,
-// label, dan isi (vendor/terbilang/nominal/tanggal) digambar langsung
-// pakai fungsi jsPDF (pdf.text, pdf.line, pdf.rect), berdasarkan
-// koordinat (cm) yang sama seperti di komponen React masing-masing bank
-// (MandiriCheck.jsx, BCACheck.jsx, SinarmasCheck.jsx, MaybankCheck.jsx).
+// File ini menggambar semua isi (vendor/terbilang/nominal/tanggal)
+// langsung pakai fungsi jsPDF (pdf.text), berdasarkan koordinat (cm) yang
+// DIIMPOR LANGSUNG dari tiap komponen React bank (`pdfLayout` di
+// MandiriCheck.jsx, BCACheck.jsx, SinarmasCheck.jsx, MaybankCheck.jsx).
+//
+// Jadi tidak ada lagi duplikasi angka layout di file ini — kalau posisi
+// garis/label di komponen bank diubah, PDF otomatis ikut menyesuaikan
+// tanpa perlu update dua tempat.
 //
 // CATATAN FONT: jsPDF hanya punya font bawaan helvetica/times/courier —
 // tidak ada "Arial Narrow" seperti di preview HTML. Bentuk huruf jadi
@@ -90,131 +97,19 @@ function splitTerbilangPdf(pdf, text, line3Width, line4Width, baseSizePt = 10) {
 }
 
 // ================= LAYOUT TIAP BANK =================
-// Semua angka (top/left/width/right, dalam cm) diambil 1:1 dari konstanta
-// yang sudah ada di komponen React masing-masing bank.
-
-function mandiriLayout() {
-  return {
-    widthCm: 17.8,
-    heightCm: 7,
-    tanggal: { top: 0.6, right: 0.6, width: 5.8, height: 0.5 },
-    labelAtas: { text: "Atas penyerahan cek ini bayarlah kepada", top: 1.55, left: 0.9 },
-    labelPembawa: { text: "atau pembawa *", top: 1.55, right: 0.6 },
-    line2: { top: 2.0, left: 0.9, right: 0.6 },
-    captionPayTo: { text: "Pay to the order of", top: 2.32, left: 0.9 },
-    captionOrBearer: { text: "or bearer", top: 2.32, left: 15.6 },
-    labelUang: { text: "uang sejumlah Rupiah (dalam huruf)", top: 2.25, left: 0.9 },
-    line3: { top: 2.7, left: 0.9, right: 0.6 },
-    captionSumOf: { text: "The Sum of (in words)", top: 3.02, left: 0.9 },
-    line4: { top: 3.4, left: 0.9, width: 10.3 },
-    vendorTransfer: { left: 4.3, width: 10.7 },
-    vendorTunai: { left: 4.2, width: 6.9 },
-    terbilang1: { left: 3.9, width: 10.2 },
-    terbilang2: { left: 2.2, width: 7.4 },
-    rpLabel: { top: 2.55, left: 11.2, width: 0.7, height: 0.6 },
-    nominal: { top: 2.75, left: 11.9, width: 5.3, height: 0.5, padLeft: 0.9 },
-  };
-}
-
-function bcaLayout() {
-  const marginLeft = 0.7;
-  const marginRight = 0.4;
-  const line23Width = 16.6;
-  const line4Width = 10.2;
-  const gapNominal = 1;
-  const nominalWidth = 5.4;
-  return {
-    widthCm: 17.7,
-    heightCm: 7,
-    tanggal: { top: 0.7, right: marginRight, width: 6, height: 0.6 },
-    labelAtas: { text: "Atas penyerahan cek ini bayarlah kepada", top: 1.7, left: marginLeft },
-    labelPembawa: { text: "atau pembawa *)", top: 1.7, right: marginRight },
-    line2: { top: 2.1, left: marginLeft, width: line23Width },
-    labelUang: { text: "uang sejumlah Rupiah (dalam huruf)", top: 2.4, left: marginLeft },
-    line3: { top: 2.8, left: marginLeft, width: line23Width },
-    line4: { top: 3.5, left: marginLeft, width: line4Width },
-    vendorTransfer: { left: 4.7, width: 10.3 },
-    vendorTunai: { left: 4.7, width: 10.3 },
-    terbilang1: { left: 4.2, width: 12.0 },
-    terbilang2: { left: 0.5, width: 7.4 },
-    rpLabel: { top: 3.0, left: marginLeft + line4Width, width: gapNominal, height: 0.5 },
-    // BCA pakai GARIS nominal (bukan kotak), sejajar dengan garis keempat.
-    nominalLine: {
-      top: 3.5,
-      left: marginLeft + line4Width + gapNominal,
-      width: nominalWidth,
-      padLeft: 1,
-    },
-  };
-}
-
-function sinarmasLayout() {
-  const marginLeft = 0.6;
-  const marginRight = 0.6;
-  const line23Width = 16.5;
-  const line4Width = 10.3;
-  return {
-    widthCm: 17.7,
-    heightCm: 7,
-    tanggal: { top: 0.7, right: marginRight, width: 5.5, height: 0.5 },
-    labelAtas: { text: "ATAS PENYERAHAN CEK INI BAYARLAH KEPADA", top: 1.3, left: marginLeft },
-    labelPembawa: { text: "ATAU PEMBAWA *)", top: 1.3, right: marginRight },
-    line2: { top: 1.8, left: marginLeft, width: line23Width },
-    labelUang: { text: "UANG SEJUMLAH RUPIAH (DALAM HURUF)", top: 2.1, left: marginLeft },
-    line3: { top: 2.6, left: marginLeft, width: line23Width },
-    line4: { top: 3.2, left: marginLeft, width: line4Width },
-    vendorTransfer: { left: 6.2, width: 7.9 },
-    vendorTunai: { left: 6.2, width: 7.9 },
-    terbilang1: { left: 5.5, width: 10.4 },
-    terbilang2: { left: 0.5, width: 9.6 },
-    rpLabel: { top: 2.7, left: marginLeft + line4Width, width: 0.7, height: 0.6 },
-    nominal: { top: 2.7, left: 11.7, width: 5.5, height: 0.6, padLeft: 1.6 },
-  };
-}
-
-function maybankLayout() {
-  const marginLeft = 0.9;
-  const marginRight = 0.7;
-  const line23Width = 16.2;
-  const line4Width = 11.2;
-  return {
-    widthCm: 17.8,
-    heightCm: 7,
-    tanggal: { top: 0.9, right: marginRight, width: 5.5, height: 0.5 },
-    labelAtas: { text: "Atas penyerahan cek ini bayarlah kepada", top: 2.0, left: marginLeft },
-    labelPembawa: { text: "atau pembawa *)", top: 2.0, right: marginRight },
-    line2: { top: 2.4, left: marginLeft, width: line23Width },
-    captionOnPresentation: { text: "On presentation of this cheque pay", top: 2.7, left: marginLeft },
-    captionOrBearer: { text: "or bearer", top: 2.7, right: marginRight },
-    labelUang: { text: "Uang Sejumlah Rupiah (dalam huruf)", top: 2.6, left: marginLeft },
-    line3: { top: 3.0, left: marginLeft, width: line23Width },
-    captionSumOf: { text: "The sum of Rupiah (in words)", top: 3.3, left: marginLeft },
-    line4: { top: 3.65, left: marginLeft, width: line4Width },
-    vendorTransfer: { left: 4.7, width: 9.4 },
-    vendorTunai: { left: 4.7, width: 9.4 },
-    terbilang1: { left: 4.2, width: 11.4 },
-    terbilang2: { left: 3.0, width: 8.2 },
-    rpLabel: { top: 3.15, left: marginLeft + line4Width, width: 0.6, height: 0.5 },
-    nominal: {
-      top: 3.15,
-      left: marginLeft + line4Width + 0.6,
-      width: 4.4,
-      height: 0.5,
-      padLeft: 0.7,
-    },
-  };
-}
+// Diimpor langsung dari komponen React masing-masing bank (lihat import
+// di atas). Tidak ada lagi definisi layout terpisah di file ini.
 
 const LAYOUTS = {
-  "Bank Mandiri": mandiriLayout,
-  Mandiri: mandiriLayout,
-  "Bank BCA": bcaLayout,
-  BCA: bcaLayout,
-  "Bank Sinarmas": sinarmasLayout,
-  Sinarmas: sinarmasLayout,
-  Maybank: maybankLayout,
-  "Maybank Indonesia": maybankLayout,
-  "Bank Maybank": maybankLayout,
+  "Bank Mandiri": mandiriPdfLayout,
+  Mandiri: mandiriPdfLayout,
+  "Bank BCA": bcaPdfLayout,
+  BCA: bcaPdfLayout,
+  "Bank Sinarmas": sinarmasPdfLayout,
+  Sinarmas: sinarmasPdfLayout,
+  Maybank: maybankPdfLayout,
+  "Maybank Indonesia": maybankPdfLayout,
+  "Bank Maybank": maybankPdfLayout,
 };
 
 // ================= FUNGSI UTAMA =================
@@ -232,11 +127,10 @@ const LAYOUTS = {
  * @returns {jsPDF}
  */
 export function generateCheckPdf(form) {
-  const layoutFn = LAYOUTS[form.bank];
-  if (!layoutFn) {
+  const layout = LAYOUTS[form.bank];
+  if (!layout) {
     throw new Error(`Layout untuk bank "${form.bank}" belum tersedia.`);
   }
-  const layout = layoutFn();
 
   const pdf = new jsPDF({
     orientation: layout.widthCm >= layout.heightCm ? "landscape" : "portrait",

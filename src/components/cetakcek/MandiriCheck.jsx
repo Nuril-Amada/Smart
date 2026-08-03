@@ -6,12 +6,27 @@ const template = {
     heightCm: 7,
 };
 
+// ===== Margin & posisi umum (dipindah dari angka hardcoded di JSX supaya
+// bisa dipakai bareng oleh preview React & export PDF, lewat pdfLayout) =====
+const MARGIN_LEFT_CM = 0.9;
+const MARGIN_RIGHT_CM = 0.6;
+
+const LINE_TANGGAL_BOX_TOP_CM = 1.2;
+const LINE_TANGGAL_BOX_WIDTH_CM = 5.8;
+const LINE_TANGGAL_BOX_HEIGHT_CM = 0.5;
+
+const LINE2_TOP_CM = 2.0;
+const LINE3_TOP_CM = 2.7;
+const LINE4_TOP_CM = 3.4;
+
+const KOTAK_NOMINAL_TOP_CM = 2.75;
+const KOTAK_NOMINAL_LEFT_CM = 11.9;
+const KOTAK_NOMINAL_WIDTH_CM = 5.3;
+const KOTAK_NOMINAL_HEIGHT_CM = 0.5;
+
 // Perkiraan kapasitas karakter per baris (dipakai sebagai fallback SSR saja;
 // pemotongan sebenarnya sekarang pakai pengukuran canvas, lihat measureTextWidthCm).
 const CHAR_WIDTH_CM = 0.19;
-
-// ===== Posisi vertikal tiap garis =====
-const LINE_TANGGAL_TOP_CM = 1.2;
 
 // Ukuran font dasar (px) untuk teks terbilang, sesuai class "text-sm" (14px).
 const TERBILANG_BASE_FONT_PX = 12;
@@ -240,7 +255,12 @@ export default function MandiriCheck({ form }) {
             {/* ===== Tanggal ===== */}
             <div
                 className="absolute border-b border-gray-400 flex items-end justify-center"
-                style={{ top: "0.6cm", right: "0.6cm", width: "5.8cm", height: "0.5cm" }}
+                style={{
+                    top: `${LINE_TANGGAL_BOX_TOP_CM}cm`,
+                    right: `${MARGIN_RIGHT_CM}cm`,
+                    width: `${LINE_TANGGAL_BOX_WIDTH_CM}cm`,
+                    height: `${LINE_TANGGAL_BOX_HEIGHT_CM}cm`,
+                }}
             >
                 <span className="text-xs text-black font-bold">
                     {formatTanggalNumeric(form.tanggal)}
@@ -296,7 +316,7 @@ export default function MandiriCheck({ form }) {
             {/* ===== Garis kedua (di bawah garis tanggal, jarak 0.7cm) ===== */}
             <div
                 className="absolute border-b border-gray-400"
-                style={{ top: "2.0cm", left: "0.9cm", right: "0.6cm" }}
+                style={{ top: `${LINE2_TOP_CM}cm`, left: `${MARGIN_LEFT_CM}cm`, right: `${MARGIN_RIGHT_CM}cm` }}
             >
                 {/* Isi garis: Nama Vendor saja untuk Tarik Tunai (mulai dari tengah),
                     + Bank & Rekening untuk Transfer. Font otomatis mengecil (FitText)
@@ -391,7 +411,7 @@ export default function MandiriCheck({ form }) {
             {/* ===== Garis ketiga (di bawah garis kedua, jarak 0.7cm) ===== */}
             <div
                 className="absolute border-b border-gray-400"
-                style={{ top: "2.7cm", left: "0.9cm", right: "0.6cm" }}
+                style={{ top: `${LINE3_TOP_CM}cm`, left: `${MARGIN_LEFT_CM}cm`, right: `${MARGIN_RIGHT_CM}cm` }}
             >
                 {/* Baris pertama terbilang — sepanjang garis ketiga, uppercase.
                     Kalau tidak perlu dipecah (fontSizePx null), pakai FitText
@@ -443,7 +463,7 @@ export default function MandiriCheck({ form }) {
             {/* ===== Garis keempat (di bawah garis ketiga, panjang 10.2cm) ===== */}
             <div
                 className="absolute border-b border-gray-400"
-                style={{ top: "3.4cm", left: "0.9cm", right: "0.6cm", width: "10.3cm" }}
+                style={{ top: `${LINE4_TOP_CM}cm`, left: `${MARGIN_LEFT_CM}cm`, right: `${MARGIN_RIGHT_CM}cm`, width: `${LINE4_DIV_WIDTH_CM}cm` }}
             >
                 {/* Lanjutan terbilang jika baris pertama sudah penuh, uppercase.
                     Sama seperti garis ketiga: pakai ScaledText dengan
@@ -483,7 +503,11 @@ export default function MandiriCheck({ form }) {
             <div
                 className="absolute border border-gray-400 flex items-center justify-start"
                 style={{
-                    top: "2.75cm", left: "11.9cm", right: "0.6cm", height: "0.5cm", width: "5.3cm",
+                    top: `${KOTAK_NOMINAL_TOP_CM}cm`,
+                    left: `${KOTAK_NOMINAL_LEFT_CM}cm`,
+                    right: `${MARGIN_RIGHT_CM}cm`,
+                    height: `${KOTAK_NOMINAL_HEIGHT_CM}cm`,
+                    width: `${KOTAK_NOMINAL_WIDTH_CM}cm`,
                     padding: `0 ${KOTAK_NOMINAL_PADDING_RIGHT_CM}cm 0 ${KOTAK_NOMINAL_PADDING_LEFT_CM}cm`,
                 }}
             >
@@ -494,3 +518,27 @@ export default function MandiriCheck({ form }) {
         </div>
     );
 }
+
+// =====================================================================
+// EXPORT LAYOUT UNTUK PDF (checkPdfExport.js)
+// =====================================================================
+// Referensi langsung ke const preview di atas — kalau posisi garis/label
+// diubah di sini, PDF di checkPdfExport.js otomatis ikut menyesuaikan.
+export const pdfLayout = {
+    widthCm: template.widthCm,
+    heightCm: template.heightCm,
+    tanggal: { top: LINE_TANGGAL_BOX_TOP_CM, right: MARGIN_RIGHT_CM, width: LINE_TANGGAL_BOX_WIDTH_CM },
+    line2: { top: LINE2_TOP_CM, left: MARGIN_LEFT_CM },
+    vendorTransfer: { left: LINE2_TRANSFER_LEFT_CM, width: LINE2_TRANSFER_WIDTH_CM },
+    vendorTunai: { left: LINE2_TUNAI_LEFT_CM, width: LINE2_TUNAI_WIDTH_CM },
+    line3: { top: LINE3_TOP_CM, left: MARGIN_LEFT_CM },
+    line4: { top: LINE4_TOP_CM, left: MARGIN_LEFT_CM },
+    terbilang1: { left: LINE3_SPAN_LEFT_CM, width: LINE3_WIDTH_CM },
+    terbilang2: { left: LINE4_SPAN_LEFT_CM, width: LINE4_WIDTH_CM },
+    nominal: {
+        top: KOTAK_NOMINAL_TOP_CM,
+        left: KOTAK_NOMINAL_LEFT_CM,
+        height: KOTAK_NOMINAL_HEIGHT_CM,
+        padLeft: KOTAK_NOMINAL_PADDING_LEFT_CM,
+    },
+};

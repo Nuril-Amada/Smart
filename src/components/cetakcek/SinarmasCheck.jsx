@@ -87,7 +87,7 @@ const MIN_SINGLE_LINE_SCALE = 0.95;
 // Jarak vertikal isi teks (vendor/terbilang) ke garisnya. Dibikin negatif
 // tipis supaya teksnya nempel rapat ke garis pas di-print (line-height
 // bawaan font bikin ada spasi kosong di bawah teks kalau bottomCm = 0).
-const CONTENT_BOTTOM_OFFSET_CM = -0.05;
+const CONTENT_BOTTOM_OFFSET_CM = -0.085;
 
 // Teks yang otomatis mengecilkan ukuran font (scale down) kalau lebar
 // teks aslinya melebihi maxWidthCm, supaya tidak pernah menumpuk/overflow
@@ -461,3 +461,28 @@ export default function SinarmasCheck({ form }) {
         </div>
     );
 }
+
+// =====================================================================
+// EXPORT LAYOUT UNTUK PDF (checkPdfExport.js)
+// =====================================================================
+// Semua angka di bawah ini adalah REFERENSI LANGSUNG ke const yang sudah
+// dipakai komponen di atas — jadi kalau posisi garis/label di preview
+// berubah, PDF otomatis ikut berubah tanpa perlu di-duplikasi manual lagi.
+export const pdfLayout = {
+    widthCm: template.widthCm,
+    heightCm: template.heightCm,
+    tanggal: { top: LINE_TANGGAL_TOP_CM, right: MARGIN_RIGHT_CM, width: LINE_TANGGAL_WIDTH_CM },
+    line2: { top: LINE2_TOP_CM, left: MARGIN_LEFT_CM },
+    vendorTransfer: { left: LINE2_CONTENT_LEFT_CM, width: LINE2_CONTENT_WIDTH_CM },
+    vendorTunai: { left: LINE2_CONTENT_LEFT_CM, width: LINE2_CONTENT_WIDTH_CM },
+    line3: { top: LINE3_TOP_CM, left: MARGIN_LEFT_CM },
+    line4: { top: LINE4_TOP_CM, left: MARGIN_LEFT_CM },
+    terbilang1: { left: LINE3_SPAN_LEFT_CM, width: LINE3_CONTENT_WIDTH_CM },
+    terbilang2: { left: LINE4_SPAN_LEFT_CM, width: LINE4_CONTENT_WIDTH_CM },
+    nominal: {
+        top: KOTAK_NOMINAL_TOP_CM,
+        left: KOTAK_NOMINAL_LEFT_CM,
+        height: KOTAK_NOMINAL_HEIGHT_CM,
+        padLeft: KOTAK_NOMINAL_PADDING_LEFT_CM,
+    },
+};

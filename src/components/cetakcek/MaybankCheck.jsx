@@ -537,3 +537,27 @@ export default function MaybankCheck({ form }) {
         </div>
     );
 }
+
+// =====================================================================
+// EXPORT LAYOUT UNTUK PDF (checkPdfExport.js)
+// =====================================================================
+// Referensi langsung ke const preview di atas — kalau posisi garis/label
+// diubah di sini, PDF di checkPdfExport.js otomatis ikut menyesuaikan.
+export const pdfLayout = {
+    widthCm: template.widthCm,
+    heightCm: template.heightCm,
+    tanggal: { top: LINE_TANGGAL_TOP_CM, right: MARGIN_RIGHT_CM, width: LINE_TANGGAL_WIDTH_CM },
+    line2: { top: LINE2_TOP_CM, left: MARGIN_LEFT_CM },
+    vendorTransfer: { left: LINE2_CONTENT_LEFT_CM, width: LINE2_CONTENT_WIDTH_CM },
+    vendorTunai: { left: LINE2_CONTENT_LEFT_CM, width: LINE2_CONTENT_WIDTH_CM },
+    line3: { top: LINE3_TOP_CM, left: MARGIN_LEFT_CM },
+    line4: { top: LINE4_TOP_CM, left: MARGIN_LEFT_CM },
+    terbilang1: { left: LINE3_SPAN_LEFT_CM, width: LINE3_CONTENT_WIDTH_CM },
+    terbilang2: { left: LINE4_SPAN_LEFT_CM, width: LINE4_CONTENT_WIDTH_CM },
+    nominal: {
+        top: KOTAK_NOMINAL_TOP_CM,
+        left: KOTAK_NOMINAL_LEFT_CM,
+        height: KOTAK_NOMINAL_HEIGHT_CM,
+        padLeft: KOTAK_NOMINAL_PADDING_LEFT_CM,
+    },
+};
