@@ -35,16 +35,16 @@ class CheckCreate(BaseModel):
 # GET CHECK
 @router.get("")
 def get_check(
-
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
-
     transaction_type: Optional[CheckType] = Query(
         None
     ),
 
-    db: Session = Depends(get_db)
+    # tambahan untuk autocomplete vendor
+    vendor: Optional[str] = Query(None),
 
+    db: Session = Depends(get_db)
 ):
 
     query = db.query(
@@ -69,6 +69,12 @@ def get_check(
             transaction_type
         )
 
+    # filter vendor (autocomplete)
+    if vendor:
+        query = query.filter(
+            PrintedCheck.vendor_name.ilike(f"%{vendor}%")
+        )
+        
     checks = (
         query
         .order_by(
