@@ -11,7 +11,9 @@ const MARGIN_LEFT_CM = 0.9;
 const MARGIN_RIGHT_CM = 0.7;
 
 // ===== Posisi vertikal tiap garis =====
-const LINE_TANGGAL_TOP_CM = 1.4;
+// LINE_TANGGAL_TOP_CM = posisi GARIS (underline) tanggal itu sendiri,
+// diukur dari tepi atas cek. Box-nya tinggi 0.5cm.
+const LINE_TANGGAL_TOP_CM = 1.5;
 const LINE_TANGGAL_BOX_HEIGHT_CM = 0.5;
 const LINE_TANGGAL_WIDTH_CM = 5.5;
 
@@ -41,16 +43,14 @@ const KOTAK_NOMINAL_GAP_CM = 0.6; // jarak dari ujung garis 4 ke kotak nominal
 const KOTAK_NOMINAL_LEFT_CM = MARGIN_LEFT_CM + LINE4_WIDTH_CM + KOTAK_NOMINAL_GAP_CM; // 12.7
 
 // Padding horizontal di dalam kotak nominal. Sisi kiri dibikin lebih lebar
-// supaya angka nominal nggak nempel/nabrak garis kiri kotak pas di-print
-// (padding lama 0.15cm kelihatan mepet banget di hasil cetak).
+// supaya angka nominal nggak nempel/nabrak garis kiri kotak pas di-print.
 const KOTAK_NOMINAL_PADDING_LEFT_CM = 0.7;
 const KOTAK_NOMINAL_PADDING_RIGHT_CM = 0.15;
 
-// Kotak nominal diposisikan independen dari garis keempat: dihitung dari
-// garis ketiga (gap 0.3cm ke ujung atas kotak), bukan mengikuti posisi
-// garis keempat.
+// Kotak nominal dihitung dari garis ketiga: jarak garis ketiga -> ujung
+// atas kotak = 0.3cm.
 const KOTAK_NOMINAL_GAP_FROM_LINE3_CM = 0.3;
-const KOTAK_NOMINAL_TOP_CM = 3.15;
+const KOTAK_NOMINAL_TOP_CM = LINE3_TOP_CM + KOTAK_NOMINAL_GAP_FROM_LINE3_CM; // 3.3
 
 // ===== Lebar label italic =====
 const LABEL_ATAS_PENYERAHAN_WIDTH_CM = 4.5;
@@ -59,25 +59,25 @@ const LABEL_UANG_SEJUMLAH_WIDTH_CM = 4;
 
 // ===== Lebar caption sekunder (bilingual, italic) =====
 const SUBLABEL_ON_PRESENTATION_WIDTH_CM = 3.6; // di bawah garis kedua, kiri
-const SUBLABEL_OR_BEARER_WIDTH_CM = 0.9; // di bawah garis kedua, rata kanan (sejajar "atau pembawa *)")
+const SUBLABEL_OR_BEARER_WIDTH_CM = 0.9; // di bawah garis kedua, rata kanan (sejajar "ATAU PEMBAWA *)")
 const SUBLABEL_SUM_OF_WIDTH_CM = 2.9; // di bawah garis ketiga, kiri
 
 // ===== Area teks isi (content) di dalam tiap garis =====
-// Garis 2: mulai setelah label "Atas penyerahan..." & berhenti sebelum label "atau pembawa *)"
+// Garis 2: mulai setelah label "Atas penyerahan..." & berhenti sebelum label "ATAU PEMBAWA *)"
 const LINE2_CONTENT_LEFT_CM = LABEL_ATAS_PENYERAHAN_WIDTH_CM + 0.2; // 4.7
-const LINE2_CONTENT_STOP_BEFORE_LABEL_CM = LABEL_ATAU_PEMBAWA_WIDTH_CM + 0.7; // 2.1
+const LINE2_CONTENT_STOP_BEFORE_LABEL_CM = LABEL_ATAU_PEMBAWA_WIDTH_CM + 0.7; // 2.6
 const LINE2_CONTENT_WIDTH_CM =
-    LINE23_WIDTH_CM - LINE2_CONTENT_LEFT_CM - LINE2_CONTENT_STOP_BEFORE_LABEL_CM; // 9.4
+    LINE23_WIDTH_CM - LINE2_CONTENT_LEFT_CM - LINE2_CONTENT_STOP_BEFORE_LABEL_CM; // 8.9
 
 // Garis 3 (terbilang baris 1): mulai setelah label "uang sejumlah..."
 const LINE3_SPAN_LEFT_CM = LABEL_UANG_SEJUMLAH_WIDTH_CM + 0.2; // 4.2
 const LINE3_SPAN_RIGHT_CM = 0.5;
-const LINE3_CONTENT_WIDTH_CM = LINE23_WIDTH_CM - LINE3_SPAN_LEFT_CM - LINE3_SPAN_RIGHT_CM; // 11.4
+const LINE3_CONTENT_WIDTH_CM = LINE23_WIDTH_CM - LINE3_SPAN_LEFT_CM - LINE3_SPAN_RIGHT_CM; // 11.5
 
 // Garis 4 (terbilang baris 2, lanjutan)
 const LINE4_SPAN_LEFT_CM = 3;
 const LINE4_SPAN_RIGHT_CM = 0.6;
-const LINE4_CONTENT_WIDTH_CM = LINE4_WIDTH_CM - LINE4_SPAN_LEFT_CM - LINE4_SPAN_RIGHT_CM; // 10.5
+const LINE4_CONTENT_WIDTH_CM = LINE4_WIDTH_CM - LINE4_SPAN_LEFT_CM - LINE4_SPAN_RIGHT_CM; // 7.6
 
 // Perkiraan kapasitas karakter per baris (dipakai sebagai fallback SSR saja;
 // pemotongan sebenarnya sekarang pakai pengukuran canvas, lihat measureTextWidthCm).
@@ -292,7 +292,7 @@ export default function MaybankCheck({ form }) {
             {/* ===== Label di atas garis kedua: "Atas penyerahan..." (italic, lebar 4.5cm) ===== */}
             <svg
                 className="absolute"
-                style={{ top: `2cm`, left: `${MARGIN_LEFT_CM}cm` }}
+                style={{ top: `${LINE2_TOP_CM - LABEL_GAP_ABOVE_LINE_CM}cm`, left: `${MARGIN_LEFT_CM}cm` }}
                 width={`${LABEL_ATAS_PENYERAHAN_WIDTH_CM}cm`}
                 height="0.4cm"
                 viewBox="0 0 450 40"
@@ -316,7 +316,7 @@ export default function MaybankCheck({ form }) {
             {/* ===== Label kanan di atas garis kedua: "ATAU PEMBAWA *)" (italic, uppercase, lebar 1.9cm) ===== */}
             <svg
                 className="absolute"
-                style={{ top: `2cm`, right: `${MARGIN_RIGHT_CM}cm` }}
+                style={{ top: `${LINE2_TOP_CM - LABEL_GAP_ABOVE_LINE_CM}cm`, right: `${MARGIN_RIGHT_CM}cm` }}
                 width={`${LABEL_ATAU_PEMBAWA_WIDTH_CM}cm`}
                 height="0.4cm"
                 viewBox="0 0 190 40"
@@ -333,7 +333,7 @@ export default function MaybankCheck({ form }) {
                     fontFamily='"Arial Narrow", Arial, sans-serif'
                     fill="#111827"
                 >
-                    atau pembawa *)
+                    ATAU PEMBAWA *)
                 </text>
             </svg>
 
@@ -364,7 +364,7 @@ export default function MaybankCheck({ form }) {
             {/* ===== Caption di bawah garis kedua: "On presentation of this cheque pay" (italic, kiri, lebar 3.6cm) ===== */}
             <svg
                 className="absolute"
-                style={{ top: `2.35cm`, left: `${MARGIN_LEFT_CM}cm` }}
+                style={{ top: `${LINE2_TOP_CM}cm`, left: `${MARGIN_LEFT_CM}cm` }}
                 width={`${SUBLABEL_ON_PRESENTATION_WIDTH_CM}cm`}
                 height={`${SUBLABEL_HEIGHT_CM}cm`}
                 viewBox="0 0 360 35"
@@ -387,7 +387,7 @@ export default function MaybankCheck({ form }) {
             {/* ===== Caption di bawah garis kedua: "or bearer" (italic, rata kanan sejajar "ATAU PEMBAWA *)", lebar 0.9cm) ===== */}
             <svg
                 className="absolute"
-                style={{ top: "2.35cm", right: `${MARGIN_RIGHT_CM}cm` }}
+                style={{ top: `${LINE2_TOP_CM}cm`, right: `${MARGIN_RIGHT_CM}cm` }}
                 width={`${SUBLABEL_OR_BEARER_WIDTH_CM}cm`}
                 height={`${SUBLABEL_HEIGHT_CM}cm`}
                 viewBox="0 0 90 35"
@@ -410,7 +410,7 @@ export default function MaybankCheck({ form }) {
             {/* ===== Label di atas garis ketiga: "UANG SEJUMLAH..." (italic, uppercase, lebar 4cm) ===== */}
             <svg
                 className="absolute"
-                style={{ top: `2.6cm`, left: `${MARGIN_LEFT_CM}cm` }}
+                style={{ top: `${LINE3_TOP_CM - LABEL_GAP_ABOVE_LINE_CM}cm`, left: `${MARGIN_LEFT_CM}cm` }}
                 width={`${LABEL_UANG_SEJUMLAH_WIDTH_CM}cm`}
                 height="0.4cm"
                 viewBox="0 0 400 40"
@@ -427,7 +427,7 @@ export default function MaybankCheck({ form }) {
                     fontFamily='"Arial Narrow", Arial, sans-serif'
                     fill="#111827"
                 >
-                    Uang Sejumlah Rupiah (dalam huruf)
+                    UANG SEJUMLAH RUPIAH (DALAM HURUF)
                 </text>
             </svg>
 
@@ -459,7 +459,7 @@ export default function MaybankCheck({ form }) {
             {/* ===== Caption di bawah garis ketiga: "The sum of Rupiah (in words)" (italic, kiri, lebar 2.9cm) ===== */}
             <svg
                 className="absolute"
-                style={{ top: `2.95cm`, left: `${MARGIN_LEFT_CM}cm` }}
+                style={{ top: `${LINE3_TOP_CM}cm`, left: `${MARGIN_LEFT_CM}cm` }}
                 width={`${SUBLABEL_SUM_OF_WIDTH_CM}cm`}
                 height={`${SUBLABEL_HEIGHT_CM}cm`}
                 viewBox="0 0 290 35"

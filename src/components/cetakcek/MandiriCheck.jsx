@@ -6,23 +6,81 @@ const template = {
     heightCm: 7,
 };
 
-// ===== Margin & posisi umum (dipindah dari angka hardcoded di JSX supaya
-// bisa dipakai bareng oleh preview React & export PDF, lewat pdfLayout) =====
+// ===== Margin kiri/kanan umum =====
 const MARGIN_LEFT_CM = 0.9;
-const MARGIN_RIGHT_CM = 0.6;
+const MARGIN_RIGHT_CM = 0.5;
 
-const LINE_TANGGAL_BOX_TOP_CM = 1.2;
-const LINE_TANGGAL_BOX_WIDTH_CM = 5.8;
+// ===== Garis tanggal =====
+// LINE_TANGGAL_TOP_CM = posisi GARIS (underline) itu sendiri, diukur dari
+// tepi atas cek. Box-nya (tempat teks tanggal duduk) tingginya 0.5cm, jadi
+// posisi CSS "top" dari box = LINE_TANGGAL_TOP_CM - LINE_TANGGAL_BOX_HEIGHT_CM.
+const LINE_TANGGAL_TOP_CM = 1.3;
 const LINE_TANGGAL_BOX_HEIGHT_CM = 0.5;
+const LINE_TANGGAL_WIDTH_CM = 5.8;
 
-const LINE2_TOP_CM = 2.0;
-const LINE3_TOP_CM = 2.7;
-const LINE4_TOP_CM = 3.4;
+// ===== Jarak antar garis (semuanya seragam 0.7cm) =====
+const LINE_GAP_CM = 0.7;
+const LINE2_TOP_CM = LINE_TANGGAL_TOP_CM + LINE_GAP_CM; // 2.0
+const LINE3_TOP_CM = LINE2_TOP_CM + LINE_GAP_CM; // 2.7
+const LINE4_TOP_CM = LINE3_TOP_CM + LINE_GAP_CM; // 3.4
 
-const KOTAK_NOMINAL_TOP_CM = 2.75;
-const KOTAK_NOMINAL_LEFT_CM = 11.9;
+// "Tinggi bacaan": jarak label (di atas garis) ke garisnya
+const LABEL_GAP_ABOVE_LINE_CM = 0.5;
+
+// ===== Panjang garis =====
+const LINE23_WIDTH_CM = 16.3; // garis kedua & ketiga
+const LINE4_WIDTH_CM = 10.2; // garis keempat
+
+// ===== Kotak nominal =====
 const KOTAK_NOMINAL_WIDTH_CM = 5.3;
 const KOTAK_NOMINAL_HEIGHT_CM = 0.5;
+const KOTAK_NOMINAL_GAP_CM = 0.6; // jarak dari ujung garis 4 ke kotak nominal
+const KOTAK_NOMINAL_LEFT_CM = MARGIN_LEFT_CM + LINE4_WIDTH_CM + KOTAK_NOMINAL_GAP_CM; // 11.7
+const KOTAK_NOMINAL_GAP_FROM_LINE3_CM = 0.2; // jarak garis ketiga -> ujung atas kotak
+const KOTAK_NOMINAL_TOP_CM = LINE3_TOP_CM + KOTAK_NOMINAL_GAP_FROM_LINE3_CM; // 2.9
+
+// Padding horizontal di dalam kotak nominal. Sisi kiri dibikin lebih lebar
+// supaya angka nominal nggak nempel/nabrak garis kiri kotak pas di-print.
+const KOTAK_NOMINAL_PADDING_LEFT_CM = 0.9;
+const KOTAK_NOMINAL_PADDING_RIGHT_CM = 0.15;
+
+// ===== Lebar label (Mandiri: normal/tidak italic, sesuai desain asli) =====
+const LABEL_ATAS_PENYERAHAN_WIDTH_CM = 4;
+const LABEL_ATAU_PEMBAWA_WIDTH_CM = 1.5;
+const LABEL_UANG_SEJUMLAH_WIDTH_CM = 3.1;
+
+// Posisi kiri absolut label "atau pembawa *" (di-anchor dari kanan) —
+// dipakai juga supaya caption "or bearer" di bawahnya bisa lurus/rata kiri
+// dengan label ini.
+const LABEL_ATAU_PEMBAWA_LEFT_CM =
+    template.widthCm - MARGIN_RIGHT_CM - LABEL_ATAU_PEMBAWA_WIDTH_CM; // 15.8
+
+// ===== Caption sekunder (bilingual, di bawah garis) =====
+const SUBLABEL_PAY_TO_ORDER_WIDTH_CM = 1.7; // di bawah garis kedua, kiri
+const SUBLABEL_OR_BEARER_WIDTH_CM = 0.6; // di bawah garis kedua, lurus dgn kiri "atau pembawa *"
+const SUBLABEL_SUM_OF_WIDTH_CM = 2; // di bawah garis ketiga, kiri
+
+// ===== Area teks isi (content) di dalam tiap garis =====
+// Line 2: div pembungkus selebar LINE23_WIDTH_CM. Teks harus berhenti
+// sebelum label "atau pembawa *" di sisi kanan.
+const LINE2_STOP_BEFORE_LABEL_CM = 2.5;
+const LINE2_TRANSFER_LEFT_CM = 4.3;
+const LINE2_TRANSFER_WIDTH_CM =
+    LINE23_WIDTH_CM - LINE2_TRANSFER_LEFT_CM - LINE2_STOP_BEFORE_LABEL_CM; // 9.5
+const LINE2_TUNAI_LEFT_CM = 4.2;
+const LINE2_TUNAI_WIDTH_CM =
+    LINE23_WIDTH_CM - LINE2_TUNAI_LEFT_CM - LINE2_STOP_BEFORE_LABEL_CM; // 9.6
+
+// Line 3: span teksnya punya offset left & right terhadap div pembungkus.
+const LINE3_SPAN_LEFT_CM = 3.9;
+const LINE3_SPAN_RIGHT_CM = 0.6;
+const LINE3_WIDTH_CM = LINE23_WIDTH_CM - LINE3_SPAN_LEFT_CM - LINE3_SPAN_RIGHT_CM; // 11.8
+
+// Line 4: div punya width eksplisit LINE4_WIDTH_CM, span teksnya punya
+// offset left terhadap div.
+const LINE4_SPAN_LEFT_CM = 2.2;
+const LINE4_SPAN_RIGHT_CM = 0.6;
+const LINE4_WIDTH_TEXT_CM = LINE4_WIDTH_CM - LINE4_SPAN_LEFT_CM - LINE4_SPAN_RIGHT_CM; // 7.4
 
 // Perkiraan kapasitas karakter per baris (dipakai sebagai fallback SSR saja;
 // pemotongan sebenarnya sekarang pakai pengukuran canvas, lihat measureTextWidthCm).
@@ -40,40 +98,6 @@ const CONTENT_BOTTOM_OFFSET_CM = -0.03;
 // dalam 1 garis saja. Kalau untuk muat 1 garis teksnya harus di-scale lebih
 // kecil dari ini, baru dipecah ke garis keempat.
 const MIN_SINGLE_LINE_SCALE = 0.92;
-
-// Padding horizontal di dalam kotak nominal. Sisi kiri dibikin lebih lebar
-// supaya angka nominal nggak nempel/nabrak garis kiri kotak pas di-print
-// (padding lama 0.15cm kelihatan mepet banget di hasil cetak).
-const KOTAK_NOMINAL_PADDING_LEFT_CM = 0.9;
-const KOTAK_NOMINAL_PADDING_RIGHT_CM = 0.15;
-
-// Line 3: div pembungkus selebar 16.3cm, tapi span teksnya punya offset
-// left 3.3cm & right 2.8cm terhadap div, jadi lebar SPAN yang sebenarnya
-// = 16.3 - 3.3 - 2.8 = 10.2cm (bukan 16.3cm seperti sebelumnya).
-const LINE3_DIV_WIDTH_CM = 16.3;
-const LINE3_SPAN_LEFT_CM = 3.9;
-const LINE3_SPAN_RIGHT_CM = 0.6;
-const LINE3_WIDTH_CM = LINE3_DIV_WIDTH_CM - LINE3_SPAN_LEFT_CM - LINE3_SPAN_RIGHT_CM; // 10.2
-
-// Line 4: div punya width eksplisit 10.2cm, span teksnya punya offset
-// left 2.2cm terhadap div, jadi lebar SPAN yang sebenarnya
-// = 10.2 - 2.2 = 8.0cm (bukan 10.2cm seperti sebelumnya).
-const LINE4_DIV_WIDTH_CM = 10.3;
-const LINE4_SPAN_LEFT_CM = 2.2;
-const LINE4_SPAN_RIGHT_CM = 0.6;
-const LINE4_WIDTH_CM = LINE4_DIV_WIDTH_CM - LINE4_SPAN_LEFT_CM - LINE4_SPAN_RIGHT_CM; // 7.4
-
-// Line 2: div pembungkus selebar 16.4cm (sama seperti div garis ketiga).
-// Teks harus berhenti sebelum label "atau pembawa *" yang posisinya
-// mulai dari absolut x = 15.8cm, alias 1.5cm dari sisi kanan div ini.
-const LINE2_DIV_WIDTH_CM = 16.3;
-const LINE2_STOP_BEFORE_LABEL_CM = 2.5;
-const LINE2_TRANSFER_LEFT_CM = 4.3;
-const LINE2_TRANSFER_WIDTH_CM =
-    LINE2_DIV_WIDTH_CM - LINE2_TRANSFER_LEFT_CM - LINE2_STOP_BEFORE_LABEL_CM; // 10.7
-const LINE2_TUNAI_LEFT_CM = 4.2;
-const LINE2_TUNAI_WIDTH_CM =
-    LINE2_DIV_WIDTH_CM - LINE2_TUNAI_LEFT_CM - LINE2_STOP_BEFORE_LABEL_CM; // 6.9
 
 // Teks yang otomatis mengecilkan ukuran font (scale down) kalau lebar
 // teks aslinya melebihi maxWidthCm, supaya tidak pernah menumpuk/overflow
@@ -223,7 +247,7 @@ function splitTerbilang(text) {
     const w1 = measureTextWidthCm(line1, TERBILANG_BASE_FONT_PX, "500");
     const w2 = measureTextWidthCm(line2, TERBILANG_BASE_FONT_PX, "500");
     const scale1 = LINE3_WIDTH_CM / w1;
-    const scale2 = w2 > 0 ? LINE4_WIDTH_CM / w2 : Infinity;
+    const scale2 = w2 > 0 ? LINE4_WIDTH_TEXT_CM / w2 : Infinity;
     const commonScale = Math.min(1, scale1, scale2);
     const fontSizePx = TERBILANG_BASE_FONT_PX * commonScale;
 
@@ -252,13 +276,13 @@ export default function MandiriCheck({ form }) {
                 fontFamily: '"Arial Narrow", Arial, sans-serif',
             }}
         >
-            {/* ===== Tanggal ===== */}
+            {/* ===== Tanggal (garis panjang 5.8cm, box tinggi 0.5cm) ===== */}
             <div
                 className="absolute border-b border-gray-400 flex items-end justify-center"
                 style={{
-                    top: `${LINE_TANGGAL_BOX_TOP_CM}cm`,
+                    top: `${LINE_TANGGAL_TOP_CM - LINE_TANGGAL_BOX_HEIGHT_CM}cm`,
                     right: `${MARGIN_RIGHT_CM}cm`,
-                    width: `${LINE_TANGGAL_BOX_WIDTH_CM}cm`,
+                    width: `${LINE_TANGGAL_WIDTH_CM}cm`,
                     height: `${LINE_TANGGAL_BOX_HEIGHT_CM}cm`,
                 }}
             >
@@ -267,11 +291,11 @@ export default function MandiriCheck({ form }) {
                 </span>
             </div>
 
-            {/* ===== Label di atas garis kedua (teks dipaksa pas 4cm pakai SVG textLength) ===== */}
+            {/* ===== Label di atas garis kedua: "Atas penyerahan..." (lebar 4cm) ===== */}
             <svg
                 className="absolute"
-                style={{ top: "1.6cm", left: "0.9cm" }}
-                width="4cm"
+                style={{ top: `${LINE2_TOP_CM - LABEL_GAP_ABOVE_LINE_CM}cm`, left: `${MARGIN_LEFT_CM}cm` }}
+                width={`${LABEL_ATAS_PENYERAHAN_WIDTH_CM}cm`}
                 height="0.4cm"
                 viewBox="0 0 400 40"
                 preserveAspectRatio="none"
@@ -290,11 +314,11 @@ export default function MandiriCheck({ form }) {
                 </text>
             </svg>
 
-            {/* ===== Label kanan di atas garis kedua (teks dipaksa pas 1.5cm) ===== */}
+            {/* ===== Label kanan di atas garis kedua: "atau pembawa *" (lebar 1.5cm) ===== */}
             <svg
                 className="absolute"
-                style={{ top: "1.6cm", right: "0.6cm" }}
-                width="1.6cm"
+                style={{ top: `${LINE2_TOP_CM - LABEL_GAP_ABOVE_LINE_CM}cm`, right: `${MARGIN_RIGHT_CM}cm` }}
+                width={`${LABEL_ATAU_PEMBAWA_WIDTH_CM}cm`}
                 height="0.4cm"
                 viewBox="0 0 150 40"
                 preserveAspectRatio="none"
@@ -313,10 +337,10 @@ export default function MandiriCheck({ form }) {
                 </text>
             </svg>
 
-            {/* ===== Garis kedua (di bawah garis tanggal, jarak 0.7cm) ===== */}
+            {/* ===== Garis kedua (panjang 16.3cm) ===== */}
             <div
                 className="absolute border-b border-gray-400"
-                style={{ top: `${LINE2_TOP_CM}cm`, left: `${MARGIN_LEFT_CM}cm`, right: `${MARGIN_RIGHT_CM}cm` }}
+                style={{ top: `${LINE2_TOP_CM}cm`, left: `${MARGIN_LEFT_CM}cm`, width: `${LINE23_WIDTH_CM}cm` }}
             >
                 {/* Isi garis: Nama Vendor saja untuk Tarik Tunai (mulai dari tengah),
                     + Bank & Rekening untuk Transfer. Font otomatis mengecil (FitText)
@@ -341,11 +365,11 @@ export default function MandiriCheck({ form }) {
                 )}
             </div>
 
-            {/* ===== Label di bawah garis kedua (teks dipaksa pas 1.3cm pakai SVG textLength) ===== */}
+            {/* ===== Caption di bawah garis kedua: "Pay to the order of" (lebar 1.7cm) ===== */}
             <svg
                 className="absolute"
-                style={{ top: "2.0cm", left: "0.9cm" }}
-                width="1.7cm"
+                style={{ top: `${LINE2_TOP_CM}cm`, left: `${MARGIN_LEFT_CM}cm` }}
+                width={`${SUBLABEL_PAY_TO_ORDER_WIDTH_CM}cm`}
                 height="0.35cm"
                 viewBox="0 0 130 35"
                 preserveAspectRatio="none"
@@ -363,19 +387,20 @@ export default function MandiriCheck({ form }) {
                 </text>
             </svg>
 
-            {/* ===== Label kanan di bawah garis kedua (sejajar kiri dengan "atau pembawa *", teks dipaksa pas 0.3cm) ===== */}
+            {/* ===== Caption di bawah garis kedua: "or bearer" (lebar 0.6cm, rata kiri
+                 lurus dengan sisi kiri label "atau pembawa *") ===== */}
             <svg
                 className="absolute"
-                style={{ top: "2.0cm", left: "15.6cm" }}
-                width="0.8cm"
+                style={{ top: `${LINE2_TOP_CM}cm`, left: `${LABEL_ATAU_PEMBAWA_LEFT_CM}cm` }}
+                width={`${SUBLABEL_OR_BEARER_WIDTH_CM}cm`}
                 height="0.35cm"
-                viewBox="0 0 30 35"
+                viewBox="0 0 60 35"
                 preserveAspectRatio="none"
             >
                 <text
                     x="0"
                     y="26"
-                    textLength="30"
+                    textLength="60"
                     lengthAdjust="spacingAndGlyphs"
                     fontSize="24"
                     fontFamily='"Arial Narrow", Arial, sans-serif'
@@ -385,19 +410,19 @@ export default function MandiriCheck({ form }) {
                 </text>
             </svg>
 
-            {/* ===== Label di atas garis ketiga (teks dipaksa pas 3.1cm) ===== */}
+            {/* ===== Label di atas garis ketiga: "uang sejumlah..." (lebar 4cm) ===== */}
             <svg
                 className="absolute"
-                style={{ top: "2.3cm", left: "0.9cm" }}
-                width="3.6cm"
+                style={{ top: `${LINE3_TOP_CM - LABEL_GAP_ABOVE_LINE_CM}cm`, left: `${MARGIN_LEFT_CM}cm` }}
+                width={`${LABEL_UANG_SEJUMLAH_WIDTH_CM}cm`}
                 height="0.4cm"
-                viewBox="0 0 310 40"
+                viewBox="0 0 400 40"
                 preserveAspectRatio="none"
             >
                 <text
                     x="0"
                     y="30"
-                    textLength="310"
+                    textLength="400"
                     lengthAdjust="spacingAndGlyphs"
                     fontSize="28"
                     fontWeight="bold"
@@ -408,10 +433,10 @@ export default function MandiriCheck({ form }) {
                 </text>
             </svg>
 
-            {/* ===== Garis ketiga (di bawah garis kedua, jarak 0.7cm) ===== */}
+            {/* ===== Garis ketiga (panjang 16.3cm) ===== */}
             <div
                 className="absolute border-b border-gray-400"
-                style={{ top: `${LINE3_TOP_CM}cm`, left: `${MARGIN_LEFT_CM}cm`, right: `${MARGIN_RIGHT_CM}cm` }}
+                style={{ top: `${LINE3_TOP_CM}cm`, left: `${MARGIN_LEFT_CM}cm`, width: `${LINE23_WIDTH_CM}cm` }}
             >
                 {/* Baris pertama terbilang — sepanjang garis ketiga, uppercase.
                     Kalau tidak perlu dipecah (fontSizePx null), pakai FitText
@@ -438,11 +463,11 @@ export default function MandiriCheck({ form }) {
                 )}
             </div>
 
-            {/* ===== Label di bawah garis ketiga (teks dipaksa pas 2cm) ===== */}
+            {/* ===== Caption di bawah garis ketiga: "The sum of Rupiah (in words)" (lebar 2cm) ===== */}
             <svg
                 className="absolute"
-                style={{ top: "2.7cm", left: "0.9cm" }}
-                width="2cm"
+                style={{ top: `${LINE3_TOP_CM}cm`, left: `${MARGIN_LEFT_CM}cm` }}
+                width={`${SUBLABEL_SUM_OF_WIDTH_CM}cm`}
                 height="0.35cm"
                 viewBox="0 0 200 35"
                 preserveAspectRatio="none"
@@ -456,14 +481,14 @@ export default function MandiriCheck({ form }) {
                     fontFamily='"Arial Narrow", Arial, sans-serif'
                     fill="#9ca3af"
                 >
-                    The Sum of (in words)
+                    The sum of Rupiah (in words)
                 </text>
             </svg>
 
-            {/* ===== Garis keempat (di bawah garis ketiga, panjang 10.2cm) ===== */}
+            {/* ===== Garis keempat (panjang 10.2cm) ===== */}
             <div
                 className="absolute border-b border-gray-400"
-                style={{ top: `${LINE4_TOP_CM}cm`, left: `${MARGIN_LEFT_CM}cm`, right: `${MARGIN_RIGHT_CM}cm`, width: `${LINE4_DIV_WIDTH_CM}cm` }}
+                style={{ top: `${LINE4_TOP_CM}cm`, left: `${MARGIN_LEFT_CM}cm`, width: `${LINE4_WIDTH_CM}cm` }}
             >
                 {/* Lanjutan terbilang jika baris pertama sudah penuh, uppercase.
                     Sama seperti garis ketiga: pakai ScaledText dengan
@@ -474,7 +499,7 @@ export default function MandiriCheck({ form }) {
                         <ScaledText
                             text={terbilangLine2}
                             leftCm={LINE4_SPAN_LEFT_CM}
-                            maxWidthCm={LINE4_WIDTH_CM}
+                            maxWidthCm={LINE4_WIDTH_TEXT_CM}
                             bottomCm={CONTENT_BOTTOM_OFFSET_CM}
                             fontSizePx={terbilangFontPx}
                             className="text-black font-bold uppercase"
@@ -483,7 +508,7 @@ export default function MandiriCheck({ form }) {
                         <FitText
                             text={terbilangLine2}
                             leftCm={LINE4_SPAN_LEFT_CM}
-                            maxWidthCm={LINE4_WIDTH_CM}
+                            maxWidthCm={LINE4_WIDTH_TEXT_CM}
                             bottomCm={CONTENT_BOTTOM_OFFSET_CM}
                             className="text-sm text-black font-bold uppercase"
                         />
@@ -491,23 +516,27 @@ export default function MandiriCheck({ form }) {
                 )}
             </div>
 
-            {/* ===== Teks "Rp." di celah antara garis keempat & kotak nominal ===== */}
+            {/* ===== Teks "Rp." di celah antara garis keempat & kotak nominal (gap 0.6cm) ===== */}
             <div
                 className="absolute flex items-center justify-center text-[10px] font-semibold text-gray-600"
-                style={{ top: "2.9cm", left: "11.2cm", width: "0.7cm", height: "0.6cm" }}
+                style={{
+                    top: `${KOTAK_NOMINAL_TOP_CM}cm`,
+                    left: `${MARGIN_LEFT_CM + LINE4_WIDTH_CM}cm`,
+                    width: `${KOTAK_NOMINAL_GAP_CM}cm`,
+                    height: `${KOTAK_NOMINAL_HEIGHT_CM}cm`,
+                }}
             >
                 Rp.
             </div>
 
-            {/* ===== Kotak di samping garis keempat (sisi bawah kotak sejajar garis, jarak 0.6cm dari ujung garis) ===== */}
+            {/* ===== Kotak nominal (panjang 5.3cm, lebar 0.5cm) ===== */}
             <div
                 className="absolute border border-gray-400 flex items-center justify-start"
                 style={{
                     top: `${KOTAK_NOMINAL_TOP_CM}cm`,
                     left: `${KOTAK_NOMINAL_LEFT_CM}cm`,
-                    right: `${MARGIN_RIGHT_CM}cm`,
-                    height: `${KOTAK_NOMINAL_HEIGHT_CM}cm`,
                     width: `${KOTAK_NOMINAL_WIDTH_CM}cm`,
+                    height: `${KOTAK_NOMINAL_HEIGHT_CM}cm`,
                     padding: `0 ${KOTAK_NOMINAL_PADDING_RIGHT_CM}cm 0 ${KOTAK_NOMINAL_PADDING_LEFT_CM}cm`,
                 }}
             >
@@ -527,14 +556,14 @@ export default function MandiriCheck({ form }) {
 export const pdfLayout = {
     widthCm: template.widthCm,
     heightCm: template.heightCm,
-    tanggal: { top: LINE_TANGGAL_BOX_TOP_CM, right: MARGIN_RIGHT_CM, width: LINE_TANGGAL_BOX_WIDTH_CM },
+    tanggal: { top: LINE_TANGGAL_TOP_CM, right: MARGIN_RIGHT_CM, width: LINE_TANGGAL_WIDTH_CM },
     line2: { top: LINE2_TOP_CM, left: MARGIN_LEFT_CM },
     vendorTransfer: { left: LINE2_TRANSFER_LEFT_CM, width: LINE2_TRANSFER_WIDTH_CM },
     vendorTunai: { left: LINE2_TUNAI_LEFT_CM, width: LINE2_TUNAI_WIDTH_CM },
     line3: { top: LINE3_TOP_CM, left: MARGIN_LEFT_CM },
     line4: { top: LINE4_TOP_CM, left: MARGIN_LEFT_CM },
     terbilang1: { left: LINE3_SPAN_LEFT_CM, width: LINE3_WIDTH_CM },
-    terbilang2: { left: LINE4_SPAN_LEFT_CM, width: LINE4_WIDTH_CM },
+    terbilang2: { left: LINE4_SPAN_LEFT_CM, width: LINE4_WIDTH_TEXT_CM },
     nominal: {
         top: KOTAK_NOMINAL_TOP_CM,
         left: KOTAK_NOMINAL_LEFT_CM,

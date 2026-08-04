@@ -7,7 +7,7 @@ import {
   FaChevronRight,
   FaDownload,
 } from "react-icons/fa";
-import { generateCheckPdf } from "../utils/checkPdfExport";
+import { generateCheckPdf, generatePrintBodyHtml } from "../utils/checkPdfExport";
 import CheckForm from "../components/cetakcek/CheckForm";
 import MandiriCheck from "../components/cetakcek/MandiriCheck";
 import BCACheck from "../components/cetakcek/BCACheck";
@@ -276,21 +276,74 @@ export default function CetakCek() {
   for (let i = 1; i <= totalPages; i++) visiblePages.push(i);
 
   // ================= AKSI CETAK LANGSUNG =================
+  // Pendekatan: inject HANYA teks inputan user ke DOM halaman yang sama
+  // via <div id="__cek_print__"> + @media print CSS yang menyembunyikan
+  // semua elemen lain saat print. Ini cara paling reliable:
+  //  - Tidak butuh popup window (tidak ada risiko popup blocker)
+  //  - Tidak ada cross-origin / cache issue
+  //  - window.print() langsung pada halaman yang sama
   const handleCetak = () => {
     if (!validateForm()) return;
 
-    const confirmPrint = window.confirm(
-      `Cetak cek (${form.jenisCek}) untuk ${form.vendor} sebesar Rp ${Number(form.nominal).toLocaleString("id-ID")} sekarang?`
-    );
-    if (!confirmPrint) return;
+    let printData;
+    try {
+      printData = generatePrintBodyHtml(form);
+    } catch (error) {
+      console.error("Gagal generate data cetak:", error);
+      alert(`Terjadi kesalahan saat memproses cetak: ${error.message || error}`);
+      return;
+    }
 
-    // Nanti di sini tinggal panggil API backend untuk kirim data cek
-    // sekaligus memicu proses cetak fisik (mis. lewat printer driver / PDF).
+    const { bodyHtml, widthCm, heightCm } = printData;
+
+    // ── Inject / update elemen print area di DOM ──────────────────────
+    const PRINT_DIV_ID = "__cek_print_area__";
+    const PRINT_STYLE_ID = "__cek_print_style__";
+
+    let printDiv = document.getElementById(PRINT_DIV_ID);
+    if (!printDiv) {
+      printDiv = document.createElement("div");
+      printDiv.id = PRINT_DIV_ID;
+      document.body.appendChild(printDiv);
+    }
+    // Isi HANYA 4 elemen teks inputan user (tanpa template, tanpa garis)
+    printDiv.innerHTML = bodyHtml;
+
+    // ── Inject / update @media print style ───────────────────────────
+    let styleEl = document.getElementById(PRINT_STYLE_ID);
+    if (!styleEl) {
+      styleEl = document.createElement("style");
+      styleEl.id = PRINT_STYLE_ID;
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = `
+      /* Saat print: sembunyikan SELURUH halaman, tampilkan HANYA print area */
+      @media print {
+        body > *:not(#${PRINT_DIV_ID}) { display: none !important; }
+        #${PRINT_DIV_ID} {
+          display: block !important;
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          width: ${widthCm}cm !important;
+          height: ${heightCm}cm !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: transparent !important;
+        }
+        @page {
+          size: ${widthCm}cm ${heightCm}cm;
+          margin: 0;
+        }
+      }
+      /* Normal (non-print): sembunyikan print area dari tampilan */
+      #${PRINT_DIV_ID} { display: none; }
+    `;
+
+    // ── Tampilkan dialog printer ──────────────────────────────────────
     window.print();
-
-    alert("Cek berhasil dicetak.");
-    setForm(initialForm);
   };
+
 
   // ================= AKSI DOWNLOAD =================
   const handleDownload = () => {
