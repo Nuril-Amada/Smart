@@ -1109,6 +1109,7 @@ def export_check(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
     transaction_type: Optional[str] = Query(None),
+    bank_type: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
 
@@ -1134,6 +1135,12 @@ def export_check(
             transaction_type
         )
 
+    if bank_type:
+        clean_bank = bank_type.replace("Bank ", "").strip()
+        query = query.filter(
+            PrintedCheck.bank_type == clean_bank
+        )
+
     checks = (
         query
         .order_by(
@@ -1153,18 +1160,13 @@ def export_check(
 
     for item in checks:
         rows.append({
-            "Transaction Date":
-                item.transaction_date,
-            "Check Number":
-                item.check_number,
-            "Transaction Type":
-                item.transaction_type.value,
-            "Bank Type":
-                item.bank_type.value,
-            "Vendor Name":
-                item.vendor_name,
-            "Amount":
-                item.amount
+            "Tanggal": item.transaction_date,
+            "Bank": f"Bank {item.bank_type.value}" if item.bank_type else "",
+            "Nomor Cek": item.check_number,
+            "Nominal": item.amount,
+            "Vendor": item.vendor_name,
+            "Nomor Rekening": item.vendor_account_number or "-",
+            "Status": item.transaction_type.value if item.transaction_type else "",
         })
 
     df = pd.DataFrame(
@@ -1177,12 +1179,12 @@ def export_check(
     ) as writer:
         df.to_excel(
             writer,
-            sheet_name="Check",
+            sheet_name="History Cek",
             index=False
         )
 
         worksheet = writer.sheets[
-            "Check"
+            "History Cek"
         ]
         for column_cells in worksheet.columns:
             length = max(
@@ -1199,10 +1201,7 @@ def export_check(
                 15
             )
     output.seek(0)
-    filename = (
-        f"check_export_"
-        f"{date.today()}.xlsx"
-    )
+    filename = "export_historycek.xlsx"
 
     return StreamingResponse(
         output,

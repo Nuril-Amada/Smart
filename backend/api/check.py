@@ -132,7 +132,7 @@ def create_check(
     if existing:
         raise HTTPException(
             status_code=400,
-            detail="Nomor Check sudah digunakan."
+            detail="Nomor Cek sudah digunakan."
         )
 
     new_check = PrintedCheck(
@@ -164,7 +164,7 @@ def create_check(
 
     return{
         "message":
-        "Check berhasil dibuat.",
+        "Cek berhasil dibuat.",
         "id":
         new_check.id
     }
@@ -191,7 +191,7 @@ def delete_check(
         raise HTTPException(
             status_code=404,
             detail=
-            "Check tidak ditemukan."
+            "Cek tidak ditemukan."
         )
 
     db.delete(
@@ -200,5 +200,5 @@ def delete_check(
     db.commit()
     return {
         "message":
-            "Check berhasil dihapus."
+            "Cek berhasil dihapus."
     }
