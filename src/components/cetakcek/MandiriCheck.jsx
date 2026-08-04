@@ -25,7 +25,7 @@ const LINE3_TOP_CM = LINE2_TOP_CM + LINE_GAP_CM; // 2.7
 const LINE4_TOP_CM = LINE3_TOP_CM + LINE_GAP_CM; // 3.4
 
 // "Tinggi bacaan": jarak label (di atas garis) ke garisnya
-const LABEL_GAP_ABOVE_LINE_CM = 0.5;
+const LABEL_GAP_ABOVE_LINE_CM = 0.4;
 
 // ===== Panjang garis =====
 const LINE23_WIDTH_CM = 16.3; // garis kedua & ketiga
@@ -57,7 +57,7 @@ const LABEL_ATAU_PEMBAWA_LEFT_CM =
 
 // ===== Caption sekunder (bilingual, di bawah garis) =====
 const SUBLABEL_PAY_TO_ORDER_WIDTH_CM = 1.7; // di bawah garis kedua, kiri
-const SUBLABEL_OR_BEARER_WIDTH_CM = 0.6; // di bawah garis kedua, lurus dgn kiri "atau pembawa *"
+const SUBLABEL_OR_BEARER_WIDTH_CM = 0.7; // di bawah garis kedua, lurus dgn kiri "atau pembawa *"
 const SUBLABEL_SUM_OF_WIDTH_CM = 2; // di bawah garis ketiga, kiri
 
 // ===== Area teks isi (content) di dalam tiap garis =====
@@ -481,7 +481,7 @@ export default function MandiriCheck({ form }) {
                     fontFamily='"Arial Narrow", Arial, sans-serif'
                     fill="#9ca3af"
                 >
-                    The sum of Rupiah (in words)
+                    The sum of (in words)
                 </text>
             </svg>
 

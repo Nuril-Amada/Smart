@@ -27,7 +27,7 @@ const LINE3_TOP_CM = LINE2_TOP_CM + LINE2_TO_LINE3_GAP_CM; // 3.0
 const LINE4_TOP_CM = LINE3_TOP_CM + LINE3_TO_LINE4_GAP_CM; // 3.65
 
 // Jarak label (di atas garis) ke garisnya ("tinggi bacaan")
-const LABEL_GAP_ABOVE_LINE_CM = 0.5;
+const LABEL_GAP_ABOVE_LINE_CM = 0.35;
 
 // Tinggi caption sekunder (bilingual, di bawah garis kedua & ketiga)
 const SUBLABEL_HEIGHT_CM = 0.35;
@@ -305,7 +305,6 @@ export default function MaybankCheck({ form }) {
                     lengthAdjust="spacingAndGlyphs"
                     fontSize="28"
                     fontWeight="bold"
-                    fontStyle="italic"
                     fontFamily='"Arial Narrow", Arial, sans-serif'
                     fill="#111827"
                 >
@@ -423,11 +422,10 @@ export default function MaybankCheck({ form }) {
                     lengthAdjust="spacingAndGlyphs"
                     fontSize="28"
                     fontWeight="bold"
-                    fontStyle="italic"
                     fontFamily='"Arial Narrow", Arial, sans-serif'
                     fill="#111827"
                 >
-                    UANG SEJUMLAH RUPIAH (DALAM HURUF)
+                    Uang Sejumlah Rupiah (dalam huruf)
                 </text>
             </svg>
 

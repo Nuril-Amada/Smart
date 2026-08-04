@@ -16,7 +16,7 @@ const LINE_TANGGAL_BOX_HEIGHT_CM = 0.5;
 const LINE_TANGGAL_WIDTH_CM = 5.5;
 
 // Jarak label (di atas garis) ke garisnya ("tinggi bacaan")
-const LABEL_GAP_ABOVE_LINE_CM = 0.5;
+const LABEL_GAP_ABOVE_LINE_CM = 0.4;
 
 // Jarak antar garis (garis kedua -> garis ketiga)
 const LINE_SPACING_CM = 0.6;

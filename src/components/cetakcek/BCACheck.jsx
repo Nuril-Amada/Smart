@@ -362,7 +362,7 @@ export default function BCACheck({ form }) {
                     fontFamily='"Arial Narrow", Arial, sans-serif'
                     fill="#111827"
                 >
-                    uang sejumlah Rupiah (dalam huruf)
+                    uang sejumlah rupiah (dalam huruf)
                 </text>
             </svg>
 

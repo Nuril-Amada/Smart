@@ -248,7 +248,7 @@ export default function CheckForm({
                                         onChange={(val) => setField("bankPenerima", val)}
                                         suggestions={bankPenerimaSuggestions}
                                         placeholder="Contoh: BCA / Mandiri"
-                                        className="w-full border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                        className="w-full border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-gray-400"
                                         inputStyle={{ padding: "2px 5px" }}
                                     />
                                 </div>
@@ -262,7 +262,7 @@ export default function CheckForm({
                                         onChange={(val) => setField("nomorRekening", val)}
                                         suggestions={nomorRekeningSuggestions}
                                         placeholder="Contoh: 1234567890"
-                                        className="w-full border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                                        className="w-full border border-gray-300 rounded-lg text-xs bg-white focus:outline-none focus:ring-2 focus:ring-gray-400"
                                         inputStyle={{ padding: "2px 5px" }}
                                     />
                                 </div>
