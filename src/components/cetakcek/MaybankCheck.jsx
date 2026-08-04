@@ -328,11 +328,10 @@ export default function MaybankCheck({ form }) {
                     lengthAdjust="spacingAndGlyphs"
                     fontSize="28"
                     fontWeight="bold"
-                    fontStyle="italic"
                     fontFamily='"Arial Narrow", Arial, sans-serif'
                     fill="#111827"
                 >
-                    ATAU PEMBAWA *)
+                    atau pembawa *)
                 </text>
             </svg>
 
