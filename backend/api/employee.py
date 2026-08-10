@@ -128,6 +128,45 @@ def create_employee(
             new_employee
     }
 
+# UPDATE EMPLOYEE
+@router.put("/{id}")
+def update_employee(
+    id: int,
+    employee: EmployeeCreate,
+    db: Session = Depends(get_db)
+):
+    existing = (
+        db.query(Employee)
+        .filter(Employee.id == id)
+        .first()
+    )
+
+    if not existing:
+        raise HTTPException(
+            status_code=404,
+            detail="Employee tidak ditemukan."
+        )
+
+    existing.employee_name = (
+        employee.employee_name.strip().upper()
+    )
+    existing.employee_email = (
+        employee.employee_email.strip().lower()
+    )
+    existing.department_email = (
+        employee.department_email.strip().lower()
+        if employee.department_email
+        else None
+    )
+
+    db.commit()
+    db.refresh(existing)
+
+    return {
+        "message": "Employee berhasil diperbarui.",
+        "data": existing
+    }
+
 # DELETE EMPLOYEE
 @router.delete("/{id}")
 def delete_employee(

@@ -627,7 +627,7 @@ def export_dashboard_pdf(
         # HEADER
         story.append(
             Paragraph(
-                "<b>REFCON Dashboard Report</b>",
+                "<b>Navicash Dashboard Report</b>",
                 styles["Title"]
             )
         )
@@ -877,7 +877,7 @@ def export_dashboard_pdf(
         )
         story.append(
             Paragraph(
-                "<font size='8' color='grey'>Generated automatically by REFCON Dashboard.</font>",
+                "<font size='8' color='grey'>Generated automatically by Navicash Dashboard.</font>",
                 styles["Normal"]
             )
         )
@@ -1144,7 +1144,8 @@ def export_check(
     checks = (
         query
         .order_by(
-            PrintedCheck.transaction_date.desc()
+            PrintedCheck.updated_at.desc(),
+            PrintedCheck.id.desc()
         )
         .all()
     )

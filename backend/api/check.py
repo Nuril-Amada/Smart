@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from typing import Optional
 from pydantic import BaseModel
 from fastapi import (
@@ -78,7 +78,8 @@ def get_check(
     checks = (
         query
         .order_by(
-            PrintedCheck.transaction_date.desc()
+            PrintedCheck.updated_at.desc(),
+            PrintedCheck.id.desc()
         )
         .all()
     )
@@ -112,7 +113,7 @@ def get_check(
         "data": results
     }
 
-# CREATE CHECK
+# CREATE / UPDATE CHECK (UPSERT BY CHECK NUMBER)
 @router.post("")
 def create_check(
     payload:CheckCreate,
@@ -130,10 +131,23 @@ def create_check(
     )
 
     if existing:
-        raise HTTPException(
-            status_code=400,
-            detail="Nomor Cek sudah digunakan."
-        )
+        existing.transaction_date = payload.transaction_date
+        existing.transaction_type = payload.transaction_type
+        existing.bank_type = payload.bank_type
+        existing.vendor_name = payload.vendor_name
+        existing.amount = payload.amount
+        existing.vendor_bank = payload.vendor_bank
+        existing.vendor_account_number = payload.vendor_account_number
+        existing.updated_at = datetime.utcnow()
+
+        db.commit()
+        db.refresh(existing)
+
+        return {
+            "message": "Data cek berhasil diperbarui.",
+            "id": existing.id,
+            "is_update": True
+        }
 
     new_check = PrintedCheck(
         transaction_date=
@@ -162,11 +176,10 @@ def create_check(
         new_check
     )
 
-    return{
-        "message":
-        "Cek berhasil dibuat.",
-        "id":
-        new_check.id
+    return {
+        "message": "Data cek berhasil disimpan.",
+        "id": new_check.id,
+        "is_update": False
     }
 
 # DELETE CHECK

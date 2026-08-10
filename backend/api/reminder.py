@@ -1,7 +1,10 @@
 import logging
 import smtplib
+import uuid
 from collections import defaultdict
 from datetime import date, datetime
+from email import utils as email_utils
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
@@ -149,341 +152,261 @@ def is_working_day():
 
     return today.weekday() < 5
 
-# Table advance
-def build_advance_table(
+
+# ============================================================
+# ============================================================
+# BUILD EMAIL HTML — Tabel Standar Rapi (Presisi Lebar Kolom Outlook)
+# ============================================================
+def build_email_html(
+    employee,
     advances: List[AdvanceRequest]
 ) -> str:
+    """
+    Tabel HTML rapi dengan lebar kolom presisi (width attributes & white-space: nowrap)
+    agar di Outlook PC tidak ada teks tanggal/nominal/PPC yang tergulung atau berantakan.
+    """
+    today_str = date.today().strftime("%d/%m/%Y")
 
-    rows = ""
+    rows_html = ""
+    for adv in advances:
+        req_date = adv.request_date
+        if isinstance(req_date, (date, datetime)):
+            date_formatted = req_date.strftime("%d/%m/%Y")
+        else:
+            date_formatted = str(req_date)
 
-    for advance in advances:
+        try:
+            amount_formatted = f"{int(adv.amount):,}".replace(",", ".")
+        except (ValueError, TypeError):
+            amount_formatted = str(adv.amount)
 
-        rows += f"""
-        <tr>
-
-        <td
-        style="
-        padding:8px;
-        border:1px solid #dddddd;
-        "
-        >
-        {advance.request_date}
-        </td>
-
-        <td
-        style="
-        padding:8px;
-        border:1px solid #dddddd;
-        "
-        >
-        {advance.ppc_no}
-        </td>
-
-        <td
-        style="
-        padding:8px;
-        border:1px solid #dddddd;
-        "
-        >
-        {advance.employee_name}
-        </td>
-
-        <td
-        style="
-        padding:8px;
-        border:1px solid #dddddd;
-        "
-        >
-        {advance.purpose}
-        </td>
-
-        <td
-        style="
-        padding:8px;
-        border:1px solid #dddddd;
-        "
-        >
-        Rp {advance.amount:,.0f}
-        </td>
-        <td
-        style="
-        padding:8px;
-        border:1px solid #dddddd;
-        "
-        >
-        > 2 Hari
-        </td>
-        </tr>
-        """
-
-    return f"""
-    <table
-    style="
-    width:100%;
-    border-collapse:collapse;
-    font-family:Arial,sans-serif;
-    "
-    >
-
-    <thead
-    style="
-    background-color:#1F4E78;
-    color:white;
-    "
-    >
-
+        rows_html += f"""
     <tr>
-    <th style="padding:8px;">Tanggal</th>
-    <th style="padding:8px;">Nomor PPC</th>
-    <th style="padding:8px;">Nama User</th>
-    <th style="padding:8px;">Keterangan</th>
-    <th style="padding:8px;">Nominal</th>
-    <th style="padding:8px;">Status</th>
+      <td width="14%" align="center" style="border: 1px solid #000000; text-align: center; padding: 6px 8px; white-space: nowrap;">{date_formatted}</td>
+      <td width="20%" align="center" style="border: 1px solid #000000; text-align: center; padding: 6px 8px; white-space: nowrap;">{adv.ppc_no}</td>
+      <td width="20%" align="center" style="border: 1px solid #000000; text-align: center; padding: 6px 8px; white-space: nowrap;">{adv.employee_name}</td>
+      <td width="24%" align="center" style="border: 1px solid #000000; text-align: center; padding: 6px 8px;">{adv.purpose}</td>
+      <td width="11%" align="center" style="border: 1px solid #000000; text-align: center; padding: 6px 8px; white-space: nowrap;">{amount_formatted}</td>
+      <td width="11%" align="center" style="border: 1px solid #000000; text-align: center; padding: 6px 8px; white-space: nowrap;">&gt; 2 Hari</td>
+    </tr>"""
+
+    return f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+</head>
+<body style="font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #000000; line-height: 1.5; margin: 0; padding: 15px;">
+
+<p style="margin: 0 0 16px 0;">Kepada Bapak/Ibu {employee.employee_name}</p>
+
+<p style="margin: 0 0 16px 0;">Berikut adalah Uang Muka Petty Cash yang masih outstanding per hari ini {today_str}:</p>
+
+<p style="margin: 0 0 6px 0;"><u>UANG MUKA</u></p>
+
+<table border="1" cellpadding="6" cellspacing="0" width="100%" style="border-collapse: collapse; border: 1px solid #000000; font-family: Arial, Helvetica, sans-serif; font-size: 12px; width: 100%;">
+  <thead>
+    <tr style="background-color: #ffffff;">
+      <th width="14%" align="center" style="border: 1px solid #000000; text-align: center; font-weight: bold; padding: 6px 8px; white-space: nowrap;">Tanggal</th>
+      <th width="20%" align="center" style="border: 1px solid #000000; text-align: center; font-weight: bold; padding: 6px 8px; white-space: nowrap;">Nomor PPC</th>
+      <th width="20%" align="center" style="border: 1px solid #000000; text-align: center; font-weight: bold; padding: 6px 8px; white-space: nowrap;">Nama User</th>
+      <th width="24%" align="center" style="border: 1px solid #000000; text-align: center; font-weight: bold; padding: 6px 8px;">Keterangan</th>
+      <th width="11%" align="center" style="border: 1px solid #000000; text-align: center; font-weight: bold; padding: 6px 8px; white-space: nowrap;">Nominal</th>
+      <th width="11%" align="center" style="border: 1px solid #000000; text-align: center; font-weight: bold; padding: 6px 8px; white-space: nowrap;">Status</th>
     </tr>
+  </thead>
+  <tbody>{rows_html}
+  </tbody>
+</table>
 
-    </thead>
+<br>
 
-    <tbody>
+<p style="margin: 0 0 6px 0;">Mohon untuk memberikan update status dokumen penyelesaian atas petty cash tersebut dan target waktu penyelesaian dengan membalas email ini.</p>
+<p style="margin: 0 0 6px 0;">Silahkan segera submit ke kasir jika dokumen penyelesaian sudah Full Approved.</p>
+<p style="margin: 0 0 16px 0;">Jika dirasa sudah submit dokumen dan masih tertera di list Outstanding tersebut, mohon konfirmasi ke Kasir.</p>
 
-    {rows}
+<p style="margin: 0 0 6px 0;">Internal Memo:</p>
+<table border="0" cellpadding="0" cellspacing="0" style="font-family: Arial, Helvetica, sans-serif; font-size: 12px; margin-bottom: 20px;">
+  <tr>
+    <td style="vertical-align: top; padding-right: 15px; color: #333333; font-style: italic; white-space: nowrap;">036/BYM-FA/XII/2017</td>
+    <td style="vertical-align: top; color: #333333; font-style: italic;">"Uang tunai yang diterima karyawan melalui Petty Cash harus dipertanggungjawabkan maksimum 2 (dua) hari kerja setelah uang diterima."</td>
+  </tr>
+</table>
 
-    </tbody>
+<br>
 
-    </table>
+<p style="margin: 0 0 16px 0;">Terima kasih atas perhatian &amp; kerjasamanya.</p>
+
+<p style="margin: 0 0 4px 0;">Best Regards</p>
+<p style="margin: 0;">Retained Finance</p>
+
+</body>
+</html>
+"""
+
+
+# ============================================================
+# BUILD EMAIL TEXT — Plain Text Rapi Padded Column
+# ============================================================
+def build_email_text(
+    employee,
+    advances: List[AdvanceRequest]
+) -> str:
     """
-# BUILD REMINDER MESSAGE
-def build_reminder_message():
-
-    return """
-    <p>
-        Mohon untuk memberikan update status dokumen
-        penyelesaian atas Petty Cash tersebut dan target
-        waktu penyelesaian dengan membalas email ini.
-    </p>
-    <p>
-        Silahkan segera submit ke Kasir jika dokumen
-        penyelesaian sudah <b>Full Approved</b>.
-    </p>
-    <p>
-        Jika dirasa sudah submit dokumen dan masih
-        tertera di list Outstanding tersebut, mohon
-        konfirmasi ke Kasir.
-    </p>
+    Plain Text rapi sejajar dengan perataan spasi presisi.
     """
+    today_str = date.today().strftime("%d/%m/%Y")
 
-# BUILD MEMO
-def build_internal_memo() -> str:
+    headers = ["Tanggal", "Nomor PPC", "Nama User", "Keterangan", "Nominal", "Status"]
+    rows_data = []
+    for adv in advances:
+        req_date = adv.request_date
+        if isinstance(req_date, (date, datetime)):
+            date_formatted = req_date.strftime("%d/%m/%Y")
+        else:
+            date_formatted = str(req_date)
 
-    today = date.today()
+        try:
+            nominal_str = f"{int(adv.amount):,}".replace(",", ".")
+        except (ValueError, TypeError):
+            nominal_str = str(adv.amount)
 
-    return f"""
-    <br>
-    <b>INTERNAL MEMO</b>
-    <br><br>
-    'Uang tunai yang diterima karyawan melalui Petty Cash harus dipertanggungjawabkan maksimum 2 (dua) hari kerja setelah uang diterima.'
-    036/BYM-FA/XII/2017
-    <br><br>
+        rows_data.append([
+            date_formatted,
+            adv.ppc_no,
+            adv.employee_name,
+            adv.purpose,
+            nominal_str,
+            "> 2 Hari"
+        ])
 
-    Best Regards,
-    <br>
-    Retain Finance
-    """
+    widths = [len(h) for h in headers]
+    for row in rows_data:
+        for c, val in enumerate(row):
+            widths[c] = max(widths[c], len(str(val)))
 
-# SEND EMAIL
+    header_line = "  ".join(h.ljust(widths[i]) for i, h in enumerate(headers))
+    lines_text = [header_line]
+    for row in rows_data:
+        line = "  ".join(str(val).ljust(widths[i]) for i, val in enumerate(row))
+        lines_text.append(line)
+
+    table_plain = "\n".join(lines_text)
+
+    return f"""Kepada Bapak/Ibu {employee.employee_name}
+
+Berikut adalah Uang Muka Petty Cash yang masih outstanding per hari ini {today_str}:
+
+UANG MUKA
+{table_plain}
+
+Mohon untuk memberikan update status dokumen penyelesaian atas petty cash tersebut dan target waktu penyelesaian dengan membalas email ini.
+Silahkan segera submit ke kasir jika dokumen penyelesaian sudah Full Approved.
+Jika dirasa sudah submit dokumen dan masih tertera di list Outstanding tersebut, mohon konfirmasi ke Kasir.
+
+Internal Memo:
+036/BYM-FA/XII/2017    "Uang tunai yang diterima karyawan melalui Petty Cash harus dipertanggungjawabkan maksimum 2 (dua) hari kerja setelah uang diterima."
+
+
+Terima kasih atas perhatian & kerjasamanya.
+
+Best Regards
+Retained Finance
+"""
+
+
+# ============================================================
+# SEND EMAIL — MIMEMultipart (Tabel HTML Standar + Plain Text Fallback)
+# ============================================================
 def send_email_reminder(
-
     employee,
     advances: List[AdvanceRequest],
     db: Session
-
 ) -> bool:
-    # employee wajib memiliki email
+    """Kirim email reminder dengan tabel biasa dan header anti-spam."""
+
     if not employee.employee_email:
-
         logger.warning(
-            f"Employee {employee.employee_name} "
-            "tidak memiliki email."
+            f"Employee {employee.employee_name} tidak memiliki email."
         )
+        return False
 
-        return False   
+    unsent_advances = [
+        adv for adv in advances
+        if not reminder_already_sent(db, adv.id)
+    ]
 
-    # Skip jika seluruh PPC hari ini sudah pernah direminder
-    unsent_advances = []
-
-    for advance in advances:
-
-        if not reminder_already_sent(
-            db,
-            advance.id
-        ):
-
-            unsent_advances.append(
-                advance
-            )
-
-
-    if len(unsent_advances) == 0:
-
+    if not unsent_advances:
         return True
 
+    subject = "[Navicash] Outstanding Settlement Petty Cash"
 
-    # Subject
-    subject = (
+    html_body = build_email_html(employee, unsent_advances)
+    text_body = build_email_text(employee, unsent_advances)
 
-        "[REFCON] Outstanding Settlement Petty Cash"
-
-    )
-
-    # Body Email
-    table_html = build_advance_table(
-        unsent_advances
-    )
-
-    reminder_message = (
-        build_reminder_message()
-    )
-
-    internal_memo = (
-        build_internal_memo()
-    )
-
-    body = f"""
-    <html>
-
-    <body
-    style="
-    font-family:Arial,sans-serif;
-    line-height:1;
-    color:#333333;
-    "
-    >
-
-    <h2
-    style="
-    color:#1F4E78;
-    margin-bottom:5px;
-    "
-    >
-    [REFCON] - Outstanding Settlement Petty Cash
-    </h2>
-
-    <hr>
-
-    <p>
-    Kepada Bapak/Ibu
-    <b>{employee.employee_name}</b>,
-    </p>
-
-    <p>
-    Berikut merupakan daftar Petty Cash yang masih
-    Outstanding dan belum dilakukan Settlement.
-    </p>
-
-    <b>
-    Outstanding Petty Cash
-    </b>
-
-    <br><br>
-    {table_html}
-    <br>
-    {reminder_message}
-    <br>
-    {internal_memo}
-    <hr>
-
-    </body>
-    </html>
-    """
     email_sent = False
 
     try:
         if SMTP_HOST and SMTP_USER:
-            msg = MIMEText(
-                body,
-                "html",
-                "utf-8"
-            )
+            msg = MIMEMultipart("alternative")
 
-            msg["Subject"] = subject
-            msg["From"] = (
-                f"REFCON Finance <{SMTP_USER}>"
-            )
-            msg["To"] = (
-                employee.employee_email
-            )
+            # Header anti-junk / anti-spam
+            msg["Subject"]        = subject
+            msg["From"]           = f"Navicash Finance <{SMTP_USER}>"
+            msg["To"]             = employee.employee_email
+            msg["Reply-To"]       = SMTP_USER
+            msg["Date"]           = email_utils.formatdate(localtime=True)
+            msg["Message-ID"]     = email_utils.make_msgid(
+                                        idstring=f"navicash-{uuid.uuid4().hex[:8]}",
+                                        domain=SMTP_USER.split("@")[-1]
+                                    )
+            msg["X-Mailer"]       = "Navicash Finance System"
+            msg["Auto-Submitted"] = "auto-generated"
 
-            if employee.department_email:
+            part1 = MIMEText(text_body, "plain", "utf-8")
+            part2 = MIMEText(html_body, "html", "utf-8")
+            msg.attach(part1)
+            msg.attach(part2)
 
-                msg["Cc"] = (
-                    employee.department_email
-                )
+            recipients = [employee.employee_email]
+            if (
+                employee.department_email
+                and employee.department_email != "-"
+            ):
+                msg["Cc"] = employee.department_email
+                recipients.append(employee.department_email)
 
-            msg["Reply-To"] = SMTP_USER
-
-            msg["MIME-Version"] = "1.0"
-
-            msg["X-Priority"] = "3"
-
-            with smtplib.SMTP(
-                SMTP_HOST,
-                int(SMTP_PORT)
-            ) as smtp:
-
+            with smtplib.SMTP(SMTP_HOST, int(SMTP_PORT)) as smtp:
+                smtp.ehlo()
                 smtp.starttls()
-
-                smtp.login(
-                    SMTP_USER,
-                    SMTP_PASSWORD
-                )
-
-
-                recipients = [
-                    employee.employee_email
-                ]
-
-                if (
-                    employee.department_email
-                    and
-                    employee.department_email != "-"
-                ):
-
-                    recipients.append(
-                        employee.department_email
-                    )
-
-
+                smtp.ehlo()
+                smtp.login(SMTP_USER, SMTP_PASSWORD)
                 smtp.sendmail(
                     SMTP_USER,
                     recipients,
                     msg.as_string()
                 )
 
-
             email_sent = True
+
         else:
-
-            logger.info(
-                "[SIMULASI EMAIL]"
-            )
-
-            logger.info(subject)
-            logger.info(body)
-
+            logger.info("[SIMULASI EMAIL]")
+            logger.info(f"Subject: {subject}")
+            logger.info(html_body)
             email_sent = True
+
     except Exception as e:
         logger.exception(e)
         email_sent = False
 
     for advance in unsent_advances:
         log = ReminderLog(
-            advance_request_id=
-                advance.id,
-            employee_email=
-                employee.employee_email,
-            department_email=
+            advance_request_id=advance.id,
+            employee_email=employee.employee_email,
+            department_email=(
                 employee.department_email
                 if employee.department_email
-                else "-",
+                else "-"
+            ),
             status=(
                 ReminderStatus.SUCCESS
                 if email_sent
@@ -491,8 +414,8 @@ def send_email_reminder(
             ),
             sent_at=datetime.now()
         )
-
         db.add(log)
+
     db.commit()
     return email_sent
 
