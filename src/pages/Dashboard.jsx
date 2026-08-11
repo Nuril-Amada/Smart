@@ -41,6 +41,8 @@ export default function Dashboard() {
       <KPICard
         data={dashboardData.kpi}
         loading={loading}
+        tanggalAwal={tanggalAwal}
+        tanggalAkhir={tanggalAkhir}
       />
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -48,11 +50,15 @@ export default function Dashboard() {
         <TopCostCenterChart
           data={dashboardData.topCostCenterData}
           loading={loading}
+          tanggalAwal={tanggalAwal}
+          tanggalAkhir={tanggalAkhir}
         />
 
         <CostCenterChart
           data={dashboardData.costCenterData}
           loading={loading}
+          tanggalAwal={tanggalAwal}
+          tanggalAkhir={tanggalAkhir}
         />
 
       </div>
@@ -62,11 +68,15 @@ export default function Dashboard() {
         <GLAccountChart
           data={dashboardData.glAccountData}
           loading={loading}
+          tanggalAwal={tanggalAwal}
+          tanggalAkhir={tanggalAkhir}
         />
 
         <TrendChart
           data={dashboardData.trendData}
           loading={loading}
+          tanggalAwal={tanggalAwal}
+          tanggalAkhir={tanggalAkhir}
         />
 
       </div>
@@ -75,6 +85,8 @@ export default function Dashboard() {
       <TransactionTable
         data={dashboardData.transactionData}
         loading={loading}
+        tanggalAwal={tanggalAwal}
+        tanggalAkhir={tanggalAkhir}
       />
       */}
 
