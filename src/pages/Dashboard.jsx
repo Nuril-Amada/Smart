@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import FilterDashboard from "../components/dashboard/FilterDashboard";
 import KPICard from "../components/dashboard/KPICard";
@@ -8,6 +8,7 @@ import CostCenterChart from "../components/dashboard/charts/CostCenterChart";
 import TopCostCenterChart from "../components/dashboard/charts/TopCostCenterChart";
 import TrendChart from "../components/dashboard/charts/TrendChart";
 
+// import { getDashboardData } from "../api/dashboard";
 // import TransactionTable from "../components/dashboard/TransactionTable";
 
 export default function Dashboard() {
@@ -27,6 +28,31 @@ export default function Dashboard() {
 
   // State loading
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  // Fetch data dari backend database saat tanggal filter berubah
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        // Hubungkan ke API backend database di sini:
+        // const result = await getDashboardData({
+        //   start_date: tanggalAwal || undefined,
+        //   end_date: tanggalAkhir || undefined,
+        // });
+        // setDashboardData(result);
+      } catch (err) {
+        console.error("Gagal memuat data dashboard:", err);
+        setError("Gagal memuat data dashboard.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, [tanggalAwal, tanggalAkhir]);
 
   return (
     <div className="space-y-8">
