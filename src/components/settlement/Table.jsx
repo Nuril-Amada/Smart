@@ -161,7 +161,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
   const [filterUser, setFilterUser] = useState("");
   const [filterCostCenter, setFilterCostCenter] =
     useState("");
-  const [filterStatus, setFilterStatus] = useState("All Status");
+  const [filterStatus, setFilterStatus] = useState("All Source");
 
   const userInputRef = useRef(null);
   const ccInputRef = useRef(null);
@@ -413,11 +413,15 @@ export default function Table({ startDate, endDate, refreshKey }) {
           .toLowerCase()
           .includes(filterCostCenter.toLowerCase());
 
-      return userMatch && ccMatch;
+      const sourceMatch =
+        filterStatus === "All Source" ||
+        (row.source || "") === filterStatus;
+
+      return userMatch && ccMatch && sourceMatch;
 
     });
 
-  }, [rows, filterUser, filterCostCenter]);
+  }, [rows, filterUser, filterCostCenter, filterStatus]);
 
   // PAGINATION
   const total = filteredRows.length;
@@ -503,9 +507,9 @@ export default function Table({ startDate, endDate, refreshKey }) {
             className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-200"
             style={{ marginBottom: "10px", padding: "1px 5px" }}
           >
-            <option>All Source</option>
-            <option>Reimbursement</option>
-            <option>Settlement</option>
+            <option value="All Source">All Source</option>
+            <option value="Reimbursement">Reimbursement</option>
+            <option value="Settlement">Settlement</option>
           </select>
         </div>
 
