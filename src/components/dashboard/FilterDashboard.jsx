@@ -51,7 +51,7 @@ export default function FilterDashboard({
             <button
               onClick={handleReset}
               className="border border-gray-400 rounded-lg hover:bg-gray-100 transition whitespace-nowrap text-sm"
-              style={{ padding: "6px 12px" }}
+              style={{ padding: "1px 12px" }}
             >
               Reset
             </button>
