@@ -161,6 +161,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
   const [filterUser, setFilterUser] = useState("");
   const [filterCostCenter, setFilterCostCenter] =
     useState("");
+  const [filterStatus, setFilterStatus] = useState("All Status");
 
   const userInputRef = useRef(null);
   const ccInputRef = useRef(null);
@@ -218,8 +219,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
         settlement_amount:
           Number(item.settlement_amount),
         source:
-          item.source === "ADVANCE"
-            ? "Advance"
+          item.source === "ADVANCE" || item.source === "SETTLEMENT" || item.source === "Settlement" || item.source === "Advance"
+            ? "Settlement"
             : "Reimbursement",
         is_checked:
           item.is_checked,
@@ -449,8 +450,14 @@ export default function Table({ startDate, endDate, refreshKey }) {
           <AutocompleteInput
             containerRef={userInputRef}
             value={filterUser}
-            onChange={setFilterUser}
-            onSelect={setFilterUser}
+            onChange={(val) => {
+              setFilterUser(val);
+              setPage(1);
+            }}
+            onSelect={(val) => {
+              setFilterUser(val);
+              setPage(1);
+            }}
             suggestions={userSuggestions}
             placeholder="Cari Nama User..."
             wrapperStyle={{ marginLeft: "20px" }}
@@ -468,13 +475,38 @@ export default function Table({ startDate, endDate, refreshKey }) {
           <AutocompleteInput
             containerRef={ccInputRef}
             value={filterCostCenter}
-            onChange={setFilterCostCenter}
-            onSelect={setFilterCostCenter}
+            onChange={(val) => {
+              setFilterCostCenter(val);
+              setPage(1);
+            }}
+            onSelect={(val) => {
+              setFilterCostCenter(val);
+              setPage(1);
+            }}
             suggestions={costCenterSuggestions}
             placeholder="Cari Cost Center..."
             inputStyle={{ marginBottom: "10px", padding: "1px 5px" }}
           />
 
+        </div>
+
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium text-gray-500 text-center">
+            Source
+          </label>
+          <select
+            value={filterStatus}
+            onChange={(e) => {
+              setFilterStatus(e.target.value);
+              setPage(1);
+            }}
+            className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-200"
+            style={{ marginBottom: "10px", padding: "1px 5px" }}
+          >
+            <option>All Source</option>
+            <option>Reimbursement</option>
+            <option>Settlement</option>
+          </select>
         </div>
 
         <div className="flex-1" />
@@ -495,17 +527,17 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
       {/* ================= TABLE ================= */}
       <div className="overflow-x-auto" style={{ marginLeft: "10px", marginRight: "10px" }}>
-        <table className="w-full text-sm border border-gray-300 text-center">
+        <table className="w-full text-sm border border-gray-300 text-left">
           <thead>
-            <tr className="text-xs uppercase tracking-wide bg-gray-50">
-              <th className="p-3 font-medium border border-gray-300 text-center">Tanggal</th>
-              <th className="p-3 font-medium border border-gray-300 text-center">No PPC</th>
-              <th className="p-3 font-medium border border-gray-300 text-center">Nama User</th>
-              <th className="p-3 font-medium border border-gray-300 text-center">Cost Center</th>
-              <th className="p-3 font-medium border border-gray-300 text-center">Description</th>
-              <th className="p-3 font-medium border border-gray-300 text-center">Amount</th>
-              <th className="p-3 font-medium border border-gray-300 text-center">Source</th>
-              <th className="p-3 font-medium border border-gray-300 text-center">Action</th>
+            <tr className="text-xs uppercase tracking-wide bg-gray-50 text-center">
+              <th className="p-3 font-medium border border-gray-300">Tanggal</th>
+              <th className="p-3 font-medium border border-gray-300">No PPC</th>
+              <th className="p-3 font-medium border border-gray-300">Nama User</th>
+              <th className="p-3 font-medium border border-gray-300">Cost Center</th>
+              <th className="p-3 font-medium border border-gray-300">Description</th>
+              <th className="p-3 font-medium border border-gray-300">Amount</th>
+              <th className="p-3 font-medium border border-gray-300">Source</th>
+              <th className="p-3 font-medium border border-gray-300">Action</th>
             </tr>
           </thead>
 
@@ -634,12 +666,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
       {
         manualInputOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-none shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[85vh] overflow-y-auto">
 
               {/* Header */}
               <div
                 className="flex items-center justify-between border-b border-gray-200"
-                style={{ padding: "20px 24px 16px", marginRight: "20px" }}
+                style={{ padding: "12px 24px 10px", marginRight: "20px" }}
               >
                 <h3
                   className="text-lg font-semibold text-gray-700"
@@ -660,7 +692,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
               {/* Form */}
               <form
                 onSubmit={handleManualSubmit}
-                className="px-6 py-5 flex flex-col gap-4"
+                className="px-6 py-3 flex flex-col gap-2.5"
                 style={{
                   marginRight: "20px",
                   marginLeft: "20px",
@@ -668,22 +700,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 }}
               >
                 <div>
-                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
-                    PPC Number
-                  </label>
-                  <input
-                    type="text"
-                    value={
-                      manualForm.ppc_no ||
-                      "Pilih tanggal terlebih dahulu"
-                    }
-                    readOnly
-                    className="w-full border border-gray-200 rounded-[10px] text-[13px] bg-gray-50 text-gray-600" style={{ padding: "9px 12px", borderWidth: "1.5px" }}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
                     Settlement Date
                   </label>
 
@@ -693,13 +710,27 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     value={manualForm.settlement_date}
                     onChange={handleManualChange}
                     required
-                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none" style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none" style={{ padding: "5px 12px", borderWidth: "1.5px" }}
                   />
                 </div>
 
+                <div>
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                    PPC Number
+                  </label>
+                  <input
+                    type="text"
+                    value={
+                      manualForm.ppc_no ||
+                      "Pilih tanggal terlebih dahulu"
+                    }
+                    readOnly
+                    className="w-full border border-gray-200 rounded-[10px] text-[13px] bg-gray-50 text-gray-600" style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                  />
+                </div>
 
                 <div>
-                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
                     Nama User
                   </label>
 
@@ -709,12 +740,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     value={manualForm.employee_name || ""}
                     onChange={handleManualChange}
                     required
-                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none" style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none" style={{ padding: "5px 12px", borderWidth: "1.5px" }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
                     Cost Center
                   </label>
 
@@ -724,27 +755,27 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     value={manualForm.cost_center}
                     onChange={handleManualChange}
                     required
-                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none" style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none" style={{ padding: "5px 12px", borderWidth: "1.5px" }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
                     Description
                   </label>
 
                   <textarea
-                    rows={3}
+                    rows={2}
                     name="description"
                     value={manualForm.description}
                     onChange={handleManualChange}
                     required
-                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none resize-none" style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none resize-none" style={{ padding: "5px 12px", borderWidth: "1.5px" }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
                     Settlement Amount
                   </label>
 
@@ -755,21 +786,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     value={manualForm.settlement_amount}
                     onChange={handleManualChange}
                     required
-                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none" style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none" style={{ padding: "5px 12px", borderWidth: "1.5px" }}
                   />
-                </div>
-
-                <div>
-                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
-                    Source
-                  </label>
-
-                  <div className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500">
-                    Reimbursement
-                    <span className="block text-xs text-gray-400 mt-0.5">
-                      Manual input hanya untuk data Reimbursement.
-                    </span>
-                  </div>
                 </div>
 
                 {manualError && (
@@ -778,7 +796,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                   </div>
                 )}
 
-                <div className="flex justify-end gap-2 mt-2 pt-4 border-t border-gray-100">
+                <div className="flex justify-end gap-2 mt-1 pt-3 border-t border-gray-100">
                   <button
                     type="button"
                     onClick={handleManualClose}
