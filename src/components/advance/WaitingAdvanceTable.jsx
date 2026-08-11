@@ -832,9 +832,9 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
                 {/* TABLE */}
                 <div className="overflow-x-auto" style={{ marginLeft: "10px", marginRight: "10px" }}>
-                    <table className="w-full text-sm border border-gray-300 text-center">
+                    <table className="w-full text-sm border border-gray-300 text-left">
                         <thead>
-                            <tr className="text-xs uppercase tracking-wide bg-gray-50">
+                            <tr className="text-xs uppercase tracking-wide bg-gray-50 text-center">
                                 <th className="p-3 font-medium border border-gray-300">Tanggal</th>
                                 <th className="p-3 font-medium border border-gray-300">No PPC</th>
                                 <th className="p-3 font-medium border border-gray-300">Nama User</th>
@@ -863,20 +863,20 @@ export default function Table({ startDate, endDate, refreshKey }) {
                             <tbody>
                                 {currentRows.map((row, index) => (
                                     <tr key={index} className="hover:bg-gray-50">
-                                        <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
+                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300">
                                             {formatDate(row.tanggal)}
                                         </td>
-                                        <td className="p-3 text-gray-700 border border-gray-300">{row.ppc_no}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300">{row.nama_user}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300">{row.cost_center}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300">{row.keterangan}</td>
-                                        <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300">{row.ppc_no}</td>
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300">{row.nama_user}</td>
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300">{row.cost_center}</td>
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300">{row.keterangan}</td>
+                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300">
                                             {formatRupiah(row.jumlah)}
                                         </td>
-                                        <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
+                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300">
                                             {formatDate(row.due_date)}
                                         </td>
-                                        <td className="p-3 border border-gray-300">
+                                        <td className="py-3 px-5 border border-gray-300 text-center">
                                             <span
                                                 onClick={() => handleStatusClick(row)}
                                                 className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_STYLE[row.status] || "bg-gray-100 text-gray-600"
@@ -965,10 +965,10 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 {/* MODAL New Request (Advance) */}
                 {requestOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                        <div className="bg-white rounded-none shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
+                        <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[85vh] overflow-y-auto">
                             <div
                                 className="flex items-center justify-between border-b border-gray-200"
-                                style={{ padding: "20px 24px 16px", marginRight: "20px" }}
+                                style={{ padding: "8px 24px 8px", marginRight: "20px" }}
                             >
                                 <h3 className="text-lg font-semibold text-gray-700" style={{ marginLeft: "20px" }}>
                                     New Request
@@ -980,13 +980,11 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
                             <form
                                 onSubmit={handleRequestSubmit}
-                                className="px-6 py-5 flex flex-col gap-4"
-                                style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px" }}
+                                className="px-6 py-2 flex flex-col gap-1.5"
+                                style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "6px" }}
                             >
                                 <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
-                                        PPC Number
-                                    </label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>PPC Number</label>
                                     <input
                                         type="text"
                                         value={
@@ -995,11 +993,11 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         }
                                         readOnly
                                         className="w-full border border-gray-200 rounded-[10px] text-[13px] bg-gray-50"
-                                        style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                                        style={{ padding: "3px 12px", borderWidth: "1.5px" }}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Tanggal</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Tanggal</label>
                                     <input
                                         type="date"
                                         name="request_date"
@@ -1007,25 +1005,24 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         onChange={handleRequestChange}
                                         required
                                         className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
-                                        style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                                        style={{ padding: "3px 12px", borderWidth: "1.5px" }}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Nama User</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Nama User</label>
                                     <input
                                         type="text"
                                         name="employee_name"
                                         value={requestForm.employee_name}
                                         onChange={handleRequestChange}
-                                        placeholder="Andi Pratama"
                                         required
                                         className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
-                                        style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                                        style={{ padding: "3px 12px", borderWidth: "1.5px" }}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Cost Center</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Cost Center</label>
                                     <input
                                         type="text"
                                         name="cost_center"
@@ -1033,40 +1030,38 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         onChange={handleRequestChange}
                                         required
                                         className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
-                                        style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                                        style={{ padding: "3px 12px", borderWidth: "1.5px" }}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Keterangan</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Keterangan</label>
                                     <textarea
                                         name="purpose"
                                         value={requestForm.purpose}
                                         onChange={handleRequestChange}
-                                        rows={3}
-                                        placeholder="Contoh: Advance perjalanan dinas"
+                                        rows={1}
                                         required
                                         className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none resize-none"
-                                        style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                                        style={{ padding: "3px 12px", borderWidth: "1.5px" }}
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Jumlah</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Jumlah</label>
                                     <input
                                         type="number"
                                         name="amount"
                                         value={requestForm.amount}
                                         onChange={handleRequestChange}
-                                        placeholder="0"
                                         min="0"
                                         required
                                         className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
-                                        style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                                        style={{ padding: "3px 12px", borderWidth: "1.5px" }}
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Due Date</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Due Date</label>
                                     <input
                                         type="date"
                                         name="due_date"
@@ -1074,18 +1069,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         onChange={handleRequestChange}
                                         required
                                         className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
-                                        style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                                        style={{ padding: "3px 12px", borderWidth: "1.5px" }}
                                     />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Status</label>
-                                    <div className="w-full border border-gray-200 bg-gray-50 rounded-[10px] text-[13px] text-gray-500" style={{ padding: "9px 12px" }}>
-                                        Active
-                                        <span className="block text-xs text-gray-400 mt-0.5">
-                                            Request baru selalu dimulai dengan status Active. Berubah otomatis oleh sistem (Settled saat reimbursement selesai, Overdue jika melewati 2 hari). Tgl Penyelesaian ikut ke-isi otomatis saat status jadi Settled.
-                                        </span>
-                                    </div>
                                 </div>
 
                                 {requestError && (
@@ -1094,7 +1079,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     </div>
                                 )}
 
-                                <div className="flex justify-end gap-2 mt-2 pt-4 border-t border-gray-100">
+                                <div className="flex justify-end gap-2 mt-0 pt-2 border-t border-gray-100">
                                     <button
                                         type="button"
                                         onClick={handleRequestClose}
