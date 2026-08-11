@@ -13,17 +13,6 @@ export default function FilterDashboard({
     setTanggalAkhir("");
   };
 
-  const handleFilter = () => {
-    console.log({
-      tanggalAwal,
-      tanggalAkhir,
-      lokasi,
-    });
-
-    // Nanti ketika backend sudah jadi
-    // tinggal panggil API di sini
-  };
-
   return (
     <div className="w-full flex" style={{ marginTop: "10px", marginBottom: "10px", paddingLeft: "20px", paddingRight: "20px" }}>
       <div className="w-full bg-white rounded-2xl shadow-sm border border-gray-200" style={{ padding: "15px" }}>
@@ -57,15 +46,6 @@ export default function FilterDashboard({
                 className="border border-gray-300 rounded-lg px-2 py-1.5 w-36 text-sm focus:ring-2 focus:ring-blue-600 outline-none" style={{ padding: "1px 5px" }}
               />
             </div>
-
-            {/* Filter */}
-            <button
-              onClick={handleFilter}
-              className="bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition whitespace-nowrap text-sm"
-              style={{ padding: "6px 12px" }}
-            >
-              Filter
-            </button>
 
             {/* Reset */}
             <button
