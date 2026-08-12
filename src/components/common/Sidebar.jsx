@@ -4,6 +4,7 @@ import {
   FaMoneyCheckAlt,
   FaWallet,
   FaFileInvoiceDollar,
+  FaMoneyCheck,
   FaDatabase,
 } from "react-icons/fa";
 
@@ -44,6 +45,17 @@ const menu = [
         name: "Advance",
         icon: <FaFileInvoiceDollar />,
         path: "/Advance",
+      },
+    ],
+  },
+
+  {
+    title: "",
+    items: [
+      {
+        name: "Cash Opname",
+        icon: <FaMoneyCheck />,
+        path: "/CashOpname",
       },
     ],
   },
