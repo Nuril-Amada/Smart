@@ -186,10 +186,13 @@ export default function Table({ startDate, endDate, refreshKey }) {
     }
   };
 
-  // DELETE CONFIRM
+  // DELETE CONFIRM (single row — tetap digunakan oleh fungsi batch)
   const [rowToDelete, setRowToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
+
+  // DELETE BATCH — hapus semua baris yang di-checklist
+  const [deleteBatchOpen, setDeleteBatchOpen] = useState(false);
 
   // LOAD DATA
   const loadData = async () => {
@@ -362,28 +365,30 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
   };
 
-  // ACTION: HAPUS (dengan konfirmasi)
-  const handleDeleteClick = (row) => {
-    setRowToDelete(row);
+  // ACTION: HAPUS BATCH — hapus semua baris yang is_checked
+  const checkedRows = rows.filter((r) => !!r.is_checked);
+
+  const handleDeleteBatchClick = () => {
+    setDeleteError("");
+    setDeleteBatchOpen(true);
+  };
+
+  const handleDeleteBatchCancel = () => {
+    setDeleteBatchOpen(false);
     setDeleteError("");
   };
 
-  const handleDeleteCancel = () => {
-    setRowToDelete(null);
-    setDeleteError("");
-  };
-
-  const handleDeleteConfirm = async () => {
-    if (!rowToDelete) return;
+  const handleDeleteBatchConfirm = async () => {
+    if (checkedRows.length === 0) return;
 
     try {
       setDeleting(true);
       setDeleteError("");
 
-      await deleteReimbursement(rowToDelete.id);
+      // Hapus satu-per-satu semua baris yang di-ceklis
+      await Promise.all(checkedRows.map((r) => deleteReimbursement(r.id)));
 
-      setRowToDelete(null);
-
+      setDeleteBatchOpen(false);
       loadData();
 
     } catch (err) {
@@ -515,17 +520,28 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
         <div className="flex-1" />
 
-        <button
-          type="button"
-          onClick={() =>
-            setManualInputOpen(true)
-          }
-          className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-          style={{ marginBottom: "10px", marginRight: "20px", padding: "5px 10px" }}
-        >
-          <FaPlus className="text-xs" />
-          New Reimburse
-        </button>
+        <div className="flex items-center gap-2" style={{ marginBottom: "10px", marginRight: "20px" }}>
+          <button
+            type="button"
+            onClick={() => setManualInputOpen(true)}
+            className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors"
+            style={{ padding: "5px 10px" }}
+          >
+            <FaPlus className="text-xs" />
+            New Reimburse
+          </button>
+
+          <button
+            type="button"
+            onClick={handleDeleteBatchClick}
+            disabled={checkedRows.length === 0}
+            className="flex items-center gap-2 bg-red-700 hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+            style={{ padding: "8px 10px" }}
+            title={checkedRows.length === 0 ? "Pilih data terlebih dahulu" : `Hapus ${checkedRows.length} data terpilih`}
+          >
+            <FaTrash />
+          </button>
+        </div>
 
       </div>
 
@@ -583,22 +599,13 @@ export default function Table({ startDate, endDate, refreshKey }) {
                       </span>
                     </td>
                     <td className="p-3 border border-gray-300">
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center">
                         <input
                           type="checkbox"
                           checked={!!row.is_checked}
                           onChange={() => toggleSap(row)}
                           className="w-4 h-4 accent-gray-600 cursor-pointer"
                         />
-
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteClick(row)}
-                          className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-md" style={{ padding: "5px 5px" }}
-                          title="Hapus"
-                        >
-                          <FaTrash className="text-xs" />
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -832,23 +839,21 @@ export default function Table({ startDate, endDate, refreshKey }) {
         )
       }
 
-      {/* ================= MODAL KONFIRMASI HAPUS ================= */}
-      {/* FIX: dipindah keluar dari blok manualInputOpen, jadi sibling langsung */}
-      {/* dari elemen di atas, supaya bisa muncul terlepas dari status modal */}
-      {/* Manual Input / Reimbursement */}
+      {/* ================= MODAL KONFIRMASI HAPUS BATCH ================= */}
       {
-        rowToDelete && (
+        deleteBatchOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-            <div className="bg-white rounded-none shadow-lg w-full max-w-sm">
-              <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
+            <div className="bg-white rounded-xl shadow-lg w-full max-w-sm">
+              <div className="px-6 py-5" style={{ marginTop: "5px" }}>
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                  Hapus Data
+                  Hapus Data Terpilih
                 </h3>
                 <p className="text-sm text-gray-500">
-                  Apakah anda yakin ingin menghapus data settlement atas nama{" "}
-                  <span className="font-medium text-gray-700">
-                    {rowToDelete.nama_user}
+                  Apakah Anda yakin ingin menghapus{" "}
+                  <span className="font-semibold text-red-600">
+                    {checkedRows.length} data
                   </span>{" "}
+                  yang telah dipilih?
                 </p>
 
                 {deleteError && (
@@ -858,21 +863,23 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 )}
               </div>
 
-              <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px", marginTop: "10px" }}>
+              <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
                 <button
                   type="button"
-                  onClick={handleDeleteCancel}
+                  onClick={handleDeleteBatchCancel}
                   disabled={deleting}
-                  className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
+                  className="border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                  style={{ padding: "5px 14px" }}
                 >
                   Batal
                 </button>
 
                 <button
                   type="button"
-                  onClick={handleDeleteConfirm}
+                  onClick={handleDeleteBatchConfirm}
                   disabled={deleting}
-                  className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
+                  className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm"
+                  style={{ padding: "5px 14px" }}
                 >
                   {deleting ? "Menghapus..." : "Ya, Hapus"}
                 </button>
