@@ -1,5 +1,10 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { FaPlus, FaTimes, FaTrash, FaBook, FaSearch, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+// import {
+//     getAllGLAccount,
+//     createGLAccount,
+//     deleteGLAccount
+// } from "../../api/gl_account";
 
 export const meta = {
     id: "gl_account",
@@ -8,16 +13,16 @@ export const meta = {
     color: "#363D48",
 };
 
-const initialForm = { gl_account_no: "", gl_account_name: "" };
+const initialForm = { gl_account: "", nama_gl_account: "" };
 const fields = [
-    { name: "gl_account_no", label: "No GL Account", placeholder: "1-11000" },
-    { name: "gl_account_name", label: "Nama GL Account", placeholder: "Kas Kecil" },
+    { name: "gl_account", label: "GL Account", placeholder: "1-11000" },
+    { name: "nama_gl_account", label: "Nama GL Account", placeholder: "Kas Kecil" },
 ];
 const columns = [
-    { key: "gl_account_no", label: "No GL Account" },
-    { key: "gl_account_name", label: "Nama GL Account" },
+    { key: "gl_account", label: "GL Account" },
+    { key: "nama_gl_account", label: "Nama GL Account" },
 ];
-const searchKey = "gl_account_no";
+const searchKey = "gl_account";
 
 function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder, wrapperStyle, inputStyle }) {
     const [open, setOpen] = useState(false);
@@ -107,7 +112,7 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
                             className={`px-3 py-2 text-sm cursor-pointer border-b border-gray-50 last:border-0 ${i === highlight ? "bg-gray-100 font-semibold text-gray-900" : "text-gray-700 hover:bg-gray-50"
                                 }`}
                         >
-                            {s}
+                            <span style={{ marginLeft: "10px" }}>{s}</span>
                         </li>
                     ))}
                 </ul>
@@ -121,14 +126,25 @@ export default function GLAccount() {
     const [modalOpen, setModalOpen] = useState(false);
     const [form, setForm] = useState(initialForm);
     const [submitError, setSubmitError] = useState("");
-    const [rowToDelete, setRowToDelete] = useState(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [page, setPage] = useState(1);
     const perPage = 10;
 
-    const loadData = async (term) => {
-        // hubungkan ke API GL Account di sini
+    // DELETE — mode seleksi batch (logic sama seperti Employee / Advance)
+    const [deleteMode, setDeleteMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [deleteBatchOpen, setDeleteBatchOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState("");
+
+    const loadData = async (term = "") => {
+        try {
+            const data =
+                await getAllGLAccount(term);
+            setRows(data);
+        }
+        catch (error) {console.log(error);}
     };
 
     useEffect(() => {
@@ -136,7 +152,7 @@ export default function GLAccount() {
     }, []);
 
     useEffect(() => {
-        const timeout = setTimeout(() => loadData(searchTerm), 300);
+        const timeout = setTimeout(() => {loadData(searchTerm);}, 300);
         return () => clearTimeout(timeout);
     }, [searchTerm]);
 
@@ -179,32 +195,85 @@ export default function GLAccount() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const isEmpty = fields.some((field) => field.required !== false && !form[field.name]?.trim());
+        const isEmpty = fields.some(
+            (field) =>
+                field.required !== false &&
+                !form[field.name]?.trim()
+        );
+
         if (isEmpty) {
-            setSubmitError("Semua field wajib diisi.");
+            setSubmitError(
+                "Semua field wajib diisi."
+            );
             return;
         }
+
         try {
-            const newRow = { id: Date.now(), ...form };
-            setRows((prev) => [...prev, newRow]);
+            const response =
+                await createGLAccount(form);
+            setRows((prev) => [
+                response.data,
+                ...prev
+            ]);
             handleClose();
-            setSuccessMessage("Data baru berhasil disimpan");
-            setTimeout(() => setSuccessMessage(""), 3000);
-        } catch (err) {
-            setSubmitError(err?.response?.data?.detail || "Gagal menyimpan data.");
+            setSuccessMessage(
+                "GL Account berhasil ditambahkan."
+            );
+            setTimeout(() => {
+                setSuccessMessage("");
+            }, 3000);
+
+            loadData(searchTerm);
+        }
+        catch (err) {
+            setSubmitError(
+                err?.response?.data?.detail || "Gagal menyimpan data."
+            );
         }
     };
 
-    const handleDeleteClick = (row) => setRowToDelete(row);
-    const handleDeleteCancel = () => setRowToDelete(null);
+    // ===== BATCH DELETE (logic sama seperti Employee / Advance) =====
+    const toggleSelectRow = (id) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
 
-    const handleDeleteConfirm = async () => {
-        if (!rowToDelete) return;
+    const handleEnterDeleteMode = () => {
+        setDeleteMode(true);
+        setSelectedIds(new Set());
+        setDeleteError("");
+    };
+
+    const handleExitDeleteMode = () => {
+        setDeleteMode(false);
+        setSelectedIds(new Set());
+        setDeleteError("");
+    };
+
+    const handleDeleteBatchConfirm = async () => {
+        if (selectedIds.size === 0) return;
         try {
-            setRows((prev) => prev.filter((r) => r.id !== rowToDelete.id));
-            setRowToDelete(null);
-        } catch (err) {
-            console.error(err);
+            setDeleting(true);
+            setDeleteError("");
+            await Promise.all([...selectedIds].map((id) => deleteGLAccount(id)));
+            setDeleteBatchOpen(false);
+            setDeleteMode(false);
+            setSelectedIds(new Set());
+            await loadData(searchTerm);
+            setSuccessMessage("GL Account terpilih berhasil dihapus.");
+            setTimeout(() => setSuccessMessage(""), 3000);
+        }
+        catch (err) {
+            setDeleteError(
+                err?.response?.data?.detail || "Gagal menghapus data."
+            );
+        }
+        finally {
+            setDeleting(false);
         }
     };
 
@@ -246,42 +315,99 @@ export default function GLAccount() {
                     />
                 </div>
 
-                <button
-                    type="button"
-                    onClick={() => setModalOpen(true)}
-                    style={{
-                        display: "flex", alignItems: "center", gap: "8px", background: "linear-gradient(135deg, #363D48)",
-                        color: "#fff", border: "none", borderRadius: "10px", padding: "9px 18px", fontSize: "13px", fontWeight: 600,
-                        cursor: "pointer", transition: "transform 0.15s",
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-2px)";
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)";
-                    }}
-                >
-                    <FaPlus style={{ fontSize: "11px" }} />
-                    Tambah GL Account
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    {/* Button Tambah GL Account — disembunyikan saat mode hapus aktif */}
+                    {!deleteMode && (
+                        <button
+                            type="button"
+                            onClick={() => setModalOpen(true)}
+                            style={{
+                                display: "flex", alignItems: "center", gap: "8px", background: "linear-gradient(135deg, #363D48)",
+                                color: "#fff", border: "none", borderRadius: "10px", padding: "9px 18px", fontSize: "13px", fontWeight: 600,
+                                cursor: "pointer", transition: "transform 0.15s",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = "translateY(-2px)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = "translateY(0)";
+                            }}
+                        >
+                            <FaPlus style={{ fontSize: "11px" }} />
+                            Tambah GL Account
+                        </button>
+                    )}
+
+                    {/* Mode hapus TIDAK aktif → tampilkan tombol trash */}
+                    {!deleteMode && (
+                        <button
+                            type="button"
+                            onClick={handleEnterDeleteMode}
+                            style={{
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                background: "#b91c1c", color: "#fff", border: "none", borderRadius: "10px",
+                                padding: "9px 12px", fontSize: "13px", fontWeight: 600, cursor: "pointer",
+                            }}
+                            title="Pilih data untuk dihapus"
+                        >
+                            <FaTrash />
+                        </button>
+                    )}
+
+                    {/* Mode hapus AKTIF → tombol Batal + Hapus */}
+                    {deleteMode && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={handleExitDeleteMode}
+                                style={{
+                                    border: "1.5px solid #e5e7eb", borderRadius: "10px", padding: "9px 18px",
+                                    fontSize: "13px", color: "#6b7280", background: "#fff", cursor: "pointer", fontWeight: 500,
+                                }}
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setDeleteError("");
+                                    setDeleteBatchOpen(true);
+                                }}
+                                disabled={selectedIds.size === 0}
+                                style={{
+                                    display: "flex", alignItems: "center", gap: "8px", background: "#dc2626",
+                                    opacity: selectedIds.size === 0 ? 0.4 : 1, color: "#fff", border: "none",
+                                    borderRadius: "10px", padding: "9px 18px", fontSize: "13px", fontWeight: 600,
+                                    cursor: selectedIds.size === 0 ? "not-allowed" : "pointer",
+                                }}
+                                title={selectedIds.size === 0 ? "Pilih data terlebih dahulu" : `Hapus ${selectedIds.size} data terpilih`}
+                            >
+                                <FaTrash style={{ fontSize: "11px" }} />
+                                Hapus {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
             <div className="overflow-x-auto" style={{ marginLeft: "10px", marginRight: "10px" }}>
-                <table className="w-full text-sm border border-gray-300 text-center">
+                <table className="w-full text-sm border border-gray-300">
                     <thead>
-                        <tr className="text-xs uppercase tracking-wide bg-gray-50">
+                        <tr className="text-xs uppercase tracking-wide bg-gray-50 text-center">
                             <th className="p-3 font-medium border border-gray-300 text-center">No</th>
                             {columns.map((col) => (
                                 <th key={col.key} className="p-3 font-medium border border-gray-300 text-center">{col.label}</th>
                             ))}
-                            <th className="p-3 font-medium border border-gray-300 text-center">Action</th>
+                            {deleteMode && (
+                                <th className="p-3 font-medium border border-gray-300 text-center">Pilih</th>
+                            )}
                         </tr>
                     </thead>
 
                     {filteredRows.length === 0 && (
                         <tbody>
                             <tr>
-                                <td colSpan={columns.length + 2} className="p-8 text-center text-gray-400 border border-gray-300">
+                                <td colSpan={columns.length + 1 + (deleteMode ? 1 : 0)} className="p-8 text-center text-gray-400 border border-gray-300">
                                     {rows.length === 0 ? "Belum ada data." : "Data tidak ditemukan."}
                                 </td>
                             </tr>
@@ -291,22 +417,29 @@ export default function GLAccount() {
                     {filteredRows.length > 0 && (
                         <tbody>
                             {currentRows.map((row, idx) => (
-                                <tr key={row.id} className="hover:bg-gray-50">
-                                    <td className="p-3 text-gray-700 border border-gray-300">{startEntry + idx}</td>
-                                    {columns.map((col) => (
-                                        <td key={col.key} className="p-3 text-gray-700 border border-gray-300">{row[col.key] ?? "-"}</td>
-                                    ))}
-                                    <td className="p-3 border border-gray-300">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDeleteClick(row)}
-                                            className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-md"
-                                            style={{ padding: "5px 5px" }}
-                                            title="Hapus"
-                                        >
-                                            <FaTrash className="text-xs" />
-                                        </button>
+                                <tr
+                                    key={row.id}
+                                    className={`hover:bg-gray-50 ${deleteMode && selectedIds.has(row.id) ? "bg-red-50" : ""}`}
+                                >
+                                    <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
+                                        {startEntry + idx}
                                     </td>
+                                    {columns.map((col) => (
+                                        <td key={col.key} className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
+                                            {row[col.key] ?? "-"}
+                                        </td>
+                                    ))}
+                                    {/* Kolom checkbox seleksi hapus — hanya muncul saat deleteMode */}
+                                    {deleteMode && (
+                                        <td className="p-3 border border-gray-300 text-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.has(row.id)}
+                                                onChange={() => toggleSelectRow(row.id)}
+                                                className="w-4 h-4 accent-red-600 cursor-pointer"
+                                            />
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
@@ -411,27 +544,46 @@ export default function GLAccount() {
                 </div>
             )}
 
-            {rowToDelete && (
+            {/* ========== MODAL KONFIRMASI HAPUS BATCH ========== */}
+            {deleteBatchOpen && (
                 <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}>
                     <div style={{ background: "#fff", borderRadius: "20px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", width: "100%", maxWidth: "380px", animation: "slideDown 0.25s ease" }}>
                         <div style={{ padding: "20px 20px 15px" }}>
-                            <h3 style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 700, color: "#1e1b4b" }}>Hapus Data</h3>
-                            <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>Apakah anda yakin ingin menghapus data ini?</p>
+                            <h3 style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 700, color: "#1e1b4b" }}>Hapus Data Terpilih</h3>
+                            <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
+                                Apakah Anda yakin ingin menghapus{" "}
+                                <span style={{ fontWeight: 700, color: "#dc2626" }}>{selectedIds.size} data</span>{" "}
+                                yang telah dipilih?
+                            </p>
+
+                            {deleteError && (
+                                <div style={{ marginTop: "12px", fontSize: "13px", color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "10px 12px" }}>
+                                    {deleteError}
+                                </div>
+                            )}
                         </div>
                         <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", padding: "16px 24px 24px", borderTop: "1px solid #f1f5f9" }}>
                             <button
                                 type="button"
-                                onClick={handleDeleteCancel}
-                                style={{ border: "1.5px solid #e5e7eb", borderRadius: "10px", padding: "8px 20px", fontSize: "13px", color: "#6b7280", background: "#fff", cursor: "pointer", fontWeight: 500 }}
+                                onClick={() => {
+                                    setDeleteBatchOpen(false);
+                                    handleExitDeleteMode();
+                                }}
+                                disabled={deleting}
+                                style={{ border: "1.5px solid #e5e7eb", borderRadius: "10px", padding: "8px 20px", fontSize: "13px", color: "#6b7280", background: "#fff", cursor: "pointer", fontWeight: 500, opacity: deleting ? 0.6 : 1 }}
                             >
                                 Batal
                             </button>
                             <button
                                 type="button"
-                                onClick={handleDeleteConfirm}
-                                style={{ background: "linear-gradient(135deg, #ef4444, #dc2626)", border: "none", borderRadius: "10px", padding: "8px 20px", fontSize: "13px", color: "#fff", cursor: "pointer", fontWeight: 600, boxShadow: "0 4px 12px rgba(239,68,68,0.3)" }}
+                                onClick={handleDeleteBatchConfirm}
+                                disabled={deleting}
+                                style={{
+                                    background: "linear-gradient(135deg, #ef4444, #dc2626)", border: "none", borderRadius: "10px",
+                                    padding: "8px 20px", fontSize: "13px", color: "#fff", cursor: "pointer", fontWeight: 600, opacity: deleting ? 0.6 : 1,
+                                }}
                             >
-                                Ya, Hapus
+                                {deleting ? "Menghapus..." : "Ya, Hapus"}
                             </button>
                         </div>
                     </div>
