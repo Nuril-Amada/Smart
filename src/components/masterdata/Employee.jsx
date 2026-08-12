@@ -1,8 +1,11 @@
 import { useState, useMemo, useRef, useEffect } from "react";
-import { FaPlus, FaTimes, FaTrash, FaUsers, FaSearch, FaChevronLeft, FaChevronRight } from "react-icons/fa";
-
-// Aktifkan import ini kalau api/employee.js sudah siap
-// import { getEmployees, createEmployee, deleteEmployee } from "../../api/employee";
+import { FaPlus, FaTimes, FaTrash, FaEdit, FaUsers, FaSearch, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+// import {
+//     getEmployees,
+//     createEmployee,
+//     updateEmployee,
+//     deleteEmployee
+// } from "../../api/employee";
 
 export const meta = {
     id: "employee",
@@ -113,7 +116,7 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
                             className={`px-3 py-2 text-sm cursor-pointer border-b border-gray-50 last:border-0 ${i === highlight ? "bg-gray-100 font-semibold text-gray-900" : "text-gray-700 hover:bg-gray-50"
                                 }`}
                         >
-                            {s}
+                            <span style={{ marginLeft: "10px" }}>{s}</span>
                         </li>
                     ))}
                 </ul>
@@ -129,39 +132,46 @@ export default function Employee() {
     const [form, setForm] = useState(initialForm);
     const [submitError, setSubmitError] = useState("");
     const [rowToDelete, setRowToDelete] = useState(null);
+    const [editRow, setEditRow] = useState(null);
+    const [editForm, setEditForm] = useState(initialForm);
+    const [editError, setEditError] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
     const [page, setPage] = useState(1);
     const perPage = 10;
 
-    const loadData = async (term) => {
-        // if (!getEmployees) return;
-        // try {
-        //     const data = await getEmployees(term);
-        //     setRows(data);
-        // } catch (error) {
-        //     console.log(error);
-        // }
+    // DELETE — mode seleksi batch (logic sama seperti tabel Advance)
+    const [deleteMode, setDeleteMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [deleteBatchOpen, setDeleteBatchOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState("");
+
+    const loadData = async (term = "") => {
+        try {
+            const data = await getEmployees(
+                term
+            );
+
+            setRows(data);
+        }
+        catch (error) {
+            console.log(error);
+        }
     };
 
     useEffect(() => {
         loadData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
-        const timeout = setTimeout(() => loadData(searchTerm), 300);
+        const timeout = setTimeout(() => {
+            loadData(searchTerm);
+        }, 300);
         return () => clearTimeout(timeout);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [searchTerm]);
 
-    const filteredRows = useMemo(() => {
-        if (!searchTerm.trim()) return rows;
-        const q = searchTerm.toLowerCase();
-        return rows.filter((row) =>
-            (row[searchKey] || "").toString().toLowerCase().includes(q)
-        );
-    }, [rows, searchTerm]);
+    const filteredRows = rows;
 
     useEffect(() => {
         setPage(1);
@@ -177,11 +187,18 @@ export default function Employee() {
     for (let i = 1; i <= totalPages; i++) visiblePages.push(i);
 
     const suggestions = useMemo(() => {
-        const q = searchTerm.toLowerCase().trim();
-        if (!q) return [];
-        const unique = Array.from(new Set(rows.map((r) => r[searchKey]).filter(Boolean)));
-        return unique.filter((val) => val.toString().toLowerCase().includes(q)).slice(0, 8);
-    }, [rows, searchTerm]);
+        const unique = Array.from(
+            new Set(
+                rows
+                    .map(
+                        (r) =>
+                            r[searchKey]
+                    )
+                    .filter(Boolean)
+            )
+        );
+        return unique.slice(0, 8);
+    }, [rows]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -196,20 +213,33 @@ export default function Employee() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const isEmpty = fields.some((field) => field.required !== false && !form[field.name]?.trim());
+        const isEmpty = fields.some(
+            (field) =>
+                field.required !== false &&
+                !form[field.name]?.trim()
+        );
+
         if (isEmpty) {
-            setSubmitError("Semua field wajib diisi.");
+            setSubmitError(
+                "Semua field wajib diisi."
+            );
             return;
         }
+
         try {
-            // const newRow = await createEmployee(form);
-            const newRow = { id: Date.now(), ...form };
-            setRows((prev) => [...prev, newRow]);
+            await createEmployee(form);
+            await loadData(searchTerm);
             handleClose();
-            setSuccessMessage("Data baru berhasil disimpan");
-            setTimeout(() => setSuccessMessage(""), 3000);
+            setSuccessMessage(
+                "Employee berhasil ditambahkan."
+            );
+            setTimeout(() => {
+                setSuccessMessage("");
+            }, 3000);
         } catch (err) {
-            setSubmitError(err?.response?.data?.detail || "Gagal menyimpan data.");
+            setSubmitError(
+                err?.response?.data?.detail || "Gagal menyimpan data."
+            );
         }
     };
 
@@ -219,11 +249,94 @@ export default function Employee() {
     const handleDeleteConfirm = async () => {
         if (!rowToDelete) return;
         try {
-            // await deleteEmployee(rowToDelete.id);
-            setRows((prev) => prev.filter((r) => r.id !== rowToDelete.id));
+            await deleteEmployee(rowToDelete.id);
+            await loadData(searchTerm);
             setRowToDelete(null);
+            setSuccessMessage("Employee berhasil dihapus.");
+            setTimeout(() => setSuccessMessage(""), 3000);
         } catch (err) {
             console.error(err);
+        }
+    };
+
+    const handleEditClick = (row) => {
+        setEditRow(row);
+        setEditForm({
+            employee_name: row.employee_name || "",
+            employee_email: row.employee_email || "",
+            department_email: row.department_email || "",
+        });
+        setEditError("");
+    };
+
+    const handleEditClose = () => {
+        setEditRow(null);
+        setEditForm(initialForm);
+        setEditError("");
+    };
+
+    const handleEditChange = (e) => {
+        const { name, value } = e.target;
+        setEditForm((prev) => ({ ...prev, [name]: value }));
+    };
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        if (!editForm.employee_name?.trim()) {
+            setEditError("Nama Employee wajib diisi.");
+            return;
+        }
+        try {
+            await updateEmployee(editRow.id, editForm);
+            await loadData(searchTerm);
+            handleEditClose();
+            setSuccessMessage("Employee berhasil diperbarui.");
+            setTimeout(() => setSuccessMessage(""), 3000);
+        } catch (err) {
+            setEditError(err?.response?.data?.detail || "Gagal memperbarui data.");
+        }
+    };
+
+    // ===== BATCH DELETE (logic sama seperti tabel Advance) =====
+    const toggleSelectRow = (id) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    const handleEnterDeleteMode = () => {
+        setDeleteMode(true);
+        setSelectedIds(new Set());
+        setDeleteError("");
+    };
+
+    const handleExitDeleteMode = () => {
+        setDeleteMode(false);
+        setSelectedIds(new Set());
+        setDeleteError("");
+    };
+
+    const handleDeleteBatchConfirm = async () => {
+        if (selectedIds.size === 0) return;
+        try {
+            setDeleting(true);
+            setDeleteError("");
+            await Promise.all([...selectedIds].map((id) => deleteEmployee(id)));
+            setDeleteBatchOpen(false);
+            setDeleteMode(false);
+            setSelectedIds(new Set());
+            await loadData(searchTerm);
+            setSuccessMessage("Data terpilih berhasil dihapus.");
+            setTimeout(() => setSuccessMessage(""), 3000);
+        } catch (err) {
+            setDeleteError(
+                err?.response?.data?.detail || "Gagal menghapus data."
+            );
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -287,39 +400,116 @@ export default function Employee() {
                     />
                 </div>
 
-                <button
-                    type="button"
-                    onClick={() => setModalOpen(true)}
-                    style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: "8px",
-                        background: "linear-gradient(135deg, #363D48)",
-                        color: "#fff",
-                        border: "none",
-                        borderRadius: "10px",
-                        padding: "9px 18px",
-                        fontSize: "13px",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        transition: "transform 0.15s",
-                    }}
-                    onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = "translateY(-2px)";
-                    }}
-                    onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = "translateY(0)";
-                    }}
-                >
-                    <FaPlus style={{ fontSize: "11px" }} />
-                    Tambah Employee
-                </button>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    {/* Button Tambah Employee — disembunyikan saat mode hapus aktif */}
+                    {!deleteMode && (
+                        <button
+                            type="button"
+                            onClick={() => setModalOpen(true)}
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "8px",
+                                background: "linear-gradient(135deg, #363D48)",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: "10px",
+                                padding: "9px 18px",
+                                fontSize: "13px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                                transition: "transform 0.15s",
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = "translateY(-2px)";
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = "translateY(0)";
+                            }}
+                        >
+                            <FaPlus style={{ fontSize: "11px" }} />
+                            Tambah Employee
+                        </button>
+                    )}
+
+                    {/* Mode hapus TIDAK aktif → tampilkan tombol trash */}
+                    {!deleteMode && (
+                        <button
+                            type="button"
+                            onClick={handleEnterDeleteMode}
+                            style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                background: "#b91c1c",
+                                color: "#fff",
+                                border: "none",
+                                borderRadius: "10px",
+                                padding: "9px 12px",
+                                fontSize: "13px",
+                                fontWeight: 600,
+                                cursor: "pointer",
+                            }}
+                            title="Pilih data untuk dihapus"
+                        >
+                            <FaTrash />
+                        </button>
+                    )}
+
+                    {/* Mode hapus AKTIF → tombol Batal + Hapus */}
+                    {deleteMode && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={handleExitDeleteMode}
+                                style={{
+                                    border: "1.5px solid #e5e7eb",
+                                    borderRadius: "10px",
+                                    padding: "9px 18px",
+                                    fontSize: "13px",
+                                    color: "#6b7280",
+                                    background: "#fff",
+                                    cursor: "pointer",
+                                    fontWeight: 500,
+                                }}
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setDeleteError("");
+                                    setDeleteBatchOpen(true);
+                                }}
+                                disabled={selectedIds.size === 0}
+                                style={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "8px",
+                                    background: "#dc2626",
+                                    opacity: selectedIds.size === 0 ? 0.4 : 1,
+                                    color: "#fff",
+                                    border: "none",
+                                    borderRadius: "10px",
+                                    padding: "9px 18px",
+                                    fontSize: "13px",
+                                    fontWeight: 600,
+                                    cursor: selectedIds.size === 0 ? "not-allowed" : "pointer",
+                                }}
+                                title={selectedIds.size === 0 ? "Pilih data terlebih dahulu" : `Hapus ${selectedIds.size} data terpilih`}
+                            >
+                                <FaTrash style={{ fontSize: "11px" }} />
+                                Hapus {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+                            </button>
+                        </>
+                    )}
+                </div>
             </div>
 
             <div className="overflow-x-auto" style={{ marginLeft: "10px", marginRight: "10px" }}>
-                <table className="w-full text-sm border border-gray-300 text-center">
+                <table className="w-full text-sm border border-gray-300">
                     <thead>
-                        <tr className="text-xs uppercase tracking-wide bg-gray-50">
+                        <tr className="text-xs uppercase tracking-wide bg-gray-50 text-center">
                             <th className="p-3 font-medium border border-gray-300 text-center">No</th>
                             {columns.map((col) => (
                                 <th key={col.key} className="p-3 font-medium border border-gray-300 text-center">
@@ -327,13 +517,16 @@ export default function Employee() {
                                 </th>
                             ))}
                             <th className="p-3 font-medium border border-gray-300 text-center">Action</th>
+                            {deleteMode && (
+                                <th className="p-3 font-medium border border-gray-300 text-center">Pilih</th>
+                            )}
                         </tr>
                     </thead>
 
                     {filteredRows.length === 0 && (
                         <tbody>
                             <tr>
-                                <td colSpan={columns.length + 2} className="p-8 text-center text-gray-400 border border-gray-300">
+                                <td colSpan={columns.length + 2 + (deleteMode ? 1 : 0)} className="p-8 text-center text-gray-400 border border-gray-300">
                                     {rows.length === 0 ? "Belum ada data." : "Data tidak ditemukan."}
                                 </td>
                             </tr>
@@ -343,24 +536,51 @@ export default function Employee() {
                     {filteredRows.length > 0 && (
                         <tbody>
                             {currentRows.map((row, idx) => (
-                                <tr key={row.id} className="hover:bg-gray-50">
-                                    <td className="p-3 text-gray-700 border border-gray-300">{startEntry + idx}</td>
+                                <tr
+                                    key={row.id}
+                                    className={`hover:bg-gray-50 ${deleteMode && selectedIds.has(row.id) ? "bg-red-50" : ""}`}
+                                >
+                                    <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
+                                        {startEntry + idx}
+                                    </td>
                                     {columns.map((col) => (
-                                        <td key={col.key} className="p-3 text-gray-700 border border-gray-300">
+                                        <td key={col.key} className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
                                             {row[col.key] ?? "-"}
                                         </td>
                                     ))}
                                     <td className="p-3 border border-gray-300">
-                                        <button
-                                            type="button"
-                                            onClick={() => handleDeleteClick(row)}
-                                            className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-md"
-                                            style={{ padding: "5px 5px" }}
-                                            title="Hapus"
-                                        >
-                                            <FaTrash className="text-xs" />
-                                        </button>
+                                        <div className="flex items-center justify-center gap-1.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleEditClick(row)}
+                                                className="bg-blue-600 hover:bg-blue-700 text-white p-1.5 rounded-md"
+                                                style={{ padding: "5px 5px" }}
+                                                title="Edit"
+                                            >
+                                                <FaEdit className="text-xs" />
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleDeleteClick(row)}
+                                                className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-md"
+                                                style={{ padding: "5px 5px" }}
+                                                title="Hapus"
+                                            >
+                                                <FaTrash className="text-xs" />
+                                            </button>
+                                        </div>
                                     </td>
+                                    {/* Kolom checkbox seleksi hapus — hanya muncul saat deleteMode */}
+                                    {deleteMode && (
+                                        <td className="p-3 border border-gray-300 text-center">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedIds.has(row.id)}
+                                                onChange={() => toggleSelectRow(row.id)}
+                                                className="w-4 h-4 accent-red-600 cursor-pointer"
+                                            />
+                                        </td>
+                                    )}
                                 </tr>
                             ))}
                         </tbody>
@@ -511,12 +731,145 @@ export default function Employee() {
                                 onClick={handleDeleteConfirm}
                                 style={{
                                     background: "linear-gradient(135deg, #ef4444, #dc2626)", border: "none", borderRadius: "10px",
-                                    padding: "8px 20px", fontSize: "13px", color: "#fff", cursor: "pointer", fontWeight: 600, boxShadow: "0 4px 12px rgba(239,68,68,0.3)",
+                                    padding: "8px 20px", fontSize: "13px", color: "#fff", cursor: "pointer", fontWeight: 600
                                 }}
                             >
                                 Ya, Hapus
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ========== MODAL KONFIRMASI HAPUS BATCH ========== */}
+            {deleteBatchOpen && (
+                <div
+                    style={{
+                        position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center",
+                        justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)",
+                    }}
+                >
+                    <div style={{ background: "#fff", borderRadius: "20px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", width: "100%", maxWidth: "380px", animation: "slideDown 0.25s ease" }}>
+                        <div style={{ padding: "20px 20px 15px" }}>
+                            <h3 style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 700, color: "#1e1b4b" }}>Hapus Data Terpilih</h3>
+                            <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
+                                Apakah Anda yakin ingin menghapus{" "}
+                                <span style={{ fontWeight: 700, color: "#dc2626" }}>{selectedIds.size} data</span>{" "}
+                                yang telah dipilih?
+                            </p>
+
+                            {deleteError && (
+                                <div style={{ marginTop: "12px", fontSize: "13px", color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "10px 12px" }}>
+                                    {deleteError}
+                                </div>
+                            )}
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", padding: "16px 24px 24px", borderTop: "1px solid #f1f5f9" }}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setDeleteBatchOpen(false);
+                                    handleExitDeleteMode();
+                                }}
+                                disabled={deleting}
+                                style={{ border: "1.5px solid #e5e7eb", borderRadius: "10px", padding: "8px 20px", fontSize: "13px", color: "#6b7280", background: "#fff", cursor: "pointer", fontWeight: 500, opacity: deleting ? 0.6 : 1 }}
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDeleteBatchConfirm}
+                                disabled={deleting}
+                                style={{
+                                    background: "linear-gradient(135deg, #ef4444, #dc2626)", border: "none", borderRadius: "10px",
+                                    padding: "8px 20px", fontSize: "13px", color: "#fff", cursor: "pointer", fontWeight: 600, opacity: deleting ? 0.6 : 1,
+                                }}
+                            >
+                                {deleting ? "Menghapus..." : "Ya, Hapus"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ========== MODAL EDIT EMPLOYEE ========== */}
+            {editRow && (
+                <div
+                    style={{
+                        position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center",
+                        justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)", padding: "16px",
+                    }}
+                >
+                    <div
+                        style={{
+                            background: "#fff", borderRadius: "20px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+                            width: "100%", maxWidth: "440px", maxHeight: "90vh", overflowY: "auto", animation: "slideDown 0.25s ease",
+                        }}
+                    >
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "20px 24px 16px", borderBottom: "1px solid #f1f5f9" }}>
+                            <h3 style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#59616F" }}>Edit Employee</h3>
+                            <button
+                                type="button"
+                                onClick={handleEditClose}
+                                style={{ background: "#f3f4f6", border: "none", borderRadius: "8px", padding: "6px 8px", cursor: "pointer", color: "#6b7280", lineHeight: 1 }}
+                            >
+                                <FaTimes />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleEditSubmit} style={{ padding: "20px 24px 24px", display: "flex", flexDirection: "column", gap: "16px" }}>
+                            {fields.map((field) => (
+                                <div key={field.name}>
+                                    <label style={{ display: "block", fontSize: "13px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>
+                                        {field.label}
+                                    </label>
+                                    <input
+                                        type={field.type || "text"}
+                                        name={field.name}
+                                        value={editForm[field.name]}
+                                        onChange={handleEditChange}
+                                        placeholder={field.placeholder}
+                                        style={{
+                                            width: "100%", border: "1.5px solid #e5e7eb", borderRadius: "10px", padding: "9px 12px",
+                                            fontSize: "13px", outline: "none", boxSizing: "border-box", transition: "border-color 0.2s, box-shadow 0.2s",
+                                        }}
+                                        onFocus={(e) => {
+                                            e.target.style.borderColor = "#59616F";
+                                            e.target.style.boxShadow = "0 0 0 3px #59616F33";
+                                        }}
+                                        onBlur={(e) => {
+                                            e.target.style.borderColor = "#e5e7eb";
+                                            e.target.style.boxShadow = "none";
+                                        }}
+                                    />
+                                </div>
+                            ))}
+
+                            {editError && (
+                                <div style={{ fontSize: "13px", color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "10px 12px" }}>
+                                    {editError}
+                                </div>
+                            )}
+
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "4px", paddingTop: "16px", borderTop: "1px solid #f1f5f9" }}>
+                                <button
+                                    type="button"
+                                    onClick={handleEditClose}
+                                    style={{ border: "1.5px solid #e5e7eb", borderRadius: "10px", padding: "8px 20px", fontSize: "13px", color: "#6b7280", background: "#fff", cursor: "pointer", fontWeight: 500 }}
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    style={{
+                                        background: "linear-gradient(135deg, #2563eb, #1d4ed8)", border: "none", borderRadius: "10px",
+                                        padding: "8px 20px", fontSize: "13px", color: "#fff", cursor: "pointer", fontWeight: 600,
+                                    }}
+                                >
+                                    Perbarui
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
