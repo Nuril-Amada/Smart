@@ -1230,7 +1230,10 @@ export default function Table({ startDate, endDate, refreshKey }) {
                             <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
                                 <button
                                     type="button"
-                                    onClick={() => setDeleteBatchOpen(false)}
+                                    onClick={() => {
+                                        setDeleteBatchOpen(false);
+                                        handleExitDeleteMode();
+                                    }}
                                     disabled={deleting}
                                     className="border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
                                     style={{ padding: "5px 14px" }}
