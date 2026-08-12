@@ -343,10 +343,35 @@ export default function Table({ startDate, endDate, refreshKey }) {
     const [requestSubmitting, setRequestSubmitting] = useState(false);
     const [requestError, setRequestError] = useState("");
 
-    // DELETE CONFIRM
-    const [rowToDelete, setRowToDelete] = useState(null);
+    // DELETE — mode seleksi batch
+    const [deleteMode, setDeleteMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [deleteBatchOpen, setDeleteBatchOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState("");
+
+    // toggle satu baris
+    const toggleSelectRow = (id) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    // aktifkan / matikan mode hapus
+    const handleEnterDeleteMode = () => {
+        setDeleteMode(true);
+        setSelectedIds(new Set());
+        setDeleteError("");
+    };
+
+    const handleExitDeleteMode = () => {
+        setDeleteMode(false);
+        setSelectedIds(new Set());
+        setDeleteError("");
+    };
 
     // CANCEL CONFIRM
     const [rowToCancel, setRowToCancel] = useState(null);
@@ -595,44 +620,23 @@ export default function Table({ startDate, endDate, refreshKey }) {
         }
     };
 
-    // ACTION: HAPUS (dengan konfirmasi)
-    const handleDeleteClick = (row) => {
-        setRowToDelete(row);
-        setDeleteError("");
-    };
-
-    const handleDeleteCancel = () => {
-        setRowToDelete(null);
-        setDeleteError("");
-    };
-
-    const handleDeleteConfirm = async () => {
-        if (!rowToDelete) return;
-
+    // ACTION: HAPUS BATCH
+    const handleDeleteBatchConfirm = async () => {
+        if (selectedIds.size === 0) return;
         try {
-
             setDeleting(true);
             setDeleteError("");
-
-            await deleteAdvanceRequest(
-                rowToDelete.id
-            );
-
-            setRowToDelete(null);
-
+            await Promise.all([...selectedIds].map((id) => deleteAdvanceRequest(id)));
+            setDeleteBatchOpen(false);
+            setDeleteMode(false);
+            setSelectedIds(new Set());
             loadData();
-
         } catch (err) {
-
             setDeleteError(
-                err.response?.data?.detail ||
-                "Gagal menghapus data."
+                err.response?.data?.detail || "Gagal menghapus data."
             );
-
         } finally {
-
             setDeleting(false);
-
         }
     };
 
@@ -819,15 +823,58 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
                     <div className="flex-1" />
 
-                    <button
-                        type="button"
-                        onClick={() => setRequestOpen(true)}
-                        className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-                        style={{ marginBottom: "10px", marginRight: "20px", padding: "5px 10px" }}
-                    >
-                        <FaPlus className="text-xs" />
-                        New Request
-                    </button>
+                    <div className="flex items-center gap-2" style={{ marginBottom: "10px", marginRight: "20px" }}>
+                        {/* Button New Request — disembunyikan saat mode hapus aktif */}
+                        {!deleteMode && (
+                            <button
+                                type="button"
+                                onClick={() => setRequestOpen(true)}
+                                className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors"
+                                style={{ padding: "5px 10px" }}
+                            >
+                                <FaPlus className="text-xs" />
+                                New Request
+                            </button>
+                        )}
+
+                        {/* Mode hapus TIDAK aktif → tampilkan tombol trash */}
+                        {!deleteMode && (
+                            <button
+                                type="button"
+                                onClick={handleEnterDeleteMode}
+                                className="flex items-center gap-2 bg-red-700 hover:bg-red-800 text-white text-sm font-medium rounded-lg transition-colors"
+                                style={{ padding: "8px 10px" }}
+                                title="Pilih data untuk dihapus"
+                            >
+                                <FaTrash />
+                            </button>
+                        )}
+
+                        {/* Mode hapus AKTIF → tombol Batal + Hapus */}
+                        {deleteMode && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={handleExitDeleteMode}
+                                    className="flex items-center gap-2 border border-gray-300 text-gray-600 hover:bg-gray-50 text-sm font-medium rounded-lg transition-colors"
+                                    style={{ padding: "5px 10px" }}
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setDeleteError(""); setDeleteBatchOpen(true); }}
+                                    disabled={selectedIds.size === 0}
+                                    className="flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+                                    style={{ padding: "5px 10px" }}
+                                    title={selectedIds.size === 0 ? "Pilih data terlebih dahulu" : `Hapus ${selectedIds.size} data terpilih`}
+                                >
+                                    <FaTrash className="text-xs" />
+                                    Hapus {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 {/* TABLE */}
@@ -844,6 +891,9 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 <th className="p-3 font-medium border border-gray-300">Due Date</th>
                                 <th className="p-3 font-medium border border-gray-300">Status</th>
                                 <th className="p-3 font-medium border border-gray-300">Action</th>
+                                {deleteMode && (
+                                    <th className="p-3 font-medium border border-gray-300 text-center">Pilih</th>
+                                )}
                             </tr>
                         </thead>
 
@@ -852,7 +902,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                         {!loading && !error && currentRows.length === 0 && (
                             <tbody>
                                 <tr>
-                                    <td colSpan={8} className="p-8 text-center text-gray-400 border border-gray-300">
+                                    <td colSpan={deleteMode ? 10 : 9} className="p-8 text-center text-gray-400 border border-gray-300">
                                         Belum ada data advance.
                                     </td>
                                 </tr>
@@ -862,7 +912,10 @@ export default function Table({ startDate, endDate, refreshKey }) {
                         {!loading && !error && currentRows.length > 0 && (
                             <tbody>
                                 {currentRows.map((row, index) => (
-                                    <tr key={index} className="hover:bg-gray-50">
+                                    <tr
+                                        key={index}
+                                        className={`hover:bg-gray-50 ${deleteMode && selectedIds.has(row.id) ? "bg-red-50" : ""}`}
+                                    >
                                         <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300">
                                             {formatDate(row.tanggal)}
                                         </td>
@@ -879,8 +932,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         <td className="py-3 px-5 border border-gray-300 text-center">
                                             <span
                                                 onClick={() => handleStatusClick(row)}
-                                                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_STYLE[row.status] || "bg-gray-100 text-gray-600"
-                                                    } ${row.status === "Settled" || row.status === "Active" || row.status === "Overdue" ? "cursor-pointer hover:opacity-75" : ""}`} style={{ padding: "1px 3px" }}
+                                                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_STYLE[row.status] || "bg-gray-100 text-gray-600"} ${row.status === "Settled" || row.status === "Active" || row.status === "Overdue" ? "cursor-pointer hover:opacity-75" : ""}`}
+                                                style={{ padding: "1px 3px" }}
                                             >
                                                 {row.status}
                                             </span>
@@ -891,21 +944,24 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                                     type="button"
                                                     onClick={() => handleCancelClick(row)}
                                                     disabled={row.status === "Canceled"}
-                                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-medium px-3 py-1.5 rounded-md whitespace-nowrap" style={{ padding: "1px 3px" }}
+                                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-medium px-3 py-1.5 rounded-md whitespace-nowrap"
+                                                    style={{ padding: "1px 3px" }}
                                                 >
                                                     Batal
                                                 </button>
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleDeleteClick(row)}
-                                                    className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-md" style={{ padding: "5px 5px" }}
-                                                    title="Hapus"
-                                                >
-                                                    <FaTrash className="text-xs" />
-                                                </button>
                                             </div>
                                         </td>
+                                        {/* Kolom checkbox seleksi hapus — hanya muncul saat deleteMode */}
+                                        {deleteMode && (
+                                            <td className="p-3 border border-gray-300 text-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.has(row.id)}
+                                                    onChange={() => toggleSelectRow(row.id)}
+                                                    className="w-4 h-4 accent-red-600 cursor-pointer"
+                                                />
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>
@@ -1148,19 +1204,20 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     </div>
                 )}
 
-                {/* MODAL Konfirmasi Hapus */}
-                {rowToDelete && (
+                {/* MODAL Konfirmasi Hapus Batch */}
+                {deleteBatchOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                        <div className="bg-white rounded-none shadow-lg w-full max-w-sm">
-                            <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
+                        <div className="bg-white rounded-xl shadow-lg w-full max-w-sm">
+                            <div className="px-6 py-5" style={{ marginTop: "5px" }}>
                                 <h3 className="text-lg font-semibold text-gray-700 mb-2">
-                                    Hapus Data
+                                    Hapus Data Terpilih
                                 </h3>
                                 <p className="text-sm text-gray-500">
-                                    Apakah anda yakin ingin menghapus data advance atas nama{" "}
-                                    <span className="font-medium text-gray-700">
-                                        {rowToDelete.nama_user}
+                                    Apakah Anda yakin ingin menghapus{" "}
+                                    <span className="font-semibold text-red-600">
+                                        {selectedIds.size} data
                                     </span>{" "}
+                                    yang telah dipilih?
                                 </p>
 
                                 {deleteError && (
@@ -1170,21 +1227,23 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 )}
                             </div>
 
-                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px", marginTop: "10px" }}>
+                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
                                 <button
                                     type="button"
-                                    onClick={handleDeleteCancel}
+                                    onClick={() => setDeleteBatchOpen(false)}
                                     disabled={deleting}
-                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
+                                    className="border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                                    style={{ padding: "5px 14px" }}
                                 >
                                     Batal
                                 </button>
 
                                 <button
                                     type="button"
-                                    onClick={handleDeleteConfirm}
+                                    onClick={handleDeleteBatchConfirm}
                                     disabled={deleting}
-                                    className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
+                                    className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm"
+                                    style={{ padding: "5px 14px" }}
                                 >
                                     {deleting ? "Menghapus..." : "Ya, Hapus"}
                                 </button>
