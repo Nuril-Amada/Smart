@@ -11,9 +11,9 @@ export default function Navbar() {
   const pageTitle = {
     "/Dashboard": "Dashboard Petty Cash",
     "/CetakCek": "Cetak Cek",
-    "/CetakCekBaru": "Buat Cek Baru",
     "/Settlement": "Dashboard Settlement",
     "/Advance": "Dashboard Advance",
+    "/CashOpname": "Cash Opname", 
     "/MasterData": "Master Data",
   };
 
