@@ -4,14 +4,23 @@ import {
     FaSave,
     FaPrint,
     FaDownload,
-    FaRedo,
     FaSearch,
     FaTimes,
     FaChevronLeft,
     FaChevronRight,
     FaTrashAlt,
     FaExclamationTriangle,
+    FaEdit,
 } from "react-icons/fa";
+// import {
+//     getCashOpnameHistory,
+//     saveCashOpname,
+//     updateCashOpname,
+//     deleteCashOpname,
+//     getSettlementRecap,
+//     getAdvanceRecap,
+// } from "../api/cash_opname";
+// import { getEmployees } from "../api/employee";
 
 export const meta = {
     id: "cash_opname",
@@ -25,6 +34,11 @@ const COMPANY_NAME = "PT. SMART Tbk Unit SURABAYA";
 function formatCurrency(n) {
     const num = Number(n) || 0;
     return "Rp " + num.toLocaleString("id-ID");
+}
+
+function formatNumberID(n) {
+    const num = Number(n) || 0;
+    return num.toLocaleString("id-ID");
 }
 
 function formatDateID(isoDate) {
@@ -43,7 +57,7 @@ function formatTimeID(date) {
     }).format(date);
 }
 
-function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder }) {
+function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder, inputStyle, wrapperStyle }) {
     const [open, setOpen] = useState(false);
     const [highlight, setHighlight] = useState(-1);
     const containerRef = useRef(null);
@@ -89,7 +103,7 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
     };
 
     return (
-        <div className="relative" ref={containerRef}>
+        <div className="relative" ref={containerRef} style={wrapperStyle}>
             <div className="relative">
                 <input
                     type="text"
@@ -99,7 +113,8 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
                     onKeyDown={handleKeyDown}
                     placeholder={placeholder}
                     autoComplete="off"
-                    className="border border-gray-300 rounded-lg text-sm pl-3 pr-8 py-2 text-gray-700 w-full focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
+                    className="border border-gray-300 rounded-lg text-sm pl-3 pr-8 py-2 text-gray-700 w-50 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
+                    style={inputStyle}
                 />
                 {value ? (
                     <button
@@ -114,7 +129,7 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
                         <FaTimes className="text-xs" />
                     </button>
                 ) : (
-                    <FaSearch className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none" />
+                    <FaSearch className="absolute right-42 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none" />
                 )}
             </div>
 
@@ -139,100 +154,267 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
     );
 }
 
-// ===== Bangun HTML untuk jendela cetak / file unduhan, mengikuti layout template excel =====
-// NOTE: Jam sengaja TIDAK ditampilkan pada laporan (cetak/unduh), hanya tampil live di form.
+function getRowInfo(r) {
+    const tanggal = formatDateID(r.tanggal);
+    const tipe = r.tipe || "STLM";
+    const kode = r.kode || r.ppc_no || "-";
+    let namaUser = r.namaUser || r.nama_user || "";
+    let keterangan = r.keterangan || r.description || "";
+
+    if (!namaUser && keterangan) {
+        if (keterangan.includes(", BY ")) {
+            const parts = keterangan.split(", BY ");
+            namaUser = parts[0];
+            keterangan = "BY " + parts.slice(1).join(", BY ");
+        } else if (keterangan.includes(" BY ")) {
+            const parts = keterangan.split(" BY ");
+            namaUser = parts[0];
+            keterangan = "BY " + parts.slice(1).join(" BY ");
+        }
+    }
+
+    return {
+        tanggal,
+        tipe,
+        kode,
+        namaUser: namaUser || "-",
+        keterangan: keterangan || "-",
+        jumlah: formatNumberID(r.jumlah),
+    };
+}
+
+// ===== Bangun HTML untuk jendela cetak / file unduhan, mengikuti format laporan resmi =====
 function buildPrintHtml(record) {
-    const rowsA = record.settlementRows
-        .map(
-            (r) => `
+    const rowsA = (record.settlementRows || [])
+        .map((r) => {
+            const info = getRowInfo(r);
+            return `
         <tr>
-            <td style="padding:4px 6px;border:1px solid #999;">${formatDateID(r.tanggal)}</td>
-            <td style="padding:4px 6px;border:1px solid #999;">${r.kode}</td>
-            <td style="padding:4px 6px;border:1px solid #999;">${r.keterangan}</td>
-            <td style="padding:4px 6px;border:1px solid #999;text-align:right;">${formatCurrency(r.jumlah)}</td>
-        </tr>`
-        )
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.tanggal}</td>
+            <td style="padding:4px 8px;text-align:center;border-bottom:1px solid #eee;">${info.tipe}</td>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.kode}</td>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.namaUser}</td>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.keterangan}</td>
+            <td style="padding:4px 8px;text-align:right;border-bottom:1px solid #eee;">${info.jumlah}</td>
+        </tr>`;
+        })
         .join("");
 
-    const rowsB = record.advanceRows
-        .map(
-            (r) => `
+    const rowsB = (record.advanceRows || [])
+        .map((r, idx) => {
+            const info = getRowInfo(r);
+            if (!r.tipe) info.tipe = "UM" + (idx + 1);
+            return `
         <tr>
-            <td style="padding:4px 6px;border:1px solid #999;">${formatDateID(r.tanggal)}</td>
-            <td style="padding:4px 6px;border:1px solid #999;">${r.kode}</td>
-            <td style="padding:4px 6px;border:1px solid #999;">${r.keterangan}</td>
-            <td style="padding:4px 6px;border:1px solid #999;text-align:right;">${formatCurrency(r.jumlah)}</td>
-        </tr>`
-        )
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.tanggal}</td>
+            <td style="padding:4px 8px;text-align:center;border-bottom:1px solid #eee;">${info.tipe}</td>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.kode}</td>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.namaUser}</td>
+            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.keterangan}</td>
+            <td style="padding:4px 8px;text-align:right;border-bottom:1px solid #eee;">${info.jumlah}</td>
+        </tr>`;
+        })
         .join("");
 
     return `
+    <!DOCTYPE html>
     <html>
     <head>
-        <title>Cash Opname - ${formatDateID(record.dariTanggal)} s/d ${formatDateID(record.sampaiTanggal)}</title>
+        <meta charset="utf-8" />
+        <title>PETTY CASH - PER TGL : ${formatDateID(record.sampaiTanggal)}</title>
         <style>
-            body { font-family: Arial, sans-serif; font-size: 12px; color: #111; padding: 24px; }
-            h1 { font-size: 16px; margin: 0; text-align:center; }
-            .center { text-align:center; }
-            table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-            th { background:#f3f4f6; border:1px solid #999; padding:4px 6px; text-align:left; }
-            .total-row td { font-weight:bold; border:1px solid #999; padding:4px 6px; }
-            .saldo-box { display:flex; justify-content:space-between; margin-top:14px; font-weight:bold; }
-            .summary { margin-top:10px; }
-            .summary div { display:flex; justify-content:space-between; padding:2px 0; font-weight:bold; }
-            .footer { display:flex; justify-content:space-between; margin-top:60px; }
-            .sign { text-align:center; width:45%; }
-            .sign-line { margin-top:56px; border-top:1px solid #111; padding-top:4px; }
+            @page {
+                size: A4 portrait;
+                margin: 15mm;
+            }
+            body {
+                font-family: Arial, sans-serif;
+                font-size: 11px;
+                color: #000;
+                line-height: 1.4;
+                padding: 15px;
+                margin: 0;
+            }
+            .header-title {
+                text-align: center;
+                margin-bottom: 16px;
+            }
+            .header-title h1 {
+                font-size: 14px;
+                font-weight: bold;
+                margin: 0 0 2px 0;
+                letter-spacing: 0.5px;
+            }
+            .header-title h2 {
+                font-size: 12px;
+                font-weight: bold;
+                margin: 0 0 10px 0;
+            }
+            .header-title .period {
+                font-size: 11px;
+                font-weight: bold;
+                margin-bottom: 12px;
+            }
+            .saldo-header {
+                display: flex;
+                justify-content: space-between;
+                font-weight: bold;
+                font-size: 11px;
+                margin-bottom: 12px;
+                padding-bottom: 4px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 4px;
+            }
+            th {
+                text-align: left;
+                font-weight: bold;
+                padding: 4px 8px;
+                font-size: 11px;
+                border-bottom: 1px solid #333;
+            }
+            td {
+                font-size: 11px;
+            }
+            .section-label {
+                font-weight: bold;
+                font-size: 11px;
+                margin-top: 14px;
+                margin-bottom: 4px;
+            }
+            .subtotal-row td {
+                font-weight: bold;
+                padding: 6px 8px;
+                border-top: 1px solid #333;
+            }
+            .summary-container {
+                margin-top: 16px;
+                display: flex;
+                flex-direction: column;
+                align-items: flex-end;
+            }
+            .summary-table {
+                width: 320px;
+                margin-top: 4px;
+            }
+            .summary-table td {
+                padding: 4px 6px;
+                font-weight: bold;
+                font-size: 11px;
+            }
+            .signature-section {
+                margin-top: 60px;
+                display: flex;
+                justify-content: space-between;
+            }
+            .sign-box-left {
+                width: 55%;
+            }
+            .sign-box-right {
+                width: 35%;
+                text-align: center;
+            }
+            .sign-header {
+                font-weight: bold;
+                margin-bottom: 55px;
+            }
+            .sign-names-left {
+                display: flex;
+                justify-content: flex-start;
+                gap: 50px;
+                font-weight: bold;
+            }
+            .sign-names-right {
+                font-weight: bold;
+            }
         </style>
     </head>
     <body>
-        <h1>PETTY CASH</h1>
-        <div class="center">${COMPANY_NAME}</div>
-        <div class="center">PERIODE : ${formatDateID(record.dariTanggal)} s/d ${formatDateID(record.sampaiTanggal)}</div>
+        <div class="header-title">
+            <h1>PETTY CASH</h1>
+            <h2>${COMPANY_NAME}</h2>
+            <div class="period">PER TGL : ${formatDateID(record.sampaiTanggal)}</div>
+        </div>
 
-        <div class="saldo-box">
+        <div class="saldo-header">
             <span>PETTY CASH SURABAYA</span>
-            <span>${formatCurrency(record.saldoAwal)}</span>
+            <span>${formatNumberID(record.saldoAwal)},00</span>
         </div>
 
-        <div style="font-weight:bold;margin-top:14px;">A. PENGELUARAN YG SDH SELESAI</div>
+        <div class="section-label">A. PENGELUARAN YG SDH SELESAI</div>
         <table>
             <thead>
-                <tr><th>Tanggal</th><th>Kode</th><th>Keterangan</th><th style="text-align:right;">Jumlah</th></tr>
+                <tr>
+                    <th style="width: 12%;">Tanggal</th>
+                    <th style="width: 8%; text-align: center;">Tipe</th>
+                    <th style="width: 16%;">Nomor PPC</th>
+                    <th style="width: 20%;">Nama User</th>
+                    <th style="width: 28%;">Keterangan</th>
+                    <th style="width: 16%; text-align: right;">Jumlah</th>
+                </tr>
             </thead>
             <tbody>
-                ${rowsA || `<tr><td colspan="4" style="padding:8px;border:1px solid #999;text-align:center;color:#888;">Tidak ada data</td></tr>`}
-                <tr class="total-row"><td colspan="3" style="text-align:right;">Total A</td><td style="text-align:right;">${formatCurrency(record.totalA)}</td></tr>
+                ${rowsA ||
+        `<tr><td colSpan="6" style="text-align:center;padding:8px;color:#888;">Tidak ada data pengeluaran</td></tr>`
+        }
+                <tr class="subtotal-row">
+                    <td colSpan="5"></td>
+                    <td style="text-align: right;">${formatNumberID(record.totalA)}</td>
+                </tr>
             </tbody>
         </table>
 
-        <div style="font-weight:bold;margin-top:14px;">B. UANG MUKA</div>
+        <div class="section-label" style="margin-top: 16px;">B. UANG MUKA</div>
         <table>
             <thead>
-                <tr><th>Tanggal</th><th>Kode</th><th>Keterangan</th><th style="text-align:right;">Jumlah</th></tr>
+                <tr>
+                    <th style="width: 12%;">Tanggal</th>
+                    <th style="width: 8%; text-align: center;">Tipe</th>
+                    <th style="width: 16%;">Nomor PPC</th>
+                    <th style="width: 20%;">Nama User</th>
+                    <th style="width: 28%;">Keterangan</th>
+                    <th style="width: 16%; text-align: right;">Jumlah</th>
+                </tr>
             </thead>
             <tbody>
-                ${rowsB || `<tr><td colspan="4" style="padding:8px;border:1px solid #999;text-align:center;color:#888;">Tidak ada data</td></tr>`}
-                <tr class="total-row"><td colspan="3" style="text-align:right;">Total B</td><td style="text-align:right;">${formatCurrency(record.totalB)}</td></tr>
+                ${rowsB ||
+        `<tr><td colSpan="6" style="text-align:center;padding:8px;color:#888;">Tidak ada data uang muka</td></tr>`
+        }
+                <tr class="subtotal-row">
+                    <td colSpan="5"></td>
+                    <td style="text-align: right;">${formatNumberID(record.totalB)}</td>
+                </tr>
             </tbody>
         </table>
 
-        <div class="summary">
-            <div><span>TOTAL A + B</span><span>${formatCurrency(record.totalAB)}</span></div>
-            <div><span>SALDO AKHIR</span><span>${formatCurrency(record.saldoAkhir)}</span></div>
+        <div class="summary-container">
+            <table class="summary-table">
+                <tr>
+                    <td style="text-align: right; width: 60%;">TOTAL A + B</td>
+                    <td style="text-align: right; width: 40%;">${formatNumberID(record.totalAB)}</td>
+                </tr>
+                <tr>
+                    <td style="text-align: right;">SALDO AKHIR</td>
+                    <td style="text-align: right;">${formatNumberID(record.saldoAkhir)}</td>
+                </tr>
+            </table>
         </div>
 
-        <div class="footer">
-            <div class="sign">
-                Dibuat oleh :
-                <div style="display:flex;justify-content:space-around;">
-                    <div class="sign-line">${record.dibuatOleh1}</div>
-                    <div class="sign-line">${record.dibuatOleh2}</div>
+        <div class="signature-section">
+            <div class="sign-box-left">
+                <div class="sign-header">Dibuat oleh :</div>
+                <div class="sign-names-left">
+                    <span>${record.dibuatOleh1}</span>
+                    <span>${record.dibuatOleh2}</span>
                 </div>
             </div>
-            <div class="sign">
-                Mengetahui,
-                <div class="sign-line">${record.mengetahui}</div>
+            <div class="sign-box-right">
+                <div class="sign-header">Mengetahui,</div>
+                <div class="sign-names-right">
+                    <span>${record.mengetahui}</span>
+                </div>
             </div>
         </div>
     </body>
@@ -271,8 +453,6 @@ export default function CashOpname() {
     const [dibuatOleh2, setDibuatOleh2] = useState("");
     const [mengetahui, setMengetahui] = useState("");
 
-    // JAM OTOMATIS — berjalan sendiri (live clock) hanya untuk tampilan di form,
-    // TIDAK ikut dicetak/diunduh pada laporan.
     const [currentTime, setCurrentTime] = useState(new Date());
 
     useEffect(() => {
@@ -285,7 +465,6 @@ export default function CashOpname() {
     const [settlementRows, setSettlementRows] = useState([]);
     const [advanceRows, setAdvanceRows] = useState([]);
 
-    // Master nama pegawai untuk "Dibuat oleh" / "Mengetahui" — diambil dari backend
     const [employeeOptions, setEmployeeOptions] = useState([]);
 
     const [formError, setFormError] = useState("");
@@ -293,20 +472,16 @@ export default function CashOpname() {
 
     const [history, setHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(true);
-    const [historySearch, setHistorySearch] = useState("");
     const [page, setPage] = useState(1);
     const perPage = 10;
 
-    // Konfirmasi hapus history
+    const [editingId, setEditingId] = useState(null); // null = mode buat baru
+    const formRef = useRef(null);
+
     const [deleteTarget, setDeleteTarget] = useState(null);
     const [isDeleting, setIsDeleting] = useState(false);
-
-    // Status loading per aksi form: null | "simpan" | "cetak" | "unduh"
     const [actionLoading, setActionLoading] = useState(null);
 
-    // Ambil history dari backend saat komponen dimuat, lalu bisa dipanggil
-    // ulang (refreshHistory) setiap kali Simpan/Cetak/Unduh/Hapus berhasil
-    // dikonfirmasi oleh backend.
     const refreshHistory = async () => {
         try {
             const data = await getCashOpnameHistory();
@@ -322,12 +497,11 @@ export default function CashOpname() {
         refreshHistory();
     }, []);
 
-    // Ambil master pegawai sekali saat komponen dimuat.
     useEffect(() => {
         const loadEmployees = async () => {
             try {
                 const data = await getEmployees();
-                const names = data.map((e) => e.employee_name).filter(Boolean);
+                const names = (data || []).map((e) => e.employee_name).filter(Boolean);
                 setEmployeeOptions(names);
             } catch (err) {
                 console.error("Gagal memuat data employee:", err);
@@ -336,7 +510,6 @@ export default function CashOpname() {
         loadEmployees();
     }, []);
 
-    // Ambil rekap Settlement & Advance setiap kali rentang tanggal berubah.
     useEffect(() => {
         const loadRecap = async () => {
             if (!dariTanggal || !sampaiTanggal) {
@@ -358,8 +531,14 @@ export default function CashOpname() {
         loadRecap();
     }, [dariTanggal, sampaiTanggal]);
 
-    const totalA = useMemo(() => settlementRows.reduce((sum, r) => sum + Number(r.jumlah || 0), 0), [settlementRows]);
-    const totalB = useMemo(() => advanceRows.reduce((sum, r) => sum + Number(r.jumlah || 0), 0), [advanceRows]);
+    const totalA = useMemo(
+        () => settlementRows.reduce((sum, r) => sum + Number(r.jumlah || 0), 0),
+        [settlementRows]
+    );
+    const totalB = useMemo(
+        () => advanceRows.reduce((sum, r) => sum + Number(r.jumlah || 0), 0),
+        [advanceRows]
+    );
     const totalAB = totalA + totalB;
     const saldoAkhir = (Number(saldoAwal) || 0) - totalAB;
 
@@ -390,7 +569,7 @@ export default function CashOpname() {
             !dibuatOleh2.trim() ||
             !mengetahui.trim()
         ) {
-            setFormError("Dari tanggal, sampai tanggal, saldo awal, dibuat oleh (2 orang), dan mengetahui wajib diisi.");
+            setFormError("Silakan lengkapi form cash opname terlebih dahulu.");
             return false;
         }
         if (sampaiTanggal < dariTanggal) {
@@ -408,10 +587,9 @@ export default function CashOpname() {
     const buildRecord = (aksi) => {
         const now = new Date();
         return {
-            id: Date.now() + Math.random(),
             dariTanggal,
             sampaiTanggal,
-            jam: formatTimeID(now), // tetap disimpan untuk histori internal, tidak dicetak/diunduh
+            jam: formatTimeID(now),
             saldoAwal: Number(saldoAwal),
             dibuatOleh1: dibuatOleh1.trim(),
             dibuatOleh2: dibuatOleh2.trim(),
@@ -422,21 +600,23 @@ export default function CashOpname() {
             totalB,
             totalAB,
             saldoAkhir,
-            aksi, // "Simpan" | "Cetak" | "Unduh"
-            createdAt: now.toISOString(),
+            aksi,
         };
     };
 
-    // Simpan HANYA menunggu backend: baris baru muncul di table history
-    // setelah saveCashOpname() sukses dan history di-refresh dari server.
     const handleSimpan = async () => {
         if (!validateForm()) return;
         const record = buildRecord("Simpan");
         setActionLoading("simpan");
         try {
-            await saveCashOpname(record);
+            if (editingId) {
+                await updateCashOpname(editingId, record);
+            } else {
+                await saveCashOpname(record);
+            }
             await refreshHistory();
-            setSuccessMessage("Cash Opname berhasil disimpan.");
+            setEditingId(null);
+            setSuccessMessage(editingId ? "Cash Opname berhasil diperbarui." : "Cash Opname berhasil disimpan.");
             setTimeout(() => setSuccessMessage(""), 3000);
         } catch (err) {
             console.error("Gagal menyimpan Cash Opname:", err);
@@ -446,37 +626,20 @@ export default function CashOpname() {
         }
     };
 
-    // Cetak tetap membuka jendela print secara langsung (aksi lokal di browser),
-    // tapi baris history baru muncul setelah backend mengonfirmasi penyimpanan.
-    const handleCetak = async () => {
-        if (!validateForm()) return;
-        const record = buildRecord("Cetak");
-        printRecord(record);
-        setActionLoading("cetak");
-        try {
-            await saveCashOpname(record);
-            await refreshHistory();
-            setSuccessMessage("Cash Opname berhasil dicetak.");
-            setTimeout(() => setSuccessMessage(""), 3000);
-        } catch (err) {
-            console.error("Gagal menyimpan histori setelah cetak:", err);
-            setFormError("Berhasil dicetak, namun gagal tersimpan ke histori server.");
-        } finally {
-            setActionLoading(null);
-        }
-    };
-
-    // Unduh tetap mengunduh file secara langsung, tapi baris history baru
-    // muncul setelah backend mengonfirmasi penyimpanan.
     const handleUnduh = async () => {
         if (!validateForm()) return;
-        const record = buildRecord("Unduh");
-        downloadRecord(record);
+        const record = buildRecord("Unduh (PDF)");
+        printRecord(record);
         setActionLoading("unduh");
         try {
-            await saveCashOpname(record);
+            if (editingId) {
+                await updateCashOpname(editingId, record);
+            } else {
+                await saveCashOpname(record);
+            }
             await refreshHistory();
-            setSuccessMessage("Cash Opname berhasil diunduh.");
+            setEditingId(null);
+            setSuccessMessage(editingId ? "Cash Opname diperbarui & PDF dibuka." : "Cash Opname berhasil diunduh (PDF) dan disimpan ke histori.");
             setTimeout(() => setSuccessMessage(""), 3000);
         } catch (err) {
             console.error("Gagal menyimpan histori setelah unduh:", err);
@@ -486,11 +649,42 @@ export default function CashOpname() {
         }
     };
 
+    const handleEditRow = (row) => {
+        setDariTanggal(row.dariTanggal || "");
+        setSampaiTanggal(row.sampaiTanggal || "");
+        setSaldoAwal(String(row.saldoAwal || ""));
+        setDibuatOleh1(row.dibuatOleh1 || "");
+        setDibuatOleh2(row.dibuatOleh2 || "");
+        setMengetahui(row.mengetahui || "");
+        setSettlementRows(row.settlementRows || []);
+        setAdvanceRows(row.advanceRows || []);
+        setEditingId(row.id);
+        setFormError("");
+        // Scroll ke form
+        if (formRef.current) {
+            formRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setDariTanggal("");
+        setSampaiTanggal("");
+        setSaldoAwal("");
+        setDibuatOleh1("");
+        setDibuatOleh2("");
+        setMengetahui("");
+        setSettlementRows([]);
+        setAdvanceRows([]);
+        setEditingId(null);
+        setFormError("");
+    };
+
     const handleCetakUlang = (record) => {
         printRecord(record);
     };
 
-    // Hapus menunggu konfirmasi backend sebelum baris hilang dari table.
     const handleDeleteConfirmed = async () => {
         if (!deleteTarget) return;
         setIsDeleting(true);
@@ -508,26 +702,13 @@ export default function CashOpname() {
         }
     };
 
-    const filteredHistory = useMemo(() => {
-        const q = historySearch.toLowerCase().trim();
-        if (!q) return history;
-        return history.filter(
-            (h) =>
-                h.dariTanggal.includes(q) ||
-                h.sampaiTanggal.includes(q) ||
-                h.dibuatOleh1.toLowerCase().includes(q) ||
-                h.dibuatOleh2.toLowerCase().includes(q) ||
-                h.mengetahui.toLowerCase().includes(q)
-        );
-    }, [history, historySearch]);
-
     useEffect(() => {
         setPage(1);
-    }, [historySearch, history.length]);
+    }, [history.length]);
 
-    const total = filteredHistory.length;
+    const total = history.length;
     const totalPages = Math.max(1, Math.ceil(total / perPage));
-    const currentRows = filteredHistory.slice((page - 1) * perPage, page * perPage);
+    const currentRows = history.slice((page - 1) * perPage, page * perPage);
     const startEntry = total === 0 ? 0 : (page - 1) * perPage + 1;
     const endEntry = Math.min(page * perPage, total);
     const visiblePages = [];
@@ -623,153 +804,141 @@ export default function CashOpname() {
             {/* ================= FORM CASH OPNAME ================= */}
             <div
                 style={{
-                    background: "#fff", border: "1px solid #e5e7eb", borderRadius: "16px",
-                    padding: "20px", margin: "20px", boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
+                    background: "#fff", border: "1px solid #e5e7eb", borderRadius: "14px",
+                    padding: "16px 20px", margin: "20px", boxShadow: "0 1px 6px rgba(0,0,0,0.05)",
                 }}
             >
-                <h3 style={{ margin: "0 0 16px", fontSize: "15px", fontWeight: 700, color: "#363D48" }}>
+                <h3 style={{ margin: "0 0 12px", fontSize: "14px", fontWeight: 700, color: "#363D48" }}>
                     Buat Cash Opname
                 </h3>
 
-                {/* BARIS 1: Dari Tanggal, Sampai Tanggal, Jam (otomatis), Saldo Awal */}
-                <div
-                    style={{
-                        display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                        gap: "14px", marginBottom: "14px",
-                    }}
-                >
-                    <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>Dari Tanggal</label>
+                {/* BARIS 1: Dari Tanggal, Sampai Tanggal, Jam, Saldo Awal */}
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "10px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", minWidth: "130px", flex: "1" }}>
+                        <label style={{ fontSize: "11px", fontWeight: 600, color: "#6b7280", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Dari Tanggal</label>
                         <input
                             type="date"
                             value={dariTanggal}
                             onChange={(e) => setDariTanggal(e.target.value)}
-                            className="border border-gray-300 rounded-lg text-sm px-3 py-2 text-gray-700 w-full focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
+                            style={{ border: "1px solid #d1d5db", borderRadius: "8px", padding: "5px 8px", fontSize: "13px", color: "#374151", outline: "none", width: "100%" }}
+                            onFocus={(e) => e.target.style.borderColor = "#9ca3af"}
+                            onBlur={(e) => e.target.style.borderColor = "#d1d5db"}
                         />
                     </div>
 
-                    <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>Sampai Tanggal</label>
+                    <div style={{ display: "flex", flexDirection: "column", minWidth: "130px", flex: "1" }}>
+                        <label style={{ fontSize: "11px", fontWeight: 600, color: "#6b7280", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Sampai Tanggal</label>
                         <input
                             type="date"
                             value={sampaiTanggal}
                             onChange={(e) => setSampaiTanggal(e.target.value)}
-                            className="border border-gray-300 rounded-lg text-sm px-3 py-2 text-gray-700 w-full focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
+                            style={{ border: "1px solid #d1d5db", borderRadius: "8px", padding: "5px 8px", fontSize: "13px", color: "#374151", outline: "none", width: "100%" }}
+                            onFocus={(e) => e.target.style.borderColor = "#9ca3af"}
+                            onBlur={(e) => e.target.style.borderColor = "#d1d5db"}
                         />
                     </div>
 
-                    <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>Jam</label>
+                    <div style={{ display: "flex", flexDirection: "column", minWidth: "100px", flex: "0 0 auto" }}>
+                        <label style={{ fontSize: "11px", fontWeight: 600, color: "#6b7280", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Jam</label>
                         <input
                             type="text"
                             value={formatTimeID(currentTime)}
                             readOnly
                             title="Jam hanya tampil di form, tidak ikut dicetak/diunduh"
-                            className="border border-gray-300 rounded-lg text-sm px-3 py-2 text-gray-500 bg-gray-50 w-full focus:outline-none"
+                            style={{ border: "1px solid #e5e7eb", borderRadius: "8px", padding: "5px 8px", fontSize: "13px", fontWeight: 700, color: "#6b7280", background: "#f9fafb", outline: "none", width: "100%" }}
                         />
                     </div>
 
-                    <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>Saldo Awal (Petty Cash)</label>
+                    <div style={{ display: "flex", flexDirection: "column", minWidth: "150px", flex: "1" }}>
+                        <label style={{ fontSize: "11px", fontWeight: 600, color: "#6b7280", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Saldo Awal (Petty Cash)</label>
                         <input
                             type="number"
                             min="0"
                             value={saldoAwal}
                             onChange={(e) => setSaldoAwal(e.target.value)}
                             placeholder="45000000"
-                            className="border border-gray-300 rounded-lg text-sm px-3 py-2 text-gray-700 w-full focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
+                            style={{ border: "1px solid #d1d5db", borderRadius: "8px", padding: "5px 8px", fontSize: "13px", color: "#374151", outline: "none", width: "100%" }}
+                            onFocus={(e) => e.target.style.borderColor = "#9ca3af"}
+                            onBlur={(e) => e.target.style.borderColor = "#d1d5db"}
                         />
                     </div>
                 </div>
 
                 {/* BARIS 2: Dibuat Oleh (1), Dibuat Oleh (2), Mengetahui */}
-                <div
-                    style={{
-                        display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-                        gap: "14px", marginBottom: "10px",
-                    }}
-                >
-                    <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>Dibuat Oleh (1)</label>
-                        <AutocompleteInput
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "10px" }}>
+                    <div style={{ display: "flex", flexDirection: "column", minWidth: "140px", flex: "1" }}>
+                        <label style={{ fontSize: "11px", fontWeight: 600, color: "#6b7280", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Dibuat Oleh (1)</label>
+                        <input
+                            type="text"
                             value={dibuatOleh1}
-                            onChange={setDibuatOleh1}
-                            onSelect={setDibuatOleh1}
-                            suggestions={dibuatOleh1Suggestions}
+                            onChange={(e) => setDibuatOleh1(e.target.value)}
                             placeholder="Nama pembuat 1"
+                            style={{ border: "1px solid #d1d5db", borderRadius: "8px", padding: "5px 8px", fontSize: "13px", color: "#374151", outline: "none", width: "100%" }}
+                            onFocus={(e) => e.target.style.borderColor = "#9ca3af"}
+                            onBlur={(e) => e.target.style.borderColor = "#d1d5db"}
                         />
                     </div>
 
-                    <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>Dibuat Oleh (2)</label>
-                        <AutocompleteInput
+                    <div style={{ display: "flex", flexDirection: "column", minWidth: "140px", flex: "1" }}>
+                        <label style={{ fontSize: "11px", fontWeight: 600, color: "#6b7280", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Dibuat Oleh (2)</label>
+                        <input
+                            type="text"
                             value={dibuatOleh2}
-                            onChange={setDibuatOleh2}
-                            onSelect={setDibuatOleh2}
-                            suggestions={dibuatOleh2Suggestions}
+                            onChange={(e) => setDibuatOleh2(e.target.value)}
                             placeholder="Nama pembuat 2"
+                            style={{ border: "1px solid #d1d5db", borderRadius: "8px", padding: "5px 8px", fontSize: "13px", color: "#374151", outline: "none", width: "100%" }}
+                            onFocus={(e) => e.target.style.borderColor = "#9ca3af"}
+                            onBlur={(e) => e.target.style.borderColor = "#d1d5db"}
                         />
                     </div>
 
-                    <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>Mengetahui</label>
-                        <AutocompleteInput
+                    <div style={{ display: "flex", flexDirection: "column", minWidth: "140px", flex: "1" }}>
+                        <label style={{ fontSize: "11px", fontWeight: 600, color: "#6b7280", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Mengetahui</label>
+                        <input
+                            type="text"
                             value={mengetahui}
-                            onChange={setMengetahui}
-                            onSelect={setMengetahui}
-                            suggestions={mengetahuiSuggestions}
+                            onChange={(e) => setMengetahui(e.target.value)}
                             placeholder="Nama yang mengetahui"
+                            style={{ border: "1px solid #d1d5db", borderRadius: "8px", padding: "5px 8px", fontSize: "13px", color: "#374151", outline: "none", width: "100%" }}
+                            onFocus={(e) => e.target.style.borderColor = "#9ca3af"}
+                            onBlur={(e) => e.target.style.borderColor = "#d1d5db"}
                         />
                     </div>
                 </div>
 
                 {formError && (
-                    <div style={{ fontSize: "13px", color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "10px 12px", marginBottom: "14px" }}>
+                    <div style={{ fontSize: "12px", color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "8px 12px", marginBottom: "10px" }}>
                         {formError}
                     </div>
                 )}
 
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "16px" }}>
-                    <button
-                        type="button"
-                        onClick={handleCetak}
-                        disabled={actionLoading !== null}
-                        style={{
-                            display: "flex", alignItems: "center", gap: "8px", border: "1.5px solid #363D48",
-                            borderRadius: "10px", padding: "9px 18px", fontSize: "13px", color: "#363D48",
-                            background: "#fff", cursor: actionLoading !== null ? "not-allowed" : "pointer", fontWeight: 600,
-                            opacity: actionLoading !== null ? 0.6 : 1,
-                        }}
-                    >
-                        <FaPrint style={{ fontSize: "12px" }} />
-                        {actionLoading === "cetak" ? "Menyimpan histori..." : "Cetak"}
-                    </button>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "12px" }}>
                     <button
                         type="button"
                         onClick={handleUnduh}
                         disabled={actionLoading !== null}
                         style={{
-                            display: "flex", alignItems: "center", gap: "8px", border: "1.5px solid #363D48",
-                            borderRadius: "10px", padding: "9px 18px", fontSize: "13px", color: "#363D48",
+                            display: "flex", alignItems: "center", gap: "6px", border: "1.5px solid #363D48",
+                            borderRadius: "8px", padding: "5px 12px", fontSize: "12px", color: "#363D48",
                             background: "#fff", cursor: actionLoading !== null ? "not-allowed" : "pointer", fontWeight: 600,
                             opacity: actionLoading !== null ? 0.6 : 1,
                         }}
                     >
-                        <FaDownload style={{ fontSize: "12px" }} />
-                        {actionLoading === "unduh" ? "Menyimpan histori..." : "Unduh"}
+                        <FaDownload style={{ fontSize: "11px" }} />
+                        {actionLoading === "unduh" ? "Menyimpan & Membuka PDF..." : "Unduh PDF"}
                     </button>
                     <button
                         type="button"
                         onClick={handleSimpan}
                         disabled={actionLoading !== null}
                         style={{
-                            display: "flex", alignItems: "center", gap: "8px", background: "linear-gradient(135deg, #363D48, #59616F)",
-                            color: "#fff", border: "none", borderRadius: "10px", padding: "9px 18px", fontSize: "13px", fontWeight: 600,
-                            cursor: actionLoading !== null ? "not-allowed" : "pointer", boxShadow: "0 4px 12px #59616F55",
+                            display: "flex", alignItems: "center", gap: "6px", background: "#363D48",
+                            color: "#fff", border: "none", borderRadius: "8px", padding: "5px 12px", fontSize: "12px", fontWeight: 600,
+                            cursor: actionLoading !== null ? "not-allowed" : "pointer",
                             opacity: actionLoading !== null ? 0.7 : 1,
                         }}
                     >
-                        <FaSave style={{ fontSize: "12px" }} />
+                        <FaSave style={{ fontSize: "11px" }} />
                         {actionLoading === "simpan" ? "Menyimpan..." : "Simpan"}
                     </button>
                 </div>
@@ -782,17 +951,8 @@ export default function CashOpname() {
                     padding: "20px", margin: "20px", boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
                 }}
             >
-                <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
+                <div style={{ marginBottom: "16px" }}>
                     <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#363D48" }}>History Cash Opname</h3>
-                    <div style={{ width: "260px" }}>
-                        <input
-                            type="text"
-                            value={historySearch}
-                            onChange={(e) => setHistorySearch(e.target.value)}
-                            placeholder="Cari periode / nama..."
-                            className="border border-gray-300 rounded-lg text-sm px-3 py-2 text-gray-700 w-full focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
-                        />
-                    </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -821,17 +981,17 @@ export default function CashOpname() {
                             </tbody>
                         )}
 
-                        {!historyLoading && filteredHistory.length === 0 && (
+                        {!historyLoading && history.length === 0 && (
                             <tbody>
                                 <tr>
                                     <td colSpan={9} className="p-8 text-center text-gray-400 border border-gray-300">
-                                        {history.length === 0 ? "Belum ada history Cash Opname." : "Data tidak ditemukan."}
+                                        Belum ada history Cash Opname.
                                     </td>
                                 </tr>
                             </tbody>
                         )}
 
-                        {!historyLoading && filteredHistory.length > 0 && (
+                        {!historyLoading && history.length > 0 && (
                             <tbody>
                                 {currentRows.map((row, idx) => (
                                     <tr key={row.id} className="hover:bg-gray-50">
@@ -868,7 +1028,7 @@ export default function CashOpname() {
                                                         borderRadius: "8px", cursor: "pointer",
                                                     }}
                                                 >
-                                                    <FaRedo style={{ fontSize: "13px" }} />
+                                                    <FaPrint style={{ fontSize: "13px" }} />
                                                 </button>
                                                 <button
                                                     type="button"
@@ -892,7 +1052,7 @@ export default function CashOpname() {
                     </table>
                 </div>
 
-                {filteredHistory.length > 0 && (
+                {history.length > 0 && (
                     <div className="flex items-center justify-between mt-4 text-sm text-gray-500" style={{ marginTop: "16px" }}>
                         <span>Showing {startEntry} to {endEntry} of {total} entries</span>
 
