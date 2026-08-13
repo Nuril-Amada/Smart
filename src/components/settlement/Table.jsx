@@ -172,6 +172,9 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
   const [manualError, setManualError] = useState("");
   const [manualForm, setManualForm] = useState(initialForm);
 
+  // NOTIFIKASI SUKSES (toast) — sama seperti pada Employee.jsx
+  const [successMessage, setSuccessMessage] = useState("");
+
   // SAP CHECKBOX — state disimpan di backend via is_checked
   const toggleSap = async (row) => {
     try {
@@ -363,6 +366,10 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
 
       handleManualClose();
       loadData();
+      setSuccessMessage("Reimbursement berhasil ditambahkan.");
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
 
     } catch (err) {
       console.error(err);
@@ -399,6 +406,10 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
       await Promise.all(checkedRows.map((r) => deleteReimbursement(r.id)));
       setDeleteBatchOpen(false);
       loadData();
+      setSuccessMessage("Data terpilih berhasil dihapus.");
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
 
     } catch (err) {
       setDeleteError(
@@ -449,6 +460,10 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
       });
       handleEditClose();
       loadData();
+      setSuccessMessage("Data berhasil diperbarui.");
+      setTimeout(() => {
+        setSuccessMessage("");
+      }, 3000);
     } catch (err) {
       const detail = err?.response?.data?.detail;
       setEditError(Array.isArray(detail) ? detail.map(d => d.msg).join(", ") : (detail || "Gagal menyimpan perubahan."));
@@ -535,6 +550,37 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
         marginRight: "20px",
       }}
     >
+
+      {/* NOTIFIKASI SUKSES (toast) — sama seperti pada Employee.jsx */}
+      <style>{`
+        @keyframes toastIn {
+            from { opacity: 0; transform: translate(-50%, -12px); }
+            to   { opacity: 1; transform: translate(-50%, 0); }
+        }
+      `}</style>
+
+      {successMessage && (
+        <div
+          style={{
+            position: "fixed",
+            top: "20px",
+            left: "50%",
+            transform: "translate(-50%, 0)",
+            zIndex: 100,
+            background: "#ecfdf5",
+            border: "1.5px solid #6ee7b7",
+            color: "#047857",
+            borderRadius: "10px",
+            padding: "10px 18px",
+            fontSize: "13px",
+            fontWeight: 600,
+            boxShadow: "0 8px 24px rgba(16,185,129,0.25)",
+            animation: "toastIn 0.25s ease",
+          }}
+        >
+          {successMessage}
+        </div>
+      )}
 
       {/* ================= FILTER ================= */}
 
