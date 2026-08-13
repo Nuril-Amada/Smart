@@ -993,10 +993,7 @@ export default function CashOpname() {
                                 <th className="p-3 font-medium border border-gray-300">Total A + B</th>
                                 <th className="p-3 font-medium border border-gray-300">Saldo Akhir</th>
                                 <th className="p-3 font-medium border border-gray-300">Aksi Terakhir</th>
-                                <th className="p-3 font-medium border border-gray-300">Aksi</th>
-                                {deleteMode && (
-                                    <th className="p-3 font-medium border border-gray-300">Pilih</th>
-                                )}
+                                <th className="p-3 font-medium border border-gray-300">Cetak</th>
                             </tr>
                         </thead>
 
@@ -1056,7 +1053,7 @@ export default function CashOpname() {
                                                     style={{
                                                         display: "inline-flex", alignItems: "center", justifyContent: "center",
                                                         width: "32px", height: "32px",
-                                                        background: "#fff", border: "1.5px solid #363D48", color: "#363D48",
+                                                        background: "#fff",
                                                         borderRadius: "8px", cursor: "pointer",
                                                     }}
                                                 >
