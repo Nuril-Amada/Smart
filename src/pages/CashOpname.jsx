@@ -13,6 +13,11 @@ import {
     FaExclamationTriangle,
     FaEdit,
 } from "react-icons/fa";
+// Catatan: fitur "Unduh PDF" memerlukan dua paket tambahan.
+// Install dulu di project ini:
+//   npm install jspdf html2canvas
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 // import {
 //     getCashOpnameHistory,
 //     saveCashOpname,
@@ -31,6 +36,11 @@ export const meta = {
 };
 
 const COMPANY_NAME = "PT. SMART Tbk Unit SURABAYA";
+
+// Ukuran kertas & margin cetak/unduh: A4, margin 2,54 cm di semua sisi
+const PDF_PAGE_WIDTH_CM = 21.0;
+const PDF_PAGE_HEIGHT_CM = 29.7;
+const PDF_MARGIN_CM = 2.54;
 
 function formatCurrency(n) {
     const num = Number(n) || 0;
@@ -155,24 +165,15 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
     );
 }
 
+// Ambil info baris untuk ditampilkan di laporan cetak/unduh.
+// Keterangan TIDAK lagi dipecah/diambil dari pola "... BY ..." — isinya
+// disamakan persis dengan apa yang ada di tabel (field keterangan/description asli).
 function getRowInfo(r) {
     const tanggal = formatDateID(r.tanggal);
     const tipe = r.tipe || "STLM";
     const kode = r.kode || r.ppc_no || "-";
-    let namaUser = r.namaUser || r.nama_user || "";
-    let keterangan = r.keterangan || r.description || "";
-
-    if (!namaUser && keterangan) {
-        if (keterangan.includes(", BY ")) {
-            const parts = keterangan.split(", BY ");
-            namaUser = parts[0];
-            keterangan = "BY " + parts.slice(1).join(", BY ");
-        } else if (keterangan.includes(" BY ")) {
-            const parts = keterangan.split(" BY ");
-            namaUser = parts[0];
-            keterangan = "BY " + parts.slice(1).join(" BY ");
-        }
-    }
+    const namaUser = r.namaUser || r.nama_user || "";
+    const keterangan = r.keterangan || r.description || "";
 
     return {
         tanggal,
@@ -184,8 +185,117 @@ function getRowInfo(r) {
     };
 }
 
-// ===== Bangun HTML untuk jendela cetak / file unduhan, mengikuti format laporan resmi =====
-function buildPrintHtml(record) {
+// ===== CSS laporan (dipakai bersama oleh jendela cetak & proses unduh PDF) =====
+// Catatan: aturan @page (ukuran A4 + margin 2,54cm) hanya relevan untuk jendela
+// cetak (window.print()). Untuk unduh PDF, ukuran & margin diatur langsung lewat jsPDF.
+const REPORT_STYLES = `
+.cop-report {
+    font-family: Arial, sans-serif;
+    font-size: 11px;
+    color: #000;
+    line-height: 1.4;
+    background: #fff;
+    margin: 0;
+    padding: 0;
+}
+.cop-report .header-title {
+    text-align: center;
+    margin-bottom: 16px;
+}
+.cop-report .header-title h1 {
+    font-size: 14px;
+    font-weight: bold;
+    margin: 0 0 2px 0;
+    letter-spacing: 0.5px;
+}
+.cop-report .header-title h2 {
+    font-size: 12px;
+    font-weight: bold;
+    margin: 0 0 10px 0;
+}
+.cop-report .header-title .period {
+    font-size: 11px;
+    font-weight: bold;
+    margin-bottom: 12px;
+}
+.cop-report .saldo-header {
+    display: flex;
+    justify-content: space-between;
+    font-weight: bold;
+    font-size: 11px;
+    margin-bottom: 12px;
+    padding-bottom: 4px;
+}
+.cop-report table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 4px;
+}
+.cop-report th {
+    text-align: left;
+    font-weight: bold;
+    padding: 4px 8px;
+    font-size: 11px;
+    border-bottom: 1px solid #333;
+}
+.cop-report td {
+    font-size: 11px;
+}
+.cop-report .section-label {
+    font-weight: bold;
+    font-size: 11px;
+    margin-top: 14px;
+    margin-bottom: 4px;
+}
+.cop-report .subtotal-row td {
+    font-weight: bold;
+    padding: 6px 8px;
+    border-top: 1px solid #333;
+}
+.cop-report .summary-container {
+    margin-top: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+.cop-report .summary-table {
+    width: 320px;
+    margin-top: 4px;
+}
+.cop-report .summary-table td {
+    padding: 4px 6px;
+    font-weight: bold;
+    font-size: 11px;
+}
+.cop-report .signature-section {
+    margin-top: 60px;
+    display: flex;
+    justify-content: space-between;
+}
+.cop-report .sign-box-left {
+    width: 55%;
+}
+.cop-report .sign-box-right {
+    width: 35%;
+    text-align: center;
+}
+.cop-report .sign-header {
+    font-weight: bold;
+    margin-bottom: 55px;
+}
+.cop-report .sign-names-left {
+    display: flex;
+    justify-content: flex-start;
+    gap: 50px;
+    font-weight: bold;
+}
+.cop-report .sign-names-right {
+    font-weight: bold;
+}
+`;
+
+// ===== Bangun isi (inner content) laporan, dipakai bersama oleh cetak & unduh PDF =====
+function buildReportContentHtml(record) {
     const rowsA = (record.settlementRows || [])
         .map((r) => {
             const info = getRowInfo(r);
@@ -218,121 +328,6 @@ function buildPrintHtml(record) {
         .join("");
 
     return `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="utf-8" />
-        <title>PETTY CASH - PER TGL : ${formatDateID(record.sampaiTanggal)}</title>
-        <style>
-            @page {
-                size: A4 portrait;
-                margin: 15mm;
-            }
-            body {
-                font-family: Arial, sans-serif;
-                font-size: 11px;
-                color: #000;
-                line-height: 1.4;
-                padding: 15px;
-                margin: 0;
-            }
-            .header-title {
-                text-align: center;
-                margin-bottom: 16px;
-            }
-            .header-title h1 {
-                font-size: 14px;
-                font-weight: bold;
-                margin: 0 0 2px 0;
-                letter-spacing: 0.5px;
-            }
-            .header-title h2 {
-                font-size: 12px;
-                font-weight: bold;
-                margin: 0 0 10px 0;
-            }
-            .header-title .period {
-                font-size: 11px;
-                font-weight: bold;
-                margin-bottom: 12px;
-            }
-            .saldo-header {
-                display: flex;
-                justify-content: space-between;
-                font-weight: bold;
-                font-size: 11px;
-                margin-bottom: 12px;
-                padding-bottom: 4px;
-            }
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 4px;
-            }
-            th {
-                text-align: left;
-                font-weight: bold;
-                padding: 4px 8px;
-                font-size: 11px;
-                border-bottom: 1px solid #333;
-            }
-            td {
-                font-size: 11px;
-            }
-            .section-label {
-                font-weight: bold;
-                font-size: 11px;
-                margin-top: 14px;
-                margin-bottom: 4px;
-            }
-            .subtotal-row td {
-                font-weight: bold;
-                padding: 6px 8px;
-                border-top: 1px solid #333;
-            }
-            .summary-container {
-                margin-top: 16px;
-                display: flex;
-                flex-direction: column;
-                align-items: flex-end;
-            }
-            .summary-table {
-                width: 320px;
-                margin-top: 4px;
-            }
-            .summary-table td {
-                padding: 4px 6px;
-                font-weight: bold;
-                font-size: 11px;
-            }
-            .signature-section {
-                margin-top: 60px;
-                display: flex;
-                justify-content: space-between;
-            }
-            .sign-box-left {
-                width: 55%;
-            }
-            .sign-box-right {
-                width: 35%;
-                text-align: center;
-            }
-            .sign-header {
-                font-weight: bold;
-                margin-bottom: 55px;
-            }
-            .sign-names-left {
-                display: flex;
-                justify-content: flex-start;
-                gap: 50px;
-                font-weight: bold;
-            }
-            .sign-names-right {
-                font-weight: bold;
-            }
-        </style>
-    </head>
-    <body>
         <div class="header-title">
             <h1>PETTY CASH</h1>
             <h2>${COMPANY_NAME}</h2>
@@ -417,6 +412,32 @@ function buildPrintHtml(record) {
                     <span>${record.mengetahui}</span>
                 </div>
             </div>
+        </div>`;
+}
+
+// ===== HTML lengkap untuk jendela cetak (window.print) — A4, margin 2,54cm =====
+function buildPrintHtml(record) {
+    return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="utf-8" />
+        <title>PETTY CASH - PER TGL : ${formatDateID(record.sampaiTanggal)}</title>
+        <style>
+            @page {
+                size: A4 portrait;
+                margin: ${PDF_MARGIN_CM}cm;
+            }
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            ${REPORT_STYLES}
+        </style>
+    </head>
+    <body>
+        <div class="cop-report">
+            ${buildReportContentHtml(record)}
         </div>
     </body>
     </html>`;
@@ -433,17 +454,77 @@ function printRecord(record) {
     }, 300);
 }
 
-function downloadRecord(record) {
-    const htmlContent = buildPrintHtml(record);
-    const blob = new Blob([htmlContent], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `CashOpname_${record.dariTanggal}_${record.sampaiTanggal}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+// ===== Render elemen HTML tersembunyi menjadi file PDF A4 (margin 2,54cm) dan langsung diunduh =====
+// Tidak menampilkan preview/dialog cetak — file PDF langsung tersimpan ke folder unduhan browser.
+async function generatePdfFromElement(element, filename) {
+    const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: "#ffffff",
+    });
+
+    const pdf = new jsPDF({ unit: "cm", format: "a4", orientation: "portrait" });
+
+    const contentWidthCm = PDF_PAGE_WIDTH_CM - PDF_MARGIN_CM * 2;
+    const contentHeightCm = PDF_PAGE_HEIGHT_CM - PDF_MARGIN_CM * 2;
+
+    const pxToCm = contentWidthCm / canvas.width;
+    const totalHeightCm = canvas.height * pxToCm;
+
+    if (totalHeightCm <= contentHeightCm) {
+        const imgData = canvas.toDataURL("image/png");
+        pdf.addImage(imgData, "PNG", PDF_MARGIN_CM, PDF_MARGIN_CM, contentWidthCm, totalHeightCm);
+    } else {
+        // Konten lebih tinggi dari 1 halaman A4 -> dipotong per halaman
+        const pageHeightPx = Math.floor(contentHeightCm / pxToCm);
+        let sourceY = 0;
+        let firstPage = true;
+
+        while (sourceY < canvas.height) {
+            const sliceHeightPx = Math.min(pageHeightPx, canvas.height - sourceY);
+
+            const sliceCanvas = document.createElement("canvas");
+            sliceCanvas.width = canvas.width;
+            sliceCanvas.height = sliceHeightPx;
+            const ctx = sliceCanvas.getContext("2d");
+            ctx.drawImage(
+                canvas,
+                0, sourceY, canvas.width, sliceHeightPx,
+                0, 0, canvas.width, sliceHeightPx
+            );
+
+            const sliceData = sliceCanvas.toDataURL("image/png");
+            const sliceHeightCm = sliceHeightPx * pxToCm;
+
+            if (!firstPage) pdf.addPage();
+            pdf.addImage(sliceData, "PNG", PDF_MARGIN_CM, PDF_MARGIN_CM, contentWidthCm, sliceHeightCm);
+
+            sourceY += sliceHeightPx;
+            firstPage = false;
+        }
+    }
+
+    pdf.save(filename);
+}
+
+async function downloadRecordAsPdf(record) {
+    const container = document.createElement("div");
+    container.style.position = "fixed";
+    container.style.left = "-9999px";
+    container.style.top = "0";
+    container.style.width = "700px";
+    container.style.background = "#ffffff";
+    container.innerHTML = `<style>${REPORT_STYLES}</style><div class="cop-report">${buildReportContentHtml(record)}</div>`;
+    document.body.appendChild(container);
+
+    try {
+        await generatePdfFromElement(
+            container,
+            `CashOpname_${record.dariTanggal}_${record.sampaiTanggal}.pdf`
+        );
+    } finally {
+        document.body.removeChild(container);
+    }
 }
 
 export default function CashOpname() {
@@ -632,12 +713,14 @@ export default function CashOpname() {
         }
     };
 
+    // Unduh langsung sebagai file PDF (tanpa preview/dialog cetak), lalu simpan ke histori
     const handleUnduh = async () => {
         if (!validateForm()) return;
         const record = buildRecord("Unduh (PDF)");
-        printRecord(record);
         setActionLoading("unduh");
         try {
+            await downloadRecordAsPdf(record);
+
             if (editingId) {
                 await updateCashOpname(editingId, record);
             } else {
@@ -645,11 +728,11 @@ export default function CashOpname() {
             }
             await refreshHistory();
             setEditingId(null);
-            setSuccessMessage(editingId ? "Cash Opname diperbarui & PDF dibuka." : "Cash Opname berhasil diunduh (PDF) dan disimpan ke histori.");
+            setSuccessMessage(editingId ? "Cash Opname diperbarui & PDF berhasil diunduh." : "Cash Opname berhasil diunduh (PDF) dan disimpan ke histori.");
             setTimeout(() => setSuccessMessage(""), 3000);
         } catch (err) {
-            console.error("Gagal menyimpan histori setelah unduh:", err);
-            setFormError("Berhasil diunduh, namun gagal tersimpan ke histori server.");
+            console.error("Gagal mengunduh PDF Cash Opname:", err);
+            setFormError("Gagal mengunduh PDF Cash Opname. Silakan coba lagi.");
         } finally {
             setActionLoading(null);
         }
@@ -900,7 +983,7 @@ export default function CashOpname() {
                         }}
                     >
                         <FaDownload style={{ fontSize: "11px" }} />
-                        {actionLoading === "unduh" ? "Menyimpan & Membuka PDF..." : "Unduh PDF"}
+                        {actionLoading === "unduh" ? "Membuat & Mengunduh PDF..." : "Unduh PDF"}
                     </button>
                     <button
                         type="button"
@@ -1053,7 +1136,7 @@ export default function CashOpname() {
                                                     style={{
                                                         display: "inline-flex", alignItems: "center", justifyContent: "center",
                                                         width: "32px", height: "32px",
-                                                        background: "#fff",
+                                                        background: "#fff", 
                                                         borderRadius: "8px", cursor: "pointer",
                                                     }}
                                                 >
@@ -1135,9 +1218,8 @@ export default function CashOpname() {
                                 width: "36px", height: "36px", borderRadius: "10px", background: "#fef2f2",
                                 display: "flex", alignItems: "center", justifyContent: "center", color: "#dc2626", flexShrink: 0,
                             }}>
-                                <FaExclamationTriangle style={{ fontSize: "16px" }} />
                             </div>
-                            <h4 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#111827" }}>Hapus Data Terpilih?</h4>
+                            <h4 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#111827" }}>Hapus Data Terpilih</h4>
                         </div>
                         <p style={{ margin: "0 0 20px", fontSize: "13px", color: "#6b7280", lineHeight: 1.5 }}>
                             <strong>{selectedIds.size} data</strong> Cash Opname yang dipilih akan dihapus secara permanen dan tidak dapat dikembalikan.
