@@ -3,19 +3,15 @@ import {
     FaCashRegister,
     FaSave,
     FaPrint,
+    FaDownload,
     FaRedo,
     FaSearch,
     FaTimes,
     FaChevronLeft,
     FaChevronRight,
+    FaTrashAlt,
+    FaExclamationTriangle,
 } from "react-icons/fa";
-// import {
-//     getSettlementRecap,   // (periode) => [{ id, tanggal, kode, keterangan, jumlah }]
-//     getAdvanceRecap,      // (periode) => [{ id, tanggal, kode, keterangan, jumlah }]
-//     getEmployees,         // () => [{ id, nama }]
-//     saveCashOpname,       // (payload) => saved record
-//     getCashOpnameHistory, // () => history[]
-// } from "../../api/cashOpname";
 
 export const meta = {
     id: "cash_opname",
@@ -25,51 +21,6 @@ export const meta = {
 };
 
 const COMPANY_NAME = "PT. SMART Tbk Unit SURABAYA";
-
-// ===== Dummy master pegawai untuk "Dibuat oleh" / "Mengetahui" =====
-// Ganti dengan hasil getEmployees() saat backend siap.
-const EMPLOYEE_OPTIONS = [
-    "Hera Christanti",
-    "Tina Meliana",
-    "Andika Yuwono",
-    "Moh. Baidowi",
-    "Christie Adrian",
-    "Dewi Priyanti",
-    "Rizky R",
-    "Ifan Safrianto",
-    "Hary Dwi Widodo",
-    "Nicholaus G",
-    "Fandi P",
-    "Moh. Hadi",
-    "Hadi Supeno",
-    "Santi",
-];
-
-// ===== Dummy rekap Settlement (Section A) & Advance (Section B) =====
-// Ganti dengan getSettlementRecap(periode) / getAdvanceRecap(periode) saat backend siap.
-const DUMMY_SETTLEMENT = [
-    { id: "s1", tanggal: "2026-07-30", kode: "STLM", keterangan: "559/PPC/VII/2026 MOH. BAIDOWI, BY PEMB CHECK VALVE", jumlah: 759000 },
-    { id: "s2", tanggal: "2026-07-28", kode: "STLM", keterangan: "564/PPC/VII/2026 CHRISTIE ADRIAN, BY PEMB MATERAI U/ BAG.EXPORT", jumlah: 1000000 },
-    { id: "s3", tanggal: "2026-07-28", kode: "STLM", keterangan: "565/PPC/VII/2026 ORIENTASI, BY COO KADIN", jumlah: 600000 },
-    { id: "s4", tanggal: "2026-07-28", kode: "STLM", keterangan: "567/PPC/VII/2026 DEWI PRIYANTI, BY OLAHRAGA", jumlah: 400000 },
-    { id: "s5", tanggal: "2026-07-30", kode: "STLM", keterangan: "570/PPC/VII/2026 RIZKY R, BY PROSES HC & COO KADIN", jumlah: 500000 },
-    { id: "s6", tanggal: "2026-07-31", kode: "STLM", keterangan: "577/PPC/VII/2026 IFAN SAFRIANTO, BY PEMB LED LAMPU DEKORASI", jumlah: 938750 },
-    { id: "s7", tanggal: "2026-07-30", kode: "RMB", keterangan: "580/PPC/VII/2026 HARY DWI WIDODO, BY PEMB STYROFOAM, KABEL ROLL", jumlah: 474400 },
-    { id: "s8", tanggal: "2026-07-30", kode: "RMB", keterangan: "581/PPC/VII/2026 NICHOLAUS G, BY PEMB RESIN MERAH, KATALIS U/ LANTAI GBJ", jumlah: 124000 },
-    { id: "s9", tanggal: "2026-07-30", kode: "RMB", keterangan: "582/PPC/VII/2026 NICHOLAUS G, BY BANNER AREA LOADING GBJ MARSHO", jumlah: 450000 },
-    { id: "s10", tanggal: "2026-07-30", kode: "RMB", keterangan: "583/PPC/VII/2026 NICHOLAUS G, BY STICKER CHECKLIST UNIT", jumlah: 33000 },
-    { id: "s11", tanggal: "2026-07-31", kode: "RMB", keterangan: "584/PPC/VII/2026 FANDI P, BY PROSES HC", jumlah: 100000 },
-];
-
-const DUMMY_ADVANCE = [
-    { id: "a1", tanggal: "2026-07-16", kode: "UM1", keterangan: "534/PPC/VII/2026 MOH. HADI BY PEMB ACRYLIC IDENTITAS POMPA", jumlah: 1000000 },
-    { id: "a2", tanggal: "2026-07-29", kode: "UM5", keterangan: "578/PPC/VII/2026 HADI SUPENO BY PEMB CENTRIFUGE HOLE 4000 RPM", jumlah: 1000000 },
-    { id: "a3", tanggal: "2026-07-30", kode: "UM6", keterangan: "579/PPC/VII/2026 SANTI BY PROSES HC", jumlah: 900000 },
-    { id: "a4", tanggal: "2026-07-31", kode: "UM7", keterangan: "585/PPC/VII/2026 RIZKY R BY HC BPOM", jumlah: 300000 },
-    { id: "a5", tanggal: "2026-07-31", kode: "UM8", keterangan: "586/PPC/VII/2026 SANTI BY PROSES HC", jumlah: 750000 },
-    { id: "a6", tanggal: "2026-07-31", kode: "UM9", keterangan: "587/PPC/VII/2026 DEWI PRIYANTI BY KONSUMSI 551 31/07/2026", jumlah: 1000000 },
-    { id: "a7", tanggal: "2026-07-31", kode: "UM10", keterangan: "588/PPC/VII/2026 DEWI PRIYANTI BY OLAHRAGA 31/07/2026", jumlah: 500000 },
-];
 
 function formatCurrency(n) {
     const num = Number(n) || 0;
@@ -81,6 +32,15 @@ function formatDateID(isoDate) {
     const [y, m, d] = isoDate.split("-");
     if (!y || !m || !d) return isoDate;
     return `${d}/${m}/${y}`;
+}
+
+function formatTimeID(date) {
+    return new Intl.DateTimeFormat("id-ID", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+    }).format(date);
 }
 
 function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder }) {
@@ -179,7 +139,8 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
     );
 }
 
-// ===== Bangun HTML untuk jendela cetak, mengikuti layout template excel =====
+// ===== Bangun HTML untuk jendela cetak / file unduhan, mengikuti layout template excel =====
+// NOTE: Jam sengaja TIDAK ditampilkan pada laporan (cetak/unduh), hanya tampil live di form.
 function buildPrintHtml(record) {
     const rowsA = record.settlementRows
         .map(
@@ -208,7 +169,7 @@ function buildPrintHtml(record) {
     return `
     <html>
     <head>
-        <title>Cash Opname - ${formatDateID(record.periode)}</title>
+        <title>Cash Opname - ${formatDateID(record.dariTanggal)} s/d ${formatDateID(record.sampaiTanggal)}</title>
         <style>
             body { font-family: Arial, sans-serif; font-size: 12px; color: #111; padding: 24px; }
             h1 { font-size: 16px; margin: 0; text-align:center; }
@@ -227,7 +188,7 @@ function buildPrintHtml(record) {
     <body>
         <h1>PETTY CASH</h1>
         <div class="center">${COMPANY_NAME}</div>
-        <div class="center">PER TGL : ${formatDateID(record.periode)}</div>
+        <div class="center">PERIODE : ${formatDateID(record.dariTanggal)} s/d ${formatDateID(record.sampaiTanggal)}</div>
 
         <div class="saldo-box">
             <span>PETTY CASH SURABAYA</span>
@@ -289,37 +250,113 @@ function printRecord(record) {
     }, 300);
 }
 
+function downloadRecord(record) {
+    const htmlContent = buildPrintHtml(record);
+    const blob = new Blob([htmlContent], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `CashOpname_${record.dariTanggal}_${record.sampaiTanggal}.html`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+
 export default function CashOpname() {
-    const [periode, setPeriode] = useState("");
+    const [dariTanggal, setDariTanggal] = useState("");
+    const [sampaiTanggal, setSampaiTanggal] = useState("");
     const [saldoAwal, setSaldoAwal] = useState("");
     const [dibuatOleh1, setDibuatOleh1] = useState("");
     const [dibuatOleh2, setDibuatOleh2] = useState("");
     const [mengetahui, setMengetahui] = useState("");
 
+    // JAM OTOMATIS — berjalan sendiri (live clock) hanya untuk tampilan di form,
+    // TIDAK ikut dicetak/diunduh pada laporan.
+    const [currentTime, setCurrentTime] = useState(new Date());
+
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
     const [settlementRows, setSettlementRows] = useState([]);
     const [advanceRows, setAdvanceRows] = useState([]);
+
+    // Master nama pegawai untuk "Dibuat oleh" / "Mengetahui" — diambil dari backend
+    const [employeeOptions, setEmployeeOptions] = useState([]);
 
     const [formError, setFormError] = useState("");
     const [successMessage, setSuccessMessage] = useState("");
 
     const [history, setHistory] = useState([]);
+    const [historyLoading, setHistoryLoading] = useState(true);
     const [historySearch, setHistorySearch] = useState("");
     const [page, setPage] = useState(1);
     const perPage = 10;
 
-    // Ambil rekap Settlement & Advance setiap kali periode berubah.
-    // Ganti isi try dengan pemanggilan getSettlementRecap(periode) / getAdvanceRecap(periode) saat backend siap.
-    useEffect(() => {
-        if (!periode) {
-            setSettlementRows([]);
-            setAdvanceRows([]);
-            return;
+    // Konfirmasi hapus history
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // Status loading per aksi form: null | "simpan" | "cetak" | "unduh"
+    const [actionLoading, setActionLoading] = useState(null);
+
+    // Ambil history dari backend saat komponen dimuat, lalu bisa dipanggil
+    // ulang (refreshHistory) setiap kali Simpan/Cetak/Unduh/Hapus berhasil
+    // dikonfirmasi oleh backend.
+    const refreshHistory = async () => {
+        try {
+            const data = await getCashOpnameHistory();
+            setHistory(data || []);
+        } catch (err) {
+            console.error("Gagal memuat history Cash Opname:", err);
+        } finally {
+            setHistoryLoading(false);
         }
-        const filteredA = DUMMY_SETTLEMENT.filter((r) => r.tanggal <= periode);
-        const filteredB = DUMMY_ADVANCE.filter((r) => r.tanggal <= periode);
-        setSettlementRows(filteredA);
-        setAdvanceRows(filteredB);
-    }, [periode]);
+    };
+
+    useEffect(() => {
+        refreshHistory();
+    }, []);
+
+    // Ambil master pegawai sekali saat komponen dimuat.
+    useEffect(() => {
+        const loadEmployees = async () => {
+            try {
+                const data = await getEmployees();
+                const names = data.map((e) => e.employee_name).filter(Boolean);
+                setEmployeeOptions(names);
+            } catch (err) {
+                console.error("Gagal memuat data employee:", err);
+            }
+        };
+        loadEmployees();
+    }, []);
+
+    // Ambil rekap Settlement & Advance setiap kali rentang tanggal berubah.
+    useEffect(() => {
+        const loadRecap = async () => {
+            if (!dariTanggal || !sampaiTanggal) {
+                setSettlementRows([]);
+                setAdvanceRows([]);
+                return;
+            }
+            try {
+                const [settlementData, advanceData] = await Promise.all([
+                    getSettlementRecap({ start_date: dariTanggal, end_date: sampaiTanggal }),
+                    getAdvanceRecap({ start_date: dariTanggal, end_date: sampaiTanggal }),
+                ]);
+                setSettlementRows(settlementData || []);
+                setAdvanceRows(advanceData || []);
+            } catch (err) {
+                console.error("Gagal memuat rekap cash opname:", err);
+            }
+        };
+        loadRecap();
+    }, [dariTanggal, sampaiTanggal]);
 
     const totalA = useMemo(() => settlementRows.reduce((sum, r) => sum + Number(r.jumlah || 0), 0), [settlementRows]);
     const totalB = useMemo(() => advanceRows.reduce((sum, r) => sum + Number(r.jumlah || 0), 0), [advanceRows]);
@@ -329,24 +366,35 @@ export default function CashOpname() {
     const dibuatOleh1Suggestions = useMemo(() => {
         const q = dibuatOleh1.toLowerCase().trim();
         if (!q) return [];
-        return EMPLOYEE_OPTIONS.filter((n) => n.toLowerCase().includes(q)).slice(0, 8);
-    }, [dibuatOleh1]);
+        return employeeOptions.filter((n) => n.toLowerCase().includes(q)).slice(0, 8);
+    }, [dibuatOleh1, employeeOptions]);
 
     const dibuatOleh2Suggestions = useMemo(() => {
         const q = dibuatOleh2.toLowerCase().trim();
         if (!q) return [];
-        return EMPLOYEE_OPTIONS.filter((n) => n.toLowerCase().includes(q)).slice(0, 8);
-    }, [dibuatOleh2]);
+        return employeeOptions.filter((n) => n.toLowerCase().includes(q)).slice(0, 8);
+    }, [dibuatOleh2, employeeOptions]);
 
     const mengetahuiSuggestions = useMemo(() => {
         const q = mengetahui.toLowerCase().trim();
         if (!q) return [];
-        return EMPLOYEE_OPTIONS.filter((n) => n.toLowerCase().includes(q)).slice(0, 8);
-    }, [mengetahui]);
+        return employeeOptions.filter((n) => n.toLowerCase().includes(q)).slice(0, 8);
+    }, [mengetahui, employeeOptions]);
 
     const validateForm = () => {
-        if (!periode || saldoAwal === "" || !dibuatOleh1.trim() || !dibuatOleh2.trim() || !mengetahui.trim()) {
-            setFormError("Tanggal, saldo awal, dibuat oleh (2 orang), dan mengetahui wajib diisi.");
+        if (
+            !dariTanggal ||
+            !sampaiTanggal ||
+            saldoAwal === "" ||
+            !dibuatOleh1.trim() ||
+            !dibuatOleh2.trim() ||
+            !mengetahui.trim()
+        ) {
+            setFormError("Dari tanggal, sampai tanggal, saldo awal, dibuat oleh (2 orang), dan mengetahui wajib diisi.");
+            return false;
+        }
+        if (sampaiTanggal < dariTanggal) {
+            setFormError("Sampai tanggal tidak boleh lebih awal dari dari tanggal.");
             return false;
         }
         if (dibuatOleh1.trim().toLowerCase() === dibuatOleh2.trim().toLowerCase()) {
@@ -357,44 +405,107 @@ export default function CashOpname() {
         return true;
     };
 
-    const buildRecord = (aksi) => ({
-        id: Date.now() + Math.random(),
-        periode,
-        saldoAwal: Number(saldoAwal),
-        dibuatOleh1: dibuatOleh1.trim(),
-        dibuatOleh2: dibuatOleh2.trim(),
-        mengetahui: mengetahui.trim(),
-        settlementRows,
-        advanceRows,
-        totalA,
-        totalB,
-        totalAB,
-        saldoAkhir,
-        aksi, // "Simpan" | "Cetak"
-        createdAt: new Date().toISOString(),
-    });
-
-    // NOTE: ganti setHistory(...) dengan pemanggilan saveCashOpname(payload) lalu
-    // await getCashOpnameHistory() saat backend siap.
-    const handleSimpan = () => {
-        if (!validateForm()) return;
-        const record = buildRecord("Simpan");
-        setHistory((prev) => [record, ...prev]);
-        setSuccessMessage("Cash Opname berhasil disimpan.");
-        setTimeout(() => setSuccessMessage(""), 3000);
+    const buildRecord = (aksi) => {
+        const now = new Date();
+        return {
+            id: Date.now() + Math.random(),
+            dariTanggal,
+            sampaiTanggal,
+            jam: formatTimeID(now), // tetap disimpan untuk histori internal, tidak dicetak/diunduh
+            saldoAwal: Number(saldoAwal),
+            dibuatOleh1: dibuatOleh1.trim(),
+            dibuatOleh2: dibuatOleh2.trim(),
+            mengetahui: mengetahui.trim(),
+            settlementRows,
+            advanceRows,
+            totalA,
+            totalB,
+            totalAB,
+            saldoAkhir,
+            aksi, // "Simpan" | "Cetak" | "Unduh"
+            createdAt: now.toISOString(),
+        };
     };
 
-    const handleCetak = () => {
+    // Simpan HANYA menunggu backend: baris baru muncul di table history
+    // setelah saveCashOpname() sukses dan history di-refresh dari server.
+    const handleSimpan = async () => {
+        if (!validateForm()) return;
+        const record = buildRecord("Simpan");
+        setActionLoading("simpan");
+        try {
+            await saveCashOpname(record);
+            await refreshHistory();
+            setSuccessMessage("Cash Opname berhasil disimpan.");
+            setTimeout(() => setSuccessMessage(""), 3000);
+        } catch (err) {
+            console.error("Gagal menyimpan Cash Opname:", err);
+            setFormError("Gagal menyimpan Cash Opname ke server. Silakan coba lagi.");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    // Cetak tetap membuka jendela print secara langsung (aksi lokal di browser),
+    // tapi baris history baru muncul setelah backend mengonfirmasi penyimpanan.
+    const handleCetak = async () => {
         if (!validateForm()) return;
         const record = buildRecord("Cetak");
-        setHistory((prev) => [record, ...prev]);
         printRecord(record);
-        setSuccessMessage("Cash Opname berhasil dicetak.");
-        setTimeout(() => setSuccessMessage(""), 3000);
+        setActionLoading("cetak");
+        try {
+            await saveCashOpname(record);
+            await refreshHistory();
+            setSuccessMessage("Cash Opname berhasil dicetak.");
+            setTimeout(() => setSuccessMessage(""), 3000);
+        } catch (err) {
+            console.error("Gagal menyimpan histori setelah cetak:", err);
+            setFormError("Berhasil dicetak, namun gagal tersimpan ke histori server.");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    // Unduh tetap mengunduh file secara langsung, tapi baris history baru
+    // muncul setelah backend mengonfirmasi penyimpanan.
+    const handleUnduh = async () => {
+        if (!validateForm()) return;
+        const record = buildRecord("Unduh");
+        downloadRecord(record);
+        setActionLoading("unduh");
+        try {
+            await saveCashOpname(record);
+            await refreshHistory();
+            setSuccessMessage("Cash Opname berhasil diunduh.");
+            setTimeout(() => setSuccessMessage(""), 3000);
+        } catch (err) {
+            console.error("Gagal menyimpan histori setelah unduh:", err);
+            setFormError("Berhasil diunduh, namun gagal tersimpan ke histori server.");
+        } finally {
+            setActionLoading(null);
+        }
     };
 
     const handleCetakUlang = (record) => {
         printRecord(record);
+    };
+
+    // Hapus menunggu konfirmasi backend sebelum baris hilang dari table.
+    const handleDeleteConfirmed = async () => {
+        if (!deleteTarget) return;
+        setIsDeleting(true);
+        try {
+            await deleteCashOpname(deleteTarget.id);
+            await refreshHistory();
+            setDeleteTarget(null);
+            setSuccessMessage("Data Cash Opname berhasil dihapus.");
+            setTimeout(() => setSuccessMessage(""), 3000);
+        } catch (err) {
+            console.error("Gagal menghapus Cash Opname:", err);
+            setFormError("Gagal menghapus data di server. Silakan coba lagi.");
+        } finally {
+            setIsDeleting(false);
+        }
     };
 
     const filteredHistory = useMemo(() => {
@@ -402,7 +513,8 @@ export default function CashOpname() {
         if (!q) return history;
         return history.filter(
             (h) =>
-                h.periode.includes(q) ||
+                h.dariTanggal.includes(q) ||
+                h.sampaiTanggal.includes(q) ||
                 h.dibuatOleh1.toLowerCase().includes(q) ||
                 h.dibuatOleh2.toLowerCase().includes(q) ||
                 h.mengetahui.toLowerCase().includes(q)
@@ -432,6 +544,10 @@ export default function CashOpname() {
                     from { opacity: 0; transform: translate(-50%, -12px); }
                     to   { opacity: 1; transform: translate(-50%, 0); }
                 }
+                @keyframes modalIn {
+                    from { opacity: 0; transform: scale(0.96); }
+                    to   { opacity: 1; transform: scale(1); }
+                }
             `}</style>
 
             {successMessage && (
@@ -446,30 +562,110 @@ export default function CashOpname() {
                 </div>
             )}
 
-            {/* ================= FORM + PREVIEW CASH OPNAME ================= */}
+            {/* ================= MODAL KONFIRMASI HAPUS ================= */}
+            {deleteTarget && (
+                <div
+                    style={{
+                        position: "fixed", inset: 0, background: "rgba(17,24,39,0.5)", zIndex: 200,
+                        display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
+                    }}
+                    onClick={() => setDeleteTarget(null)}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            background: "#fff", borderRadius: "16px", padding: "24px", maxWidth: "380px", width: "100%",
+                            boxShadow: "0 20px 50px rgba(0,0,0,0.25)", animation: "modalIn 0.2s ease",
+                        }}
+                    >
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                            <div style={{
+                                width: "36px", height: "36px", borderRadius: "10px", background: "#fef2f2",
+                                display: "flex", alignItems: "center", justifyContent: "center", color: "#dc2626", flexShrink: 0,
+                            }}>
+                                <FaExclamationTriangle style={{ fontSize: "16px" }} />
+                            </div>
+                            <h4 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#111827" }}>Hapus Cash Opname?</h4>
+                        </div>
+                        <p style={{ margin: "0 0 20px", fontSize: "13px", color: "#6b7280", lineHeight: 1.5 }}>
+                            Data periode <strong>{formatDateID(deleteTarget.dariTanggal)} s/d {formatDateID(deleteTarget.sampaiTanggal)}</strong> akan dihapus secara permanen dan tidak dapat dikembalikan.
+                        </p>
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+                            <button
+                                type="button"
+                                onClick={() => setDeleteTarget(null)}
+                                disabled={isDeleting}
+                                style={{
+                                    border: "1.5px solid #e5e7eb", borderRadius: "10px", padding: "8px 16px",
+                                    fontSize: "13px", fontWeight: 600, color: "#374151", background: "#fff",
+                                    cursor: isDeleting ? "not-allowed" : "pointer", opacity: isDeleting ? 0.6 : 1,
+                                }}
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDeleteConfirmed}
+                                disabled={isDeleting}
+                                style={{
+                                    border: "none", borderRadius: "10px", padding: "8px 16px",
+                                    fontSize: "13px", fontWeight: 600, color: "#fff", background: "#dc2626",
+                                    cursor: isDeleting ? "not-allowed" : "pointer", opacity: isDeleting ? 0.7 : 1,
+                                }}
+                            >
+                                {isDeleting ? "Menghapus..." : "Ya, Hapus"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ================= FORM CASH OPNAME ================= */}
             <div
                 style={{
                     background: "#fff", border: "1px solid #e5e7eb", borderRadius: "16px",
-                    padding: "20px", margin: "0 10px 20px", boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
+                    padding: "20px", margin: "20px", boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
                 }}
             >
                 <h3 style={{ margin: "0 0 16px", fontSize: "15px", fontWeight: 700, color: "#363D48" }}>
                     Buat Cash Opname
                 </h3>
 
+                {/* BARIS 1: Dari Tanggal, Sampai Tanggal, Jam (otomatis), Saldo Awal */}
                 <div
                     style={{
-                        display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                        gap: "14px", marginBottom: "10px",
+                        display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                        gap: "14px", marginBottom: "14px",
                     }}
                 >
                     <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>Per Tanggal</label>
+                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>Dari Tanggal</label>
                         <input
                             type="date"
-                            value={periode}
-                            onChange={(e) => setPeriode(e.target.value)}
+                            value={dariTanggal}
+                            onChange={(e) => setDariTanggal(e.target.value)}
                             className="border border-gray-300 rounded-lg text-sm px-3 py-2 text-gray-700 w-full focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
+                        />
+                    </div>
+
+                    <div>
+                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>Sampai Tanggal</label>
+                        <input
+                            type="date"
+                            value={sampaiTanggal}
+                            onChange={(e) => setSampaiTanggal(e.target.value)}
+                            className="border border-gray-300 rounded-lg text-sm px-3 py-2 text-gray-700 w-full focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
+                        />
+                    </div>
+
+                    <div>
+                        <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>Jam</label>
+                        <input
+                            type="text"
+                            value={formatTimeID(currentTime)}
+                            readOnly
+                            title="Jam hanya tampil di form, tidak ikut dicetak/diunduh"
+                            className="border border-gray-300 rounded-lg text-sm px-3 py-2 text-gray-500 bg-gray-50 w-full focus:outline-none"
                         />
                     </div>
 
@@ -484,7 +680,15 @@ export default function CashOpname() {
                             className="border border-gray-300 rounded-lg text-sm px-3 py-2 text-gray-700 w-full focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
                         />
                     </div>
+                </div>
 
+                {/* BARIS 2: Dibuat Oleh (1), Dibuat Oleh (2), Mengetahui */}
+                <div
+                    style={{
+                        display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                        gap: "14px", marginBottom: "10px",
+                    }}
+                >
                     <div>
                         <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>Dibuat Oleh (1)</label>
                         <AutocompleteInput
@@ -525,145 +729,48 @@ export default function CashOpname() {
                     </div>
                 )}
 
-                {/* ===== Preview mengikuti layout template excel ===== */}
-                <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", padding: "18px", background: "#fafafa" }}>
-                    <div style={{ textAlign: "center", marginBottom: "10px" }}>
-                        <div style={{ fontWeight: 700, fontSize: "14px", color: "#1f2937" }}>PETTY CASH</div>
-                        <div style={{ fontSize: "12px", color: "#4b5563" }}>{COMPANY_NAME}</div>
-                        <div style={{ fontSize: "12px", color: "#4b5563" }}>PER TGL : {periode ? formatDateID(periode) : "-"}</div>
-                    </div>
-
-                    <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: "13px", color: "#1f2937", padding: "8px 0", borderTop: "1px solid #e5e7eb", borderBottom: "1px solid #e5e7eb" }}>
-                        <span>PETTY CASH SURABAYA</span>
-                        <span>{formatCurrency(saldoAwal)}</span>
-                    </div>
-
-                    <div style={{ fontWeight: 700, fontSize: "12px", color: "#1f2937", marginTop: "14px", marginBottom: "6px" }}>
-                        A. PENGELUARAN YG SDH SELESAI
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-xs border border-gray-300">
-                            <thead>
-                                <tr className="bg-gray-100 text-left">
-                                    <th className="p-2 border border-gray-300">Tanggal</th>
-                                    <th className="p-2 border border-gray-300">Kode</th>
-                                    <th className="p-2 border border-gray-300">Keterangan</th>
-                                    <th className="p-2 border border-gray-300 text-right">Jumlah</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {settlementRows.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={4} className="p-3 text-center text-gray-400 border border-gray-300">
-                                            {periode ? "Tidak ada data settlement." : "Pilih tanggal untuk menampilkan rekap."}
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    settlementRows.map((r) => (
-                                        <tr key={r.id}>
-                                            <td className="p-2 border border-gray-300">{formatDateID(r.tanggal)}</td>
-                                            <td className="p-2 border border-gray-300">{r.kode}</td>
-                                            <td className="p-2 border border-gray-300">{r.keterangan}</td>
-                                            <td className="p-2 border border-gray-300 text-right">{formatCurrency(r.jumlah)}</td>
-                                        </tr>
-                                    ))
-                                )}
-                                <tr className="font-semibold">
-                                    <td colSpan={3} className="p-2 border border-gray-300 text-right">Total A</td>
-                                    <td className="p-2 border border-gray-300 text-right">{formatCurrency(totalA)}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div style={{ fontWeight: 700, fontSize: "12px", color: "#1f2937", marginTop: "16px", marginBottom: "6px" }}>
-                        B. UANG MUKA
-                    </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-xs border border-gray-300">
-                            <thead>
-                                <tr className="bg-gray-100 text-left">
-                                    <th className="p-2 border border-gray-300">Tanggal</th>
-                                    <th className="p-2 border border-gray-300">Kode</th>
-                                    <th className="p-2 border border-gray-300">Keterangan</th>
-                                    <th className="p-2 border border-gray-300 text-right">Jumlah</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {advanceRows.length === 0 ? (
-                                    <tr>
-                                        <td colSpan={4} className="p-3 text-center text-gray-400 border border-gray-300">
-                                            {periode ? "Tidak ada data uang muka." : "Pilih tanggal untuk menampilkan rekap."}
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    advanceRows.map((r) => (
-                                        <tr key={r.id}>
-                                            <td className="p-2 border border-gray-300">{formatDateID(r.tanggal)}</td>
-                                            <td className="p-2 border border-gray-300">{r.kode}</td>
-                                            <td className="p-2 border border-gray-300">{r.keterangan}</td>
-                                            <td className="p-2 border border-gray-300 text-right">{formatCurrency(r.jumlah)}</td>
-                                        </tr>
-                                    ))
-                                )}
-                                <tr className="font-semibold">
-                                    <td colSpan={3} className="p-2 border border-gray-300 text-right">Total B</td>
-                                    <td className="p-2 border border-gray-300 text-right">{formatCurrency(totalB)}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div style={{ marginTop: "14px", fontSize: "13px", color: "#1f2937" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, padding: "4px 0" }}>
-                            <span>TOTAL A + B</span>
-                            <span>{formatCurrency(totalAB)}</span>
-                        </div>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, padding: "4px 0" }}>
-                            <span>SALDO AKHIR</span>
-                            <span>{formatCurrency(saldoAkhir)}</span>
-                        </div>
-                    </div>
-
-                    <div style={{ display: "flex", justifyContent: "space-between", marginTop: "40px", fontSize: "12px", color: "#374151" }}>
-                        <div style={{ width: "55%" }}>
-                            <div>Dibuat oleh :</div>
-                            <div style={{ display: "flex", justifyContent: "space-around", marginTop: "44px", textAlign: "center" }}>
-                                <div style={{ borderTop: "1px solid #9ca3af", paddingTop: "4px", minWidth: "100px" }}>{dibuatOleh1 || "-"}</div>
-                                <div style={{ borderTop: "1px solid #9ca3af", paddingTop: "4px", minWidth: "100px" }}>{dibuatOleh2 || "-"}</div>
-                            </div>
-                        </div>
-                        <div style={{ width: "35%", textAlign: "center" }}>
-                            <div>Mengetahui,</div>
-                            <div style={{ borderTop: "1px solid #9ca3af", marginTop: "44px", paddingTop: "4px" }}>{mengetahui || "-"}</div>
-                        </div>
-                    </div>
-                </div>
-
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "16px" }}>
                     <button
                         type="button"
                         onClick={handleCetak}
+                        disabled={actionLoading !== null}
                         style={{
                             display: "flex", alignItems: "center", gap: "8px", border: "1.5px solid #363D48",
                             borderRadius: "10px", padding: "9px 18px", fontSize: "13px", color: "#363D48",
-                            background: "#fff", cursor: "pointer", fontWeight: 600,
+                            background: "#fff", cursor: actionLoading !== null ? "not-allowed" : "pointer", fontWeight: 600,
+                            opacity: actionLoading !== null ? 0.6 : 1,
                         }}
                     >
                         <FaPrint style={{ fontSize: "12px" }} />
-                        Cetak
+                        {actionLoading === "cetak" ? "Menyimpan histori..." : "Cetak"}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleUnduh}
+                        disabled={actionLoading !== null}
+                        style={{
+                            display: "flex", alignItems: "center", gap: "8px", border: "1.5px solid #363D48",
+                            borderRadius: "10px", padding: "9px 18px", fontSize: "13px", color: "#363D48",
+                            background: "#fff", cursor: actionLoading !== null ? "not-allowed" : "pointer", fontWeight: 600,
+                            opacity: actionLoading !== null ? 0.6 : 1,
+                        }}
+                    >
+                        <FaDownload style={{ fontSize: "12px" }} />
+                        {actionLoading === "unduh" ? "Menyimpan histori..." : "Unduh"}
                     </button>
                     <button
                         type="button"
                         onClick={handleSimpan}
+                        disabled={actionLoading !== null}
                         style={{
                             display: "flex", alignItems: "center", gap: "8px", background: "linear-gradient(135deg, #363D48, #59616F)",
                             color: "#fff", border: "none", borderRadius: "10px", padding: "9px 18px", fontSize: "13px", fontWeight: 600,
-                            cursor: "pointer", boxShadow: "0 4px 12px #59616F55",
+                            cursor: actionLoading !== null ? "not-allowed" : "pointer", boxShadow: "0 4px 12px #59616F55",
+                            opacity: actionLoading !== null ? 0.7 : 1,
                         }}
                     >
                         <FaSave style={{ fontSize: "12px" }} />
-                        Simpan
+                        {actionLoading === "simpan" ? "Menyimpan..." : "Simpan"}
                     </button>
                 </div>
             </div>
@@ -672,7 +779,7 @@ export default function CashOpname() {
             <div
                 style={{
                     background: "#fff", border: "1px solid #e5e7eb", borderRadius: "16px",
-                    padding: "20px", margin: "0 10px", boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
+                    padding: "20px", margin: "20px", boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
                 }}
             >
                 <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "16px", flexWrap: "wrap", gap: "12px" }}>
@@ -693,32 +800,46 @@ export default function CashOpname() {
                         <thead>
                             <tr className="text-xs uppercase tracking-wide bg-gray-50">
                                 <th className="p-3 font-medium border border-gray-300">No</th>
-                                <th className="p-3 font-medium border border-gray-300">Per Tanggal</th>
+                                <th className="p-3 font-medium border border-gray-300">Periode</th>
+                                <th className="p-3 font-medium border border-gray-300">Jam</th>
                                 <th className="p-3 font-medium border border-gray-300">Dibuat Oleh</th>
                                 <th className="p-3 font-medium border border-gray-300">Mengetahui</th>
                                 <th className="p-3 font-medium border border-gray-300">Total A + B</th>
                                 <th className="p-3 font-medium border border-gray-300">Saldo Akhir</th>
                                 <th className="p-3 font-medium border border-gray-300">Aksi Terakhir</th>
-                                <th className="p-3 font-medium border border-gray-300">Cetak Ulang</th>
+                                <th className="p-3 font-medium border border-gray-300">Aksi</th>
                             </tr>
                         </thead>
 
-                        {filteredHistory.length === 0 && (
+                        {historyLoading && (
                             <tbody>
                                 <tr>
-                                    <td colSpan={8} className="p-8 text-center text-gray-400 border border-gray-300">
+                                    <td colSpan={9} className="p-8 text-center text-gray-400 border border-gray-300">
+                                        Memuat history Cash Opname...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        )}
+
+                        {!historyLoading && filteredHistory.length === 0 && (
+                            <tbody>
+                                <tr>
+                                    <td colSpan={9} className="p-8 text-center text-gray-400 border border-gray-300">
                                         {history.length === 0 ? "Belum ada history Cash Opname." : "Data tidak ditemukan."}
                                     </td>
                                 </tr>
                             </tbody>
                         )}
 
-                        {filteredHistory.length > 0 && (
+                        {!historyLoading && filteredHistory.length > 0 && (
                             <tbody>
                                 {currentRows.map((row, idx) => (
                                     <tr key={row.id} className="hover:bg-gray-50">
                                         <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{startEntry + idx}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{formatDateID(row.periode)}</td>
+                                        <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
+                                            {formatDateID(row.dariTanggal)} s/d {formatDateID(row.sampaiTanggal)}
+                                        </td>
+                                        <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.jam}</td>
                                         <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.dibuatOleh1} & {row.dibuatOleh2}</td>
                                         <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.mengetahui}</td>
                                         <td className="p-3 text-gray-700 border border-gray-300 text-right" style={{ paddingRight: "10px" }}>{formatCurrency(row.totalAB)}</td>
@@ -727,27 +848,42 @@ export default function CashOpname() {
                                             <span
                                                 style={{
                                                     fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "999px",
-                                                    background: row.aksi === "Simpan" ? "#ecfdf5" : "#eff6ff",
-                                                    color: row.aksi === "Simpan" ? "#047857" : "#1d4ed8",
+                                                    background: row.aksi === "Simpan" ? "#ecfdf5" : row.aksi === "Cetak" ? "#eff6ff" : "#fef3c7",
+                                                    color: row.aksi === "Simpan" ? "#047857" : row.aksi === "Cetak" ? "#1d4ed8" : "#b45309",
                                                 }}
                                             >
                                                 {row.aksi}
                                             </span>
                                         </td>
                                         <td className="p-3 border border-gray-300">
-                                            <button
-                                                type="button"
-                                                onClick={() => handleCetakUlang(row)}
-                                                title="Cetak Ulang"
-                                                style={{
-                                                    display: "inline-flex", alignItems: "center", gap: "6px",
-                                                    background: "#fff", border: "1.5px solid #363D48", color: "#363D48",
-                                                    borderRadius: "8px", padding: "6px 10px", fontSize: "12px", fontWeight: 600, cursor: "pointer",
-                                                }}
-                                            >
-                                                <FaRedo style={{ fontSize: "11px" }} />
-                                                Cetak Ulang
-                                            </button>
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleCetakUlang(row)}
+                                                    title="Cetak Ulang"
+                                                    style={{
+                                                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                                        width: "32px", height: "32px",
+                                                        background: "#fff", border: "1.5px solid #363D48", color: "#363D48",
+                                                        borderRadius: "8px", cursor: "pointer",
+                                                    }}
+                                                >
+                                                    <FaRedo style={{ fontSize: "13px" }} />
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setDeleteTarget(row)}
+                                                    title="Hapus"
+                                                    style={{
+                                                        display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                                        width: "32px", height: "32px",
+                                                        background: "#fff", border: "1.5px solid #fecaca", color: "#dc2626",
+                                                        borderRadius: "8px", cursor: "pointer",
+                                                    }}
+                                                >
+                                                    <FaTrashAlt style={{ fontSize: "13px" }} />
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}
