@@ -13,20 +13,18 @@ import {
     FaExclamationTriangle,
     FaEdit,
 } from "react-icons/fa";
-// Catatan: fitur "Unduh PDF" memerlukan dua paket tambahan.
-// Install dulu di project ini:
-//   npm install jspdf html2canvas
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
-// import {
-//     getCashOpnameHistory,
-//     saveCashOpname,
-//     updateCashOpname,
-//     deleteCashOpname,
-//     getSettlementRecap,
-//     getAdvanceRecap,
-// } from "../api/cash_opname";
-// import { getEmployees } from "../api/employee";
+
+import {
+    getCashOpnameHistory,
+    saveCashOpname,
+    updateCashOpname,
+    deleteCashOpname,
+    getSettlementRecap,
+    getAdvanceRecap,
+} from "../api/cash_opname";
+import { getEmployees } from "../api/employee";
 
 export const meta = {
     id: "cash_opname",
@@ -165,9 +163,6 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
     );
 }
 
-// Ambil info baris untuk ditampilkan di laporan cetak/unduh.
-// Keterangan TIDAK lagi dipecah/diambil dari pola "... BY ..." — isinya
-// disamakan persis dengan apa yang ada di tabel (field keterangan/description asli).
 function getRowInfo(r) {
     const tanggal = formatDateID(r.tanggal);
     const tipe = r.tipe || "STLM";
@@ -305,7 +300,7 @@ function buildReportContentHtml(record) {
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.kode}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.namaUser}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.keterangan}</td>
-            <td style="padding:4px 40px 4px 8px;text-align:right;border-bottom:1px solid #eee;">${info.jumlah}</td>
+            <td style="padding:4px 8px;text-align:right;border-bottom:1px solid #eee;">${info.jumlah}</td>
         </tr>`;
         })
         .join("");
@@ -313,20 +308,22 @@ function buildReportContentHtml(record) {
     const rowsB = (record.advanceRows || [])
         .map((r) => {
             const info = getRowInfo(r);
+            if (!r.tipe) info.tipe = "UM" + (idx + 1);
             return `
         <tr>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.tanggal}</td>
+            <td style="padding:4px 8px;text-align:center;border-bottom:1px solid #eee;">${info.tipe}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.kode}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.namaUser}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.keterangan}</td>
-            <td style="padding:4px 40px 4px 8px;text-align:right;border-bottom:1px solid #eee;">${info.jumlah}</td>
+            <td style="padding:4px 8px;text-align:right;border-bottom:1px solid #eee;">${info.jumlah}</td>
         </tr>`;
         })
         .join("");
 
     return `
         <div class="header-title">
-            <h1>PETTY CASH</h1>
+            <h1>LAPORAN PETTY CASH</h1>
             <h2>${COMPANY_NAME}</h2>
             <div class="period">PER TGL : ${formatDateID(record.sampaiTanggal)}</div>
         </div>
@@ -336,7 +333,7 @@ function buildReportContentHtml(record) {
             <span>${formatNumberID(record.saldoAwal)},00</span>
         </div>
 
-        <div class="section-label">A. PENGELUARAN YG SDH SELESAI</div>
+        <div class="section-label">A. PENGELUARAN YANG SUDAH SELESAI</div>
         <table>
             <thead>
                 <tr>
@@ -374,7 +371,7 @@ function buildReportContentHtml(record) {
         `<tr><td colSpan="5" style="text-align:center;padding:8px;color:#888;">Tidak ada data uang muka</td></tr>`
         }
                 <tr class="subtotal-row">
-                    <td colSpan="4"></td>
+                     <td colSpan="4"></td>
                     <td style="text-align: right; padding-right: 40px;">${formatNumberID(record.totalB)}</td>
                 </tr>
             </tbody>
@@ -407,7 +404,7 @@ function buildReportContentHtml(record) {
                     <span>${record.mengetahui}</span>
                 </div>
             </div>
-        </div>`;
+            </div>`;
 }
 
 // ===== HTML lengkap untuk jendela cetak (window.print) — A4, margin 2,54cm =====
@@ -449,7 +446,6 @@ function printRecord(record) {
     }, 300);
 }
 
-// ===== Render elemen HTML tersembunyi menjadi file PDF A4 (margin 2,54cm) dan langsung diunduh =====
 // Tidak menampilkan preview/dialog cetak — file PDF langsung tersimpan ke folder unduhan browser.
 async function generatePdfFromElement(element, filename) {
     const canvas = await html2canvas(element, {
@@ -561,7 +557,6 @@ export default function CashOpname() {
     const [deleteBatchOpen, setDeleteBatchOpen] = useState(false);
     const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState("");
-
     const [actionLoading, setActionLoading] = useState(null);
 
     const refreshHistory = async () => {
@@ -708,14 +703,11 @@ export default function CashOpname() {
         }
     };
 
-    // Unduh langsung sebagai file PDF (tanpa preview/dialog cetak), lalu simpan ke histori
     const handleUnduh = async () => {
         if (!validateForm()) return;
         const record = buildRecord("Unduh (PDF)");
         setActionLoading("unduh");
         try {
-            await downloadRecordAsPdf(record);
-
             if (editingId) {
                 await updateCashOpname(editingId, record);
             } else {
@@ -1006,7 +998,6 @@ export default function CashOpname() {
             >
                 <div style={{ marginBottom: "16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#363D48" }}>History Cash Opname</h3>
-
                     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                         {/* Mode hapus TIDAK aktif -> tombol trash untuk masuk mode hapus */}
                         {!deleteMode && (
@@ -1071,9 +1062,9 @@ export default function CashOpname() {
                                 <th className="p-3 font-medium border border-gray-300">Total A + B</th>
                                 <th className="p-3 font-medium border border-gray-300">Saldo Akhir</th>
                                 <th className="p-3 font-medium border border-gray-300">Aksi Terakhir</th>
-                                <th className="p-3 font-medium border border-gray-300">Aksi</th>
+                                <th className="p-3 font-medium border border-gray-300">Cetak</th>
                                 {deleteMode && (
-                                    <th className="p-3 font-medium border border-gray-300">Pilih</th>
+                                    <th className="p-3 font-medium border border-gray-300"></th>
                                 )}
                             </tr>
                         </thead>
@@ -1091,7 +1082,7 @@ export default function CashOpname() {
                         {!historyLoading && history.length === 0 && (
                             <tbody>
                                 <tr>
-                                    <td colSpan={deleteMode ? 10 : 9} className="p-8 text-center text-gray-400 border border-gray-300">
+                                    <td colSpan={9} className="p-8 text-center text-gray-400 border border-gray-300">
                                         Belum ada history Cash Opname.
                                     </td>
                                 </tr>
@@ -1112,8 +1103,8 @@ export default function CashOpname() {
                                         <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.jam}</td>
                                         <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.dibuatOleh1} & {row.dibuatOleh2}</td>
                                         <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.mengetahui}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300 text-right" style={{ paddingRight: "10px" }}>{formatCurrency(row.totalAB)}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300 text-right" style={{ paddingRight: "10px" }}>{formatCurrency(row.saldoAkhir)}</td>
+                                        <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{formatCurrency(row.totalAB)}</td>
+                                        <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{formatCurrency(row.saldoAkhir)}</td>
                                         <td className="p-3 border border-gray-300">
                                             <span
                                                 style={{
@@ -1140,6 +1131,7 @@ export default function CashOpname() {
                                                 >
                                                     <FaPrint style={{ fontSize: "13px" }} />
                                                 </button>
+                                                
                                             </div>
                                         </td>
                                         {/* Kolom checkbox seleksi hapus — hanya muncul saat deleteMode, disamakan dengan Advance */}
@@ -1194,8 +1186,7 @@ export default function CashOpname() {
                     </div>
                 )}
             </div>
-
-            {/* ================= MODAL KONFIRMASI HAPUS BATCH (disamakan dengan Advance) ================= */}
+            {/* MODAL KONFIRMASI HAPUS BATCH */}
             {deleteBatchOpen && (
                 <div
                     style={{
