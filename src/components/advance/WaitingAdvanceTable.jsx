@@ -14,7 +14,8 @@ import {
 //     cancelAdvanceRequest,
 //     generatePPCNumber,
 //     submitSettlement,
-//     getSettlementReceipt
+//     getSettlementReceipt,
+//     updateAdvanceRequest,
 // } from "../../api/advance";
 
 const STATUS_STYLE = {
@@ -127,7 +128,7 @@ function AutocompleteInput({
                                 : "text-gray-600 hover:bg-gray-50"
                                 }`}
                         >
-                            {s}
+                            <span style={{ marginLeft: "10px" }}>{s}</span>
                         </li>
                     ))}
                 </ul>
@@ -159,9 +160,9 @@ function SettlementReceiptModal({ row, receiptData, receiptLoading, onClose }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-none shadow-lg w-full max-w-sm font-mono">
-                <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
-                    <h3 className="text-base font-semibold text-gray-700 mb-1">
+            <div className="bg-white rounded-none shadow-lg w-full max-w-sm font-mono" style={{ borderRadius: "20px" }}>
+                <div className="px-8 py-7" style={{ padding: "20px 20px 15px" }}>
+                    <h3 className="text-base font-semibold text-gray-700 mb-1" style={{ margin: "0 0 8px" }}>
                         Settlement Receipt
                     </h3>
                     <div className="border-b border-gray-300 mb-4" />
@@ -191,11 +192,11 @@ function SettlementReceiptModal({ row, receiptData, receiptLoading, onClose }) {
                     )}
                 </div>
 
-                <div className="flex justify-end px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px", marginTop: "10px" }}>
+                <div className="flex justify-end px-6 py-4 border-t border-gray-100" style={{ padding: "16px 24px 24px", gap: "10px" }}>
                     <button
                         type="button"
                         onClick={onClose}
-                        className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50" style={{ padding: "5px 7px" }}
+                        className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50" style={{ padding: "8px 20px", border: "1.5px solid #e5e7eb", borderRadius: "10px", background: "#fff", cursor: "pointer", fontWeight: 500 }}
                     >
                         Close
                     </button>
@@ -227,7 +228,7 @@ function SettlementFormModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-none shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto">
+            <div className="bg-white rounded-none shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
                 <div
                     className="px-8 py-7"
                     style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}
@@ -295,13 +296,13 @@ function SettlementFormModal({
                             </div>
                         )}
 
-                        <div className="flex justify-end gap-2 mt-2 pt-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px", marginTop: "10px" }}>
+                        <div className="flex justify-end gap-2 mt-2 pt-4 border-t border-gray-100" style={{ padding: "10px 24px 24px", gap: "10px" }}>
                             <button
                                 type="button"
                                 onClick={onClose}
                                 disabled={submitting}
                                 className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
-                                style={{ padding: "5px 7px" }}
+                                style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", background: "#fff", cursor: "pointer", fontWeight: 500 }}
                             >
                                 Cancel
                             </button>
@@ -309,7 +310,7 @@ function SettlementFormModal({
                                 type="submit"
                                 disabled={submitting}
                                 className="bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
-                                style={{ padding: "5px 7px" }}
+                                style={{ padding: "4px 15px", background: "linear-gradient(135deg, #464444c9, #464444c9)", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}
                             >
                                 {submitting ? "Menyimpan..." : "Submit Settlement"}
                             </button>
@@ -322,7 +323,7 @@ function SettlementFormModal({
 }
 
 
-export default function Table({ startDate, endDate, refreshKey }) {
+export default function Table({ startDate, endDate, refreshKey, setRefreshKey, onSummaryUpdate }) {
     // ================= TABLE 1: ADVANCE =================
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -342,6 +343,9 @@ export default function Table({ startDate, endDate, refreshKey }) {
     const [requestForm, setRequestForm] = useState(initialForm);
     const [requestSubmitting, setRequestSubmitting] = useState(false);
     const [requestError, setRequestError] = useState("");
+
+    // NOTIFIKASI SUKSES (toast) — sama seperti pada Employee.jsx
+    const [successMessage, setSuccessMessage] = useState("");
 
     // DELETE — mode seleksi batch
     const [deleteMode, setDeleteMode] = useState(false);
@@ -392,6 +396,18 @@ export default function Table({ startDate, endDate, refreshKey }) {
     });
     const [settlementSubmitting, setSettlementSubmitting] = useState(false);
     const [settlementError, setSettlementError] = useState("");
+
+    // EDIT ROW MODAL
+    const [rowToEdit, setRowToEdit] = useState(null);
+    const [editForm, setEditForm] = useState({
+        employee_name: "",
+        cost_center: "",
+        purpose: "",
+        amount: "",
+        due_date: "",
+    });
+    const [editSubmitting, setEditSubmitting] = useState(false);
+    const [editError, setEditError] = useState("");
 
     const loadData = async () => {
         try {
@@ -564,6 +580,10 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
             handleRequestClose();
             loadData();
+            setSuccessMessage("Request berhasil ditambahkan.");
+            setTimeout(() => {
+                setSuccessMessage("");
+            }, 3000);
 
         } catch (err) {
 
@@ -609,6 +629,10 @@ export default function Table({ startDate, endDate, refreshKey }) {
             setRowToCancel(null);
 
             loadData();
+            setSuccessMessage("Request berhasil dibatalkan.");
+            setTimeout(() => {
+                setSuccessMessage("");
+            }, 3000);
 
         } catch (err) {
             console.error(err);
@@ -623,7 +647,9 @@ export default function Table({ startDate, endDate, refreshKey }) {
     // ACTION: HAPUS BATCH
     const handleDeleteBatchConfirm = async () => {
         if (selectedIds.size === 0) return;
+
         try {
+
             setDeleting(true);
             setDeleteError("");
             await Promise.all([...selectedIds].map((id) => deleteAdvanceRequest(id)));
@@ -631,6 +657,11 @@ export default function Table({ startDate, endDate, refreshKey }) {
             setDeleteMode(false);
             setSelectedIds(new Set());
             loadData();
+            setSuccessMessage("Data terpilih berhasil dihapus.");
+            setTimeout(() => {
+                setSuccessMessage("");
+            }, 3000);
+
         } catch (err) {
             setDeleteError(
                 err.response?.data?.detail || "Gagal menghapus data."
@@ -684,6 +715,57 @@ export default function Table({ startDate, endDate, refreshKey }) {
         setSettlementError("");
     };
 
+    // EDIT ROW HANDLERS
+    const handleEditRowOpen = (row, e) => {
+        e.stopPropagation();
+        setRowToEdit(row);
+        setEditForm({
+            employee_name: row.nama_user || "",
+            cost_center: row.cost_center || "",
+            purpose: row.keterangan || "",
+            amount: row.jumlah !== undefined ? String(row.jumlah) : "",
+            due_date: row.due_date || "",
+        });
+        setEditError("");
+    };
+
+    const handleEditClose = () => {
+        setRowToEdit(null);
+        setEditError("");
+    };
+
+    const handleEditChange = (e) => {
+        const { name, value } = e.target;
+        setEditForm(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleEditSubmit = async (e) => {
+        e.preventDefault();
+        if (!rowToEdit) return;
+        try {
+            setEditSubmitting(true);
+            setEditError("");
+            await updateAdvanceRequest(rowToEdit.id, {
+                employee_name: editForm.employee_name || undefined,
+                cost_center: editForm.cost_center || undefined,
+                purpose: editForm.purpose || undefined,
+                amount: editForm.amount !== "" ? Number(editForm.amount) : undefined,
+                due_date: editForm.due_date || undefined,
+            });
+            handleEditClose();
+            loadData();
+            setSuccessMessage("Data berhasil diperbarui.");
+            setTimeout(() => {
+                setSuccessMessage("");
+            }, 3000);
+        } catch (err) {
+            const detail = err?.response?.data?.detail;
+            setEditError(Array.isArray(detail) ? detail.map(d => d.msg).join(", ") : (detail || "Gagal menyimpan perubahan."));
+        } finally {
+            setEditSubmitting(false);
+        }
+    };
+
     const handleSettlementSubmit = async (e) => {
         e.preventDefault();
         if (!rowToSettle) return;
@@ -702,6 +784,10 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
             handleSettlementClose();
             loadData();
+            setSuccessMessage("Settlement berhasil disimpan.");
+            setTimeout(() => {
+                setSuccessMessage("");
+            }, 3000);
 
         } catch (err) {
             console.error(err);
@@ -739,6 +825,28 @@ export default function Table({ startDate, endDate, refreshKey }) {
         });
     }, [rows, filterUser, filterCostCenter, filterStatus]);
 
+    const computedSummary = useMemo(() => {
+        const total_advance = filteredRows.length;
+        const active_advance = filteredRows.filter((r) => r.status === "Active").length;
+        const overdue_advance = filteredRows.filter((r) => r.status === "Overdue").length;
+        const outstanding_amount = filteredRows
+            .filter((r) => r.status === "Active" || r.status === "Overdue")
+            .reduce((acc, r) => acc + (Number(r.jumlah) || 0), 0);
+
+        return {
+            total_advance,
+            active_advance,
+            overdue_advance,
+            outstanding_amount,
+        };
+    }, [filteredRows]);
+
+    useEffect(() => {
+        if (onSummaryUpdate) {
+            onSummaryUpdate(computedSummary);
+        }
+    }, [computedSummary, onSummaryUpdate]);
+
     const total = filteredRows.length;
     const totalPages = Math.max(1, Math.ceil(total / perPage));
     const currentRows = filteredRows.slice((page - 1) * perPage, page * perPage);
@@ -750,6 +858,37 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
     return (
         <>
+            {/* NOTIFIKASI SUKSES (toast) — sama seperti pada Employee.jsx */}
+            <style>{`
+                @keyframes toastIn {
+                    from { opacity: 0; transform: translate(-50%, -12px); }
+                    to   { opacity: 1; transform: translate(-50%, 0); }
+                }
+            `}</style>
+
+            {successMessage && (
+                <div
+                    style={{
+                        position: "fixed",
+                        top: "20px",
+                        left: "50%",
+                        transform: "translate(-50%, 0)",
+                        zIndex: 100,
+                        background: "#ecfdf5",
+                        border: "1.5px solid #6ee7b7",
+                        color: "#047857",
+                        borderRadius: "10px",
+                        padding: "10px 18px",
+                        fontSize: "13px",
+                        fontWeight: 600,
+                        boxShadow: "0 8px 24px rgba(16,185,129,0.25)",
+                        animation: "toastIn 0.25s ease",
+                    }}
+                >
+                    {successMessage}
+                </div>
+            )}
+
             {/* ================================================= */}
             {/* ================= TABLE 1: ADVANCE ================= */}
             {/* ================================================= */}
@@ -891,9 +1030,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 <th className="p-3 font-medium border border-gray-300">Due Date</th>
                                 <th className="p-3 font-medium border border-gray-300">Status</th>
                                 <th className="p-3 font-medium border border-gray-300">Action</th>
-                                {deleteMode && (
-                                    <th className="p-3 font-medium border border-gray-300 text-center">Pilih</th>
-                                )}
                             </tr>
                         </thead>
 
@@ -914,24 +1050,28 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 {currentRows.map((row, index) => (
                                     <tr
                                         key={index}
-                                        className={`hover:bg-gray-50 ${deleteMode && selectedIds.has(row.id) ? "bg-red-50" : ""}`}
+                                        className={`hover:bg-gray-100 cursor-pointer transition-colors ${deleteMode && selectedIds.has(row.id) ? "bg-red-50" : ""}`}
+                                        onClick={(e) => deleteMode ? toggleSelectRow(row.id) : handleEditRowOpen(row, e)}
                                     >
-                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300">
+                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300" style={{ paddingLeft: "10px" }}>
                                             {formatDate(row.tanggal)}
                                         </td>
-                                        <td className="py-3 px-5 text-gray-700 border border-gray-300">{row.ppc_no}</td>
-                                        <td className="py-3 px-5 text-gray-700 border border-gray-300">{row.nama_user}</td>
-                                        <td className="py-3 px-5 text-gray-700 border border-gray-300">{row.cost_center}</td>
-                                        <td className="py-3 px-5 text-gray-700 border border-gray-300">{row.keterangan}</td>
-                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300">
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.ppc_no}</td>
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.nama_user}</td>
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.cost_center}</td>
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.keterangan}</td>
+                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300" style={{ paddingLeft: "10px" }}>
                                             {formatRupiah(row.jumlah)}
                                         </td>
-                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300">
+                                        <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300" style={{ paddingLeft: "10px" }}>
                                             {formatDate(row.due_date)}
                                         </td>
-                                        <td className="py-3 px-5 border border-gray-300 text-center">
+                                        <td className="py-3 px-5 border border-gray-300" style={{ paddingLeft: "10px" }}>
                                             <span
-                                                onClick={() => handleStatusClick(row)}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleStatusClick(row);
+                                                }}
                                                 className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_STYLE[row.status] || "bg-gray-100 text-gray-600"} ${row.status === "Settled" || row.status === "Active" || row.status === "Overdue" ? "cursor-pointer hover:opacity-75" : ""}`}
                                                 style={{ padding: "1px 3px" }}
                                             >
@@ -942,7 +1082,10 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                             <div className="flex items-center justify-center gap-2">
                                                 <button
                                                     type="button"
-                                                    onClick={() => handleCancelClick(row)}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleCancelClick(row);
+                                                    }}
                                                     disabled={row.status === "Canceled"}
                                                     className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white text-xs font-medium px-3 py-1.5 rounded-md whitespace-nowrap"
                                                     style={{ padding: "1px 3px" }}
@@ -953,11 +1096,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         </td>
                                         {/* Kolom checkbox seleksi hapus — hanya muncul saat deleteMode */}
                                         {deleteMode && (
-                                            <td className="p-3 border border-gray-300 text-center">
+                                            <td className="p-3 border border-gray-300 text-center" onClick={(e) => e.stopPropagation()}>
                                                 <input
                                                     type="checkbox"
                                                     checked={selectedIds.has(row.id)}
                                                     onChange={() => toggleSelectRow(row.id)}
+                                                    onClick={(e) => e.stopPropagation()}
                                                     className="w-4 h-4 accent-red-600 cursor-pointer"
                                                 />
                                             </td>
@@ -1018,6 +1162,107 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     </div>
                 )}
 
+                {/* MODAL EDIT ROW (Advance) */}
+                {rowToEdit && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                        <div className="bg-white shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
+                            <div className="flex items-center justify-between border-b border-gray-200" style={{ padding: "8px 24px 8px", marginRight: "20px" }}>
+                                <div style={{ marginLeft: "20px" }}>
+                                    <h3 className="text-lg font-semibold text-gray-700">Edit Advance</h3>
+                                    <p className="text-xs text-gray-400 mt-0.5">PPC No: <span className="font-mono font-semibold text-gray-600">{rowToEdit.ppc_no}</span></p>
+                                </div>
+                                <button type="button" onClick={handleEditClose} className="text-gray-400 hover:text-gray-600"><FaTimes /></button>
+                            </div>
+
+                            {(rowToEdit.status === "Settled" || rowToEdit.status === "Canceled") && (
+                                <div className="mx-6 mt-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2" style={{ marginLeft: "20px", marginRight: "20px", marginTop: "10px" }}>
+                                    Data dengan status <strong>{rowToEdit.status}</strong> tidak dapat diubah.
+                                </div>
+                            )}
+
+                            <form onSubmit={handleEditSubmit} className="px-6 py-5 flex flex-col gap-4" style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px" }}>
+                                <div>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Nama User</label>
+                                    <input
+                                        type="text"
+                                        name="employee_name"
+                                        value={editForm.employee_name}
+                                        onChange={handleEditChange}
+                                        disabled={rowToEdit.status === "Settled" || rowToEdit.status === "Canceled"}
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none disabled:bg-gray-50 disabled:text-gray-400"
+                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Cost Center</label>
+                                    <input
+                                        type="text"
+                                        name="cost_center"
+                                        value={editForm.cost_center}
+                                        onChange={handleEditChange}
+                                        disabled={rowToEdit.status === "Settled" || rowToEdit.status === "Canceled"}
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none disabled:bg-gray-50 disabled:text-gray-400"
+                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Description</label>
+                                    <textarea
+                                        name="purpose"
+                                        value={editForm.purpose}
+                                        onChange={handleEditChange}
+                                        rows={2}
+                                        disabled={rowToEdit.status === "Settled" || rowToEdit.status === "Canceled"}
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none resize-none disabled:bg-gray-50 disabled:text-gray-400"
+                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "8px" }}>Amount</label>
+                                    <input
+                                        type="number"
+                                        name="amount"
+                                        value={editForm.amount}
+                                        onChange={handleEditChange}
+                                        min="0"
+                                        disabled={rowToEdit.status === "Settled" || rowToEdit.status === "Canceled"}
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none disabled:bg-gray-50 disabled:text-gray-400"
+                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Due Date</label>
+                                    <input
+                                        type="date"
+                                        name="due_date"
+                                        value={editForm.due_date}
+                                        onChange={handleEditChange}
+                                        disabled={rowToEdit.status === "Settled" || rowToEdit.status === "Canceled"}
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none disabled:bg-gray-50 disabled:text-gray-400"
+                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                    />
+                                </div>
+
+                                {editError && (
+                                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{editError}</div>
+                                )}
+
+                                <div className="flex justify-end gap-2 pt-4 border-t border-gray-100" style={{ padding: "10px 0 10px", gap: "10px" }}>
+                                    <button type="button" onClick={handleEditClose} disabled={editSubmitting}
+                                        className="border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                                        style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 500 }}
+                                    >Batal</button>
+                                    <button type="submit"
+                                        disabled={editSubmitting || rowToEdit.status === "Settled" || rowToEdit.status === "Canceled"}
+                                        className="text-white rounded-lg text-sm disabled:opacity-40"
+                                        style={{ padding: "4px 15px", background: "linear-gradient(135deg, #464444c9, #464444c9)", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}
+                                    >{editSubmitting ? "Menyimpan..." : "Simpan"}</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+
                 {/* MODAL New Request (Advance) */}
                 {requestOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -1037,8 +1282,20 @@ export default function Table({ startDate, endDate, refreshKey }) {
                             <form
                                 onSubmit={handleRequestSubmit}
                                 className="px-6 py-2 flex flex-col gap-1.5"
-                                style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "6px" }}
+                                style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "6px", marginTop: "6px" }}
                             >
+                                <div>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Tanggal</label>
+                                    <input
+                                        type="date"
+                                        name="request_date"
+                                        value={requestForm.request_date}
+                                        onChange={handleRequestChange}
+                                        required
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                        style={{ padding: "3px 12px", borderWidth: "1.5px" }}
+                                    />
+                                </div>
                                 <div>
                                     <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>PPC Number</label>
                                     <input
@@ -1053,24 +1310,13 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Tanggal</label>
-                                    <input
-                                        type="date"
-                                        name="request_date"
-                                        value={requestForm.request_date}
-                                        onChange={handleRequestChange}
-                                        required
-                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
-                                        style={{ padding: "3px 12px", borderWidth: "1.5px" }}
-                                    />
-                                </div>
-                                <div>
                                     <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Nama User</label>
                                     <input
                                         type="text"
                                         name="employee_name"
                                         value={requestForm.employee_name}
                                         onChange={handleRequestChange}
+                                        placeholder="Andi Pratama"
                                         required
                                         className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
                                         style={{ padding: "3px 12px", borderWidth: "1.5px" }}
@@ -1091,12 +1337,13 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 </div>
 
                                 <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Keterangan</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Description</label>
                                     <textarea
                                         name="purpose"
                                         value={requestForm.purpose}
                                         onChange={handleRequestChange}
-                                        rows={1}
+                                        rows={3}
+                                        placeholder="Contoh: Advance perjalanan dinas"
                                         required
                                         className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none resize-none"
                                         style={{ padding: "3px 12px", borderWidth: "1.5px" }}
@@ -1104,7 +1351,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 </div>
 
                                 <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Jumlah</label>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Advance Amount</label>
                                     <input
                                         type="number"
                                         name="amount"
@@ -1135,13 +1382,13 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     </div>
                                 )}
 
-                                <div className="flex justify-end gap-2 mt-0 pt-2 border-t border-gray-100">
+                                <div className="flex justify-end gap-2 mt-0 pt-2 border-t border-gray-100" style={{ padding: "5px 0 5px", gap: "10px" }}>
                                     <button
                                         type="button"
                                         onClick={handleRequestClose}
                                         disabled={requestSubmitting}
                                         className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
-                                        style={{ padding: "1px 15px", marginRight: "5px" }}
+                                        style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 500 }}
                                     >
                                         Batal
                                     </button>
@@ -1149,7 +1396,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         type="submit"
                                         disabled={requestSubmitting}
                                         className="bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
-                                        style={{ padding: "1px 10px" }}
+                                        style={{ padding: "4px 15px", background: "linear-gradient(135deg, #464444c9, #464444c9)", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}
                                     >
                                         {requestSubmitting ? "Menyimpan..." : "Simpan"}
                                     </button>
@@ -1162,9 +1409,9 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 {/* MODAL Konfirmasi Batal */}
                 {rowToCancel && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" >
-                        <div className="bg-white rounded-none shadow-lg w-full max-w-sm">
-                            <div className="px-8 py-7" style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}>
-                                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                        <div className="bg-white rounded-none shadow-lg w-full max-w-sm" style={{ borderRadius: "20px" }}>
+                            <div className="px-8 py-7" style={{ padding: "20px 20px 15px" }}>
+                                <h3 className="text-lg font-semibold text-gray-700 mb-2" style={{ margin: "0 0 8px" }}>
                                     Batalkan Request
                                 </h3>
                                 <p className="text-sm text-gray-500">
@@ -1181,12 +1428,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 )}
                             </div>
 
-                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", marginRight: "10px", marginTop: "10px" }}>
+                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ padding: "16px 24px 24px", gap: "10px" }}>
                                 <button
                                     type="button"
                                     onClick={handleCancelDismiss}
                                     disabled={canceling}
-                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "5px 7px" }}
+                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "8px 20px", border: "1.5px solid #e5e7eb", borderRadius: "10px", background: "#fff", cursor: "pointer", fontWeight: 500 }}
                                 >
                                     Tutup
                                 </button>
@@ -1195,7 +1442,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     type="button"
                                     onClick={handleCancelConfirm}
                                     disabled={canceling}
-                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "5px 7px" }}
+                                    className="bg-orange-500 hover:bg-orange-600 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2" style={{ padding: "8px 20px", background: "linear-gradient(135deg, #f97316, #ea580c)", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}
                                 >
                                     {canceling ? "Membatalkan..." : "Ya, Batalkan"}
                                 </button>
@@ -1208,8 +1455,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 {deleteBatchOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
                         <div className="bg-white rounded-xl shadow-lg w-full max-w-sm">
-                            <div className="px-6 py-5" style={{ marginTop: "5px" }}>
-                                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+                            <div className="px-6 py-5" style={{ marginTop: "15px", paddingLeft: "20px", paddingRight: "20px" }}>
+                                <h3 className="text-lg font-semibold text-gray-700 mb-2" style={{ margin: "0 0 8px" }}>
                                     Hapus Data Terpilih
                                 </h3>
                                 <p className="text-sm text-gray-500">
@@ -1227,7 +1474,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                 )}
                             </div>
 
-                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
+                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", paddingLeft: "10px", paddingRight: "10px" }}>
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -1235,8 +1482,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                         handleExitDeleteMode();
                                     }}
                                     disabled={deleting}
-                                    className="border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
-                                    style={{ padding: "5px 14px" }}
+                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                                    style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 500 }}
                                 >
                                     Batal
                                 </button>
@@ -1245,8 +1492,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                                     type="button"
                                     onClick={handleDeleteBatchConfirm}
                                     disabled={deleting}
-                                    className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm"
-                                    style={{ padding: "5px 14px" }}
+                                    className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm " style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}
                                 >
                                     {deleting ? "Menghapus..." : "Ya, Hapus"}
                                 </button>
@@ -1276,6 +1522,155 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     submitting={settlementSubmitting}
                     error={settlementError}
                 />
+
+                {/* MODAL Edit Advance Row */}
+                {rowToEdit && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                        <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
+                            <div
+                                className="flex items-center justify-between border-b border-gray-200"
+                                style={{ padding: "8px 24px 8px", marginRight: "20px" }}
+                            >
+                                <h3 className="text-lg font-semibold text-gray-700" style={{ marginLeft: "20px" }}>
+                                    Edit Advance Request
+                                </h3>
+                                <button
+                                    type="button"
+                                    onClick={handleEditClose}
+                                    className="text-gray-400 hover:text-gray-600"
+                                >
+                                    <FaTimes />
+                                </button>
+                            </div>
+
+                            <form
+                                onSubmit={handleEditSubmit}
+                                className="px-6 py-3 flex flex-col gap-2.5"
+                                style={{
+                                    marginRight: "20px",
+                                    marginLeft: "20px",
+                                    marginBottom: "10px",
+                                    marginTop: "10px",
+                                }}
+                            >
+                                <div>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                        PPC Number
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={rowToEdit.ppc_no || "-"}
+                                        readOnly
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] bg-gray-50 text-gray-600"
+                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                        Nama User
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="employee_name"
+                                        value={editForm.employee_name}
+                                        onChange={handleEditChange}
+                                        required
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                        Cost Center
+                                    </label>
+                                    <input
+                                        type="text"
+                                        name="cost_center"
+                                        value={editForm.cost_center}
+                                        onChange={handleEditChange}
+                                        required
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                        Purpose / Description
+                                    </label>
+                                    <textarea
+                                        rows={2}
+                                        name="purpose"
+                                        value={editForm.purpose}
+                                        onChange={handleEditChange}
+                                        required
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none resize-none"
+                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                        Amount
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        name="amount"
+                                        value={editForm.amount}
+                                        onChange={handleEditChange}
+                                        required
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                        Due Date
+                                    </label>
+                                    <input
+                                        type="date"
+                                        name="due_date"
+                                        value={editForm.due_date ? editForm.due_date.split("T")[0] : ""}
+                                        onChange={handleEditChange}
+                                        required
+                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                    />
+                                </div>
+
+                                {editError && (
+                                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                        {editError}
+                                    </div>
+                                )}
+
+                                <div className="flex justify-end gap-2 pt-4 border-t border-gray-100" style={{ padding: "5px 0 5px", gap: "10px" }}>
+                                    <button
+                                        type="button"
+                                        onClick={handleEditClose}
+                                        disabled={editSubmitting}
+                                        className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                                        style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 500 }}
+                                    >
+                                        Batal
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={editSubmitting}
+                                        className="bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
+                                        style={{ padding: "4px 15px", background: "linear-gradient(135deg, #464444c9, #464444c9)", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}
+                                    >
+                                        {editSubmitting ? "Menyimpan..." : "Simpan"}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
             </div>
         </>
     );
