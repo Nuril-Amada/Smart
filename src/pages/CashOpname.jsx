@@ -302,27 +302,24 @@ function buildReportContentHtml(record) {
             return `
         <tr>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.tanggal}</td>
-            <td style="padding:4px 8px;text-align:center;border-bottom:1px solid #eee;">${info.tipe}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.kode}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.namaUser}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.keterangan}</td>
-            <td style="padding:4px 8px;text-align:right;border-bottom:1px solid #eee;">${info.jumlah}</td>
+            <td style="padding:4px 40px 4px 8px;text-align:right;border-bottom:1px solid #eee;">${info.jumlah}</td>
         </tr>`;
         })
         .join("");
 
     const rowsB = (record.advanceRows || [])
-        .map((r, idx) => {
+        .map((r) => {
             const info = getRowInfo(r);
-            if (!r.tipe) info.tipe = "UM" + (idx + 1);
             return `
         <tr>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.tanggal}</td>
-            <td style="padding:4px 8px;text-align:center;border-bottom:1px solid #eee;">${info.tipe}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.kode}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.namaUser}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.keterangan}</td>
-            <td style="padding:4px 8px;text-align:right;border-bottom:1px solid #eee;">${info.jumlah}</td>
+            <td style="padding:4px 40px 4px 8px;text-align:right;border-bottom:1px solid #eee;">${info.jumlah}</td>
         </tr>`;
         })
         .join("");
@@ -343,21 +340,20 @@ function buildReportContentHtml(record) {
         <table>
             <thead>
                 <tr>
-                    <th style="width: 12%;">Tanggal</th>
-                    <th style="width: 8%; text-align: center;">Tipe</th>
-                    <th style="width: 16%;">Nomor PPC</th>
-                    <th style="width: 20%;">Nama User</th>
-                    <th style="width: 28%;">Keterangan</th>
-                    <th style="width: 16%; text-align: right;">Jumlah</th>
+                    <th style="width: 14%;">Tanggal</th>
+                    <th style="width: 18%;">Nomor PPC</th>
+                    <th style="width: 22%;">Nama User</th>
+                    <th style="width: 30%;">Keterangan</th>
+                    <th style="width: 16%; text-align: right; padding-right: 40px;">Jumlah</th>
                 </tr>
             </thead>
             <tbody>
                 ${rowsA ||
-        `<tr><td colSpan="6" style="text-align:center;padding:8px;color:#888;">Tidak ada data pengeluaran</td></tr>`
+        `<tr><td colSpan="5" style="text-align:center;padding:8px;color:#888;">Tidak ada data pengeluaran</td></tr>`
         }
                 <tr class="subtotal-row">
-                    <td colSpan="5"></td>
-                    <td style="text-align: right;">${formatNumberID(record.totalA)}</td>
+                    <td colSpan="4"></td>
+                    <td style="text-align: right; padding-right: 40px;">${formatNumberID(record.totalA)}</td>
                 </tr>
             </tbody>
         </table>
@@ -366,21 +362,20 @@ function buildReportContentHtml(record) {
         <table>
             <thead>
                 <tr>
-                    <th style="width: 12%;">Tanggal</th>
-                    <th style="width: 8%; text-align: center;">Tipe</th>
-                    <th style="width: 16%;">Nomor PPC</th>
-                    <th style="width: 20%;">Nama User</th>
-                    <th style="width: 28%;">Keterangan</th>
-                    <th style="width: 16%; text-align: right;">Jumlah</th>
+                    <th style="width: 14%;">Tanggal</th>
+                    <th style="width: 18%;">Nomor PPC</th>
+                    <th style="width: 22%;">Nama User</th>
+                    <th style="width: 30%;">Keterangan</th>
+                    <th style="width: 16%; text-align: right; padding-right: 40px;">Jumlah</th>
                 </tr>
             </thead>
             <tbody>
                 ${rowsB ||
-        `<tr><td colSpan="6" style="text-align:center;padding:8px;color:#888;">Tidak ada data uang muka</td></tr>`
+        `<tr><td colSpan="5" style="text-align:center;padding:8px;color:#888;">Tidak ada data uang muka</td></tr>`
         }
                 <tr class="subtotal-row">
-                    <td colSpan="5"></td>
-                    <td style="text-align: right;">${formatNumberID(record.totalB)}</td>
+                    <td colSpan="4"></td>
+                    <td style="text-align: right; padding-right: 40px;">${formatNumberID(record.totalB)}</td>
                 </tr>
             </tbody>
         </table>
@@ -1076,7 +1071,10 @@ export default function CashOpname() {
                                 <th className="p-3 font-medium border border-gray-300">Total A + B</th>
                                 <th className="p-3 font-medium border border-gray-300">Saldo Akhir</th>
                                 <th className="p-3 font-medium border border-gray-300">Aksi Terakhir</th>
-                                <th className="p-3 font-medium border border-gray-300">Cetak</th>
+                                <th className="p-3 font-medium border border-gray-300">Aksi</th>
+                                {deleteMode && (
+                                    <th className="p-3 font-medium border border-gray-300">Pilih</th>
+                                )}
                             </tr>
                         </thead>
 
@@ -1136,7 +1134,7 @@ export default function CashOpname() {
                                                     style={{
                                                         display: "inline-flex", alignItems: "center", justifyContent: "center",
                                                         width: "32px", height: "32px",
-                                                        background: "#fff", 
+                                                        background: "#fff", border: "1.5px solid #363D48", color: "#363D48",
                                                         borderRadius: "8px", cursor: "pointer",
                                                     }}
                                                 >
@@ -1218,8 +1216,9 @@ export default function CashOpname() {
                                 width: "36px", height: "36px", borderRadius: "10px", background: "#fef2f2",
                                 display: "flex", alignItems: "center", justifyContent: "center", color: "#dc2626", flexShrink: 0,
                             }}>
+                                <FaExclamationTriangle style={{ fontSize: "16px" }} />
                             </div>
-                            <h4 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#111827" }}>Hapus Data Terpilih</h4>
+                            <h4 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#111827" }}>Hapus Data Terpilih?</h4>
                         </div>
                         <p style={{ margin: "0 0 20px", fontSize: "13px", color: "#6b7280", lineHeight: 1.5 }}>
                             <strong>{selectedIds.size} data</strong> Cash Opname yang dipilih akan dihapus secara permanen dan tidak dapat dikembalikan.
