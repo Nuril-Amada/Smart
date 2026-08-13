@@ -12,12 +12,13 @@ import {
 //   createReimbursement,
 //   deleteReimbursement,
 //   toggleSettlementCheck,
+//   updateReimbursement,
 // } from "../../api/settlement";
 // import { generatePPCNumber } from "../../api/advance";
 
 // STYLE
 const SOURCE_STYLE = {
-  Advance: "bg-green-100 text-green-700",
+  Settlement: "bg-green-100 text-green-700",
   Reimbursement: "bg-purple-100 text-purple-700",
 };
 
@@ -126,7 +127,7 @@ function AutocompleteInput({
                 : "text-gray-600 hover:bg-gray-50"
                 }`}
             >
-              {s}
+              <span style={{ marginLeft: "10px" }}>{s}</span>
             </li>
           ))}
         </ul>
@@ -146,7 +147,7 @@ const initialForm = {
 };
 
 // COMPONENT
-export default function Table({ startDate, endDate, refreshKey }) {
+export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate }) {
 
   // TABLE
   const [rows, setRows] = useState([]);
@@ -162,7 +163,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
   const [filterCostCenter, setFilterCostCenter] =
     useState("");
   const [filterStatus, setFilterStatus] = useState("All Source");
-
   const userInputRef = useRef(null);
   const ccInputRef = useRef(null);
 
@@ -186,13 +186,25 @@ export default function Table({ startDate, endDate, refreshKey }) {
     }
   };
 
-  // DELETE CONFIRM (single row — tetap digunakan oleh fungsi batch)
+  // DELETE CONFIRM
   const [rowToDelete, setRowToDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
   // DELETE BATCH — hapus semua baris yang di-checklist
   const [deleteBatchOpen, setDeleteBatchOpen] = useState(false);
+
+  // EDIT ROW MODAL
+  const [rowToEdit, setRowToEdit] = useState(null);
+  const [editForm, setEditForm] = useState({
+    employee_name: "",
+    settlement_date: "",
+    cost_center: "",
+    description: "",
+    settlement_amount: "",
+  });
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState("");
 
   // LOAD DATA
   const loadData = async () => {
@@ -222,7 +234,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
         settlement_amount:
           Number(item.settlement_amount),
         source:
-          item.source === "ADVANCE" || item.source === "SETTLEMENT" || item.source === "Settlement" || item.source === "Advance"
+          item.source === "ADVANCE"
             ? "Settlement"
             : "Reimbursement",
         is_checked:
@@ -365,9 +377,8 @@ export default function Table({ startDate, endDate, refreshKey }) {
 
   };
 
-  // ACTION: HAPUS BATCH — hapus semua baris yang is_checked
+  // ACTION: HAPUS (dengan konfirmasi)
   const checkedRows = rows.filter((r) => !!r.is_checked);
-
   const handleDeleteBatchClick = () => {
     setDeleteError("");
     setDeleteBatchOpen(true);
@@ -385,9 +396,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
       setDeleting(true);
       setDeleteError("");
 
-      // Hapus satu-per-satu semua baris yang di-ceklis
       await Promise.all(checkedRows.map((r) => deleteReimbursement(r.id)));
-
       setDeleteBatchOpen(false);
       loadData();
 
@@ -398,6 +407,53 @@ export default function Table({ startDate, endDate, refreshKey }) {
       );
     } finally {
       setDeleting(false);
+    }
+  };
+
+  // EDIT ROW HANDLERS
+  const handleEditRowOpen = (row, e) => {
+    e.stopPropagation();
+    setRowToEdit(row);
+    setEditForm({
+      employee_name: row.nama_user || "",
+      settlement_date: row.tanggal || "",
+      cost_center: row.cost_center || "",
+      description: row.description || "",
+      settlement_amount: row.settlement_amount !== undefined ? String(row.settlement_amount) : "",
+    });
+    setEditError("");
+  };
+
+  const handleEditClose = () => {
+    setRowToEdit(null);
+    setEditError("");
+  };
+
+  const handleEditChange = (e) => {
+    const { name, value } = e.target;
+    setEditForm(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    if (!rowToEdit) return;
+    try {
+      setEditSubmitting(true);
+      setEditError("");
+      await updateReimbursement(rowToEdit.id, {
+        employee_name: editForm.employee_name || undefined,
+        settlement_date: editForm.settlement_date || undefined,
+        cost_center: editForm.cost_center || undefined,
+        description: editForm.description || undefined,
+        settlement_amount: editForm.settlement_amount !== "" ? Number(editForm.settlement_amount) : undefined,
+      });
+      handleEditClose();
+      loadData();
+    } catch (err) {
+      const detail = err?.response?.data?.detail;
+      setEditError(Array.isArray(detail) ? detail.map(d => d.msg).join(", ") : (detail || "Gagal menyimpan perubahan."));
+    } finally {
+      setEditSubmitting(false);
     }
   };
 
@@ -427,6 +483,38 @@ export default function Table({ startDate, endDate, refreshKey }) {
     });
 
   }, [rows, filterUser, filterCostCenter, filterStatus]);
+
+  // KPI Summary calculation based on filtered rows
+  const computedSummary = useMemo(() => {
+    const total = filteredRows.length;
+    const advance = filteredRows.filter(
+      (r) => r.source === "Settlement" || r.source === "ADVANCE"
+    ).length;
+    const reimbursement = filteredRows.filter(
+      (r) => r.source === "Reimbursement"
+    ).length;
+    const total_amount = filteredRows.reduce(
+      (acc, r) => acc + (Number(r.settlement_amount) || 0),
+      0
+    );
+
+    return {
+      total,
+      advance,
+      reimbursement,
+      total_amount,
+      total_settlement: total,
+      total_advance: advance,
+      total_reimbursement: reimbursement,
+      total_settlement_amount: total_amount,
+    };
+  }, [filteredRows]);
+
+  useEffect(() => {
+    if (onSummaryUpdate) {
+      onSummaryUpdate(computedSummary);
+    }
+  }, [computedSummary, onSummaryUpdate]);
 
   // PAGINATION
   const total = filteredRows.length;
@@ -496,7 +584,6 @@ export default function Table({ startDate, endDate, refreshKey }) {
             placeholder="Cari Cost Center..."
             inputStyle={{ marginBottom: "10px", padding: "1px 5px" }}
           />
-
         </div>
 
         <div className="flex flex-col gap-1">
@@ -557,7 +644,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
               <th className="p-3 font-medium border border-gray-300">Description</th>
               <th className="p-3 font-medium border border-gray-300">Amount</th>
               <th className="p-3 font-medium border border-gray-300">Source</th>
-              <th className="p-3 font-medium border border-gray-300">Action</th>
+              <th className="p-3 font-medium border border-gray-300">SAP</th>
             </tr>
           </thead>
 
@@ -577,33 +664,38 @@ export default function Table({ startDate, endDate, refreshKey }) {
             <tbody>
               {currentRows.map(
                 (row, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
+                  <tr
+                    key={index}
+                    className="hover:bg-gray-100 cursor-pointer transition-colors"
+                    onClick={(e) => handleEditRowOpen(row, e)}
+                  >
+                    <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300" style={{ paddingLeft: "10px" }}>
                       {formatDate(row.tanggal)}
                     </td>
-                    <td className="p-3 text-gray-700 border border-gray-300">{row.no_ppc}</td>
-                    <td className="p-3 text-gray-700 border border-gray-300">{row.nama_user}</td>
-                    <td className="p-3 text-gray-700 border border-gray-300">{row.cost_center}</td>
-                    <td className="p-3 text-gray-700 border border-gray-300">{row.description}</td>
-                    <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300">
+                    <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.no_ppc}</td>
+                    <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.nama_user}</td>
+                    <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.cost_center}</td>
+                    <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.description}</td>
+                    <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300" style={{ paddingLeft: "10px" }}>
                       {formatRupiah(row.settlement_amount)}
                     </td>
-                    <td className="p-3 border border-gray-300">
+                    <td className="p-3 border border-gray-300" style={{ paddingLeft: "10px" }}>
                       <span
                         className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap ${SOURCE_STYLE[
                           row.source
                         ]
-                          }`}
+                          }`} style={{ paddingLeft: "5px", paddingRight: "5px" }}
                       >
                         {row.source}
                       </span>
                     </td>
-                    <td className="p-3 border border-gray-300">
+                    <td className="p-3 border border-gray-300" onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center justify-center">
                         <input
                           type="checkbox"
                           checked={!!row.is_checked}
                           onChange={() => toggleSap(row)}
+                          onClick={(e) => e.stopPropagation()}
                           className="w-4 h-4 accent-gray-600 cursor-pointer"
                         />
                       </div>
@@ -673,16 +765,105 @@ export default function Table({ startDate, endDate, refreshKey }) {
         )
       }
 
+      {/* MODAL EDIT ROW (Settlement) */}
+      {rowToEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+          <div className="bg-white shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
+            <div className="flex items-center justify-between border-b border-gray-200" style={{ padding: "8px 24px 8px", marginRight: "20px" }}>
+              <div style={{ marginLeft: "20px" }}>
+                <h3 className="text-lg font-semibold text-gray-700">Edit Settlement</h3>
+                <p className="text-xs text-gray-400 mt-0.5">PPC No: <span className="font-mono font-semibold text-gray-600">{rowToEdit.no_ppc}</span></p>
+              </div>
+              <button type="button" onClick={handleEditClose} className="text-gray-400 hover:text-gray-600"><FaTimes /></button>
+            </div>
+
+            <form onSubmit={handleEditSubmit} className="px-6 py-5 flex flex-col gap-4" style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px", marginTop: "10px" }}>
+              <div>
+                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Nama User</label>
+                <input
+                  type="text"
+                  name="employee_name"
+                  value={editForm.employee_name}
+                  onChange={handleEditChange}
+                  className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                  style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                />
+              </div>
+              <div>
+                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Tanggal Settlement</label>
+                <input
+                  type="date"
+                  name="settlement_date"
+                  value={editForm.settlement_date}
+                  onChange={handleEditChange}
+                  className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                  style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                />
+              </div>
+              <div>
+                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Cost Center</label>
+                <input
+                  type="text"
+                  name="cost_center"
+                  value={editForm.cost_center}
+                  onChange={handleEditChange}
+                  className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                  style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                />
+              </div>
+              <div>
+                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Description</label>
+                <textarea
+                  name="description"
+                  value={editForm.description}
+                  onChange={handleEditChange}
+                  rows={3}
+                  className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none resize-none"
+                  style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                />
+              </div>
+              <div>
+                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "8px" }}>Settlement Amount</label>
+                <input
+                  type="number"
+                  name="settlement_amount"
+                  value={editForm.settlement_amount}
+                  onChange={handleEditChange}
+                  min="0"
+                  className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                  style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                />
+              </div>
+
+              {editError && (
+                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{editError}</div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-4 border-t border-gray-100" style={{ padding: "5px 0 5px", gap: "10px" }}>
+                <button type="button" onClick={handleEditClose} disabled={editSubmitting}
+                  className="border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                  style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 500 }}
+                >Batal</button>
+                <button type="submit" disabled={editSubmitting}
+                  className="text-white rounded-lg text-sm disabled:opacity-40"
+                  style={{ padding: "4px 15px", background: "linear-gradient(135deg, #464444c9, #464444c9)", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}
+                >{editSubmitting ? "Menyimpan..." : "Simpan"}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ================= MODAL MANUAL INPUT ================= */}
       {
         manualInputOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[85vh] overflow-y-auto">
+            <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
 
               {/* Header */}
               <div
                 className="flex items-center justify-between border-b border-gray-200"
-                style={{ padding: "12px 24px 10px", marginRight: "20px" }}
+                style={{ padding: "8px 24px 8px", marginRight: "20px" }}
               >
                 <h3
                   className="text-lg font-semibold text-gray-700"
@@ -708,6 +889,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                   marginRight: "20px",
                   marginLeft: "20px",
                   marginBottom: "10px",
+                  marginTop: "10px",
                 }}
               >
                 <div>
@@ -807,16 +989,13 @@ export default function Table({ startDate, endDate, refreshKey }) {
                   </div>
                 )}
 
-                <div className="flex justify-end gap-2 mt-1 pt-3 border-t border-gray-100">
+                <div className="flex justify-end gap-2 pt-4 border-t border-gray-100" style={{ padding: "5px 0 5px", gap: "10px" }}>
                   <button
                     type="button"
                     onClick={handleManualClose}
                     disabled={manualSubmitting}
                     className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
-                    style={{
-                      padding: "1px 15px",
-                      marginRight: "5px",
-                    }}
+                    style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 500 }}
                   >
                     Batal
                   </button>
@@ -825,9 +1004,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                     type="submit"
                     disabled={manualSubmitting}
                     className="bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
-                    style={{
-                      padding: "1px 10px",
-                    }}
+                    style={{ padding: "4px 15px", background: "linear-gradient(135deg, #464444c9, #464444c9)", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}
                   >
                     {manualSubmitting ? "Menyimpan..." : "Simpan"}
                   </button>
@@ -840,11 +1017,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
       }
 
       {/* ================= MODAL KONFIRMASI HAPUS BATCH ================= */}
+
       {
         deleteBatchOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
             <div className="bg-white rounded-xl shadow-lg w-full max-w-sm">
-              <div className="px-6 py-5" style={{ marginTop: "5px" }}>
+              <div className="px-6 py-5" style={{ marginTop: "15px", paddingLeft: "20px", paddingRight: "20px" }}>
                 <h3 className="text-lg font-semibold text-gray-700 mb-2">
                   Hapus Data Terpilih
                 </h3>
@@ -863,13 +1041,12 @@ export default function Table({ startDate, endDate, refreshKey }) {
                 )}
               </div>
 
-              <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100">
+              <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", paddingLeft: "10px", paddingRight: "10px" }}>
                 <button
                   type="button"
                   onClick={handleDeleteBatchCancel}
                   disabled={deleting}
-                  className="border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
-                  style={{ padding: "5px 14px" }}
+                  className="border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 500 }}
                 >
                   Batal
                 </button>
@@ -878,8 +1055,7 @@ export default function Table({ startDate, endDate, refreshKey }) {
                   type="button"
                   onClick={handleDeleteBatchConfirm}
                   disabled={deleting}
-                  className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm"
-                  style={{ padding: "5px 14px" }}
+                  className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm" style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}
                 >
                   {deleting ? "Menghapus..." : "Ya, Hapus"}
                 </button>
