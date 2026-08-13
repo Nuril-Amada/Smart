@@ -8,6 +8,7 @@ import {
     FaTimes,
     FaChevronLeft,
     FaChevronRight,
+    FaTrash,
     FaTrashAlt,
     FaExclamationTriangle,
     FaEdit,
@@ -478,8 +479,13 @@ export default function CashOpname() {
     const [editingId, setEditingId] = useState(null); // null = mode buat baru
     const formRef = useRef(null);
 
-    const [deleteTarget, setDeleteTarget] = useState(null);
-    const [isDeleting, setIsDeleting] = useState(false);
+    // ===== MODE HAPUS (batch, disamakan dengan Advance) =====
+    const [deleteMode, setDeleteMode] = useState(false);
+    const [selectedIds, setSelectedIds] = useState(new Set());
+    const [deleteBatchOpen, setDeleteBatchOpen] = useState(false);
+    const [deleting, setDeleting] = useState(false);
+    const [deleteError, setDeleteError] = useState("");
+
     const [actionLoading, setActionLoading] = useState(null);
 
     const refreshHistory = async () => {
@@ -685,20 +691,47 @@ export default function CashOpname() {
         printRecord(record);
     };
 
-    const handleDeleteConfirmed = async () => {
-        if (!deleteTarget) return;
-        setIsDeleting(true);
+    // ===== toggle pilih 1 baris =====
+    const toggleSelectRow = (id) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
+    // ===== aktifkan / matikan mode hapus =====
+    const handleEnterDeleteMode = () => {
+        setDeleteMode(true);
+        setSelectedIds(new Set());
+        setDeleteError("");
+    };
+
+    const handleExitDeleteMode = () => {
+        setDeleteMode(false);
+        setSelectedIds(new Set());
+        setDeleteError("");
+    };
+
+    // ===== eksekusi hapus batch =====
+    const handleDeleteBatchConfirm = async () => {
+        if (selectedIds.size === 0) return;
+        setDeleting(true);
+        setDeleteError("");
         try {
-            await deleteCashOpname(deleteTarget.id);
+            await Promise.all([...selectedIds].map((id) => deleteCashOpname(id)));
             await refreshHistory();
-            setDeleteTarget(null);
-            setSuccessMessage("Data Cash Opname berhasil dihapus.");
+            setDeleteBatchOpen(false);
+            setDeleteMode(false);
+            setSelectedIds(new Set());
+            setSuccessMessage("Data Cash Opname terpilih berhasil dihapus.");
             setTimeout(() => setSuccessMessage(""), 3000);
         } catch (err) {
             console.error("Gagal menghapus Cash Opname:", err);
-            setFormError("Gagal menghapus data di server. Silakan coba lagi.");
+            setDeleteError("Gagal menghapus data di server. Silakan coba lagi.");
         } finally {
-            setIsDeleting(false);
+            setDeleting(false);
         }
     };
 
@@ -740,64 +773,6 @@ export default function CashOpname() {
                     }}
                 >
                     {successMessage}
-                </div>
-            )}
-
-            {/* ================= MODAL KONFIRMASI HAPUS ================= */}
-            {deleteTarget && (
-                <div
-                    style={{
-                        position: "fixed", inset: 0, background: "rgba(17,24,39,0.5)", zIndex: 200,
-                        display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
-                    }}
-                    onClick={() => setDeleteTarget(null)}
-                >
-                    <div
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                            background: "#fff", borderRadius: "16px", padding: "24px", maxWidth: "380px", width: "100%",
-                            boxShadow: "0 20px 50px rgba(0,0,0,0.25)", animation: "modalIn 0.2s ease",
-                        }}
-                    >
-                        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-                            <div style={{
-                                width: "36px", height: "36px", borderRadius: "10px", background: "#fef2f2",
-                                display: "flex", alignItems: "center", justifyContent: "center", color: "#dc2626", flexShrink: 0,
-                            }}>
-                                <FaExclamationTriangle style={{ fontSize: "16px" }} />
-                            </div>
-                            <h4 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#111827" }}>Hapus Cash Opname?</h4>
-                        </div>
-                        <p style={{ margin: "0 0 20px", fontSize: "13px", color: "#6b7280", lineHeight: 1.5 }}>
-                            Data periode <strong>{formatDateID(deleteTarget.dariTanggal)} s/d {formatDateID(deleteTarget.sampaiTanggal)}</strong> akan dihapus secara permanen dan tidak dapat dikembalikan.
-                        </p>
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
-                            <button
-                                type="button"
-                                onClick={() => setDeleteTarget(null)}
-                                disabled={isDeleting}
-                                style={{
-                                    border: "1.5px solid #e5e7eb", borderRadius: "10px", padding: "8px 16px",
-                                    fontSize: "13px", fontWeight: 600, color: "#374151", background: "#fff",
-                                    cursor: isDeleting ? "not-allowed" : "pointer", opacity: isDeleting ? 0.6 : 1,
-                                }}
-                            >
-                                Batal
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleDeleteConfirmed}
-                                disabled={isDeleting}
-                                style={{
-                                    border: "none", borderRadius: "10px", padding: "8px 16px",
-                                    fontSize: "13px", fontWeight: 600, color: "#fff", background: "#dc2626",
-                                    cursor: isDeleting ? "not-allowed" : "pointer", opacity: isDeleting ? 0.7 : 1,
-                                }}
-                            >
-                                {isDeleting ? "Menghapus..." : "Ya, Hapus"}
-                            </button>
-                        </div>
-                    </div>
                 </div>
             )}
 
@@ -951,8 +926,59 @@ export default function CashOpname() {
                     padding: "20px", margin: "20px", boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
                 }}
             >
-                <div style={{ marginBottom: "16px" }}>
+                <div style={{ marginBottom: "16px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <h3 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#363D48" }}>History Cash Opname</h3>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                        {/* Mode hapus TIDAK aktif -> tombol trash untuk masuk mode hapus */}
+                        {!deleteMode && (
+                            <button
+                                type="button"
+                                onClick={handleEnterDeleteMode}
+                                title="Pilih data untuk dihapus"
+                                style={{
+                                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                    width: "32px", height: "32px",
+                                    background: "#b91c1c", color: "#fff", border: "none",
+                                    borderRadius: "8px", cursor: "pointer",
+                                }}
+                            >
+                                <FaTrash style={{ fontSize: "13px" }} />
+                            </button>
+                        )}
+
+                        {/* Mode hapus AKTIF -> tombol Batal + Hapus (N) */}
+                        {deleteMode && (
+                            <>
+                                <button
+                                    type="button"
+                                    onClick={handleExitDeleteMode}
+                                    style={{
+                                        border: "1.5px solid #e5e7eb", borderRadius: "8px", padding: "6px 12px",
+                                        fontSize: "12px", fontWeight: 600, color: "#374151", background: "#fff", cursor: "pointer",
+                                    }}
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => { setDeleteError(""); setDeleteBatchOpen(true); }}
+                                    disabled={selectedIds.size === 0}
+                                    title={selectedIds.size === 0 ? "Pilih data terlebih dahulu" : `Hapus ${selectedIds.size} data terpilih`}
+                                    style={{
+                                        display: "inline-flex", alignItems: "center", gap: "6px",
+                                        border: "none", borderRadius: "8px", padding: "6px 12px",
+                                        fontSize: "12px", fontWeight: 600, color: "#fff", background: "#dc2626",
+                                        cursor: selectedIds.size === 0 ? "not-allowed" : "pointer",
+                                        opacity: selectedIds.size === 0 ? 0.5 : 1,
+                                    }}
+                                >
+                                    <FaTrashAlt style={{ fontSize: "11px" }} />
+                                    Hapus {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+                                </button>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -968,13 +994,16 @@ export default function CashOpname() {
                                 <th className="p-3 font-medium border border-gray-300">Saldo Akhir</th>
                                 <th className="p-3 font-medium border border-gray-300">Aksi Terakhir</th>
                                 <th className="p-3 font-medium border border-gray-300">Aksi</th>
+                                {deleteMode && (
+                                    <th className="p-3 font-medium border border-gray-300">Pilih</th>
+                                )}
                             </tr>
                         </thead>
 
                         {historyLoading && (
                             <tbody>
                                 <tr>
-                                    <td colSpan={9} className="p-8 text-center text-gray-400 border border-gray-300">
+                                    <td colSpan={deleteMode ? 10 : 9} className="p-8 text-center text-gray-400 border border-gray-300">
                                         Memuat history Cash Opname...
                                     </td>
                                 </tr>
@@ -984,7 +1013,7 @@ export default function CashOpname() {
                         {!historyLoading && history.length === 0 && (
                             <tbody>
                                 <tr>
-                                    <td colSpan={9} className="p-8 text-center text-gray-400 border border-gray-300">
+                                    <td colSpan={deleteMode ? 10 : 9} className="p-8 text-center text-gray-400 border border-gray-300">
                                         Belum ada history Cash Opname.
                                     </td>
                                 </tr>
@@ -994,7 +1023,10 @@ export default function CashOpname() {
                         {!historyLoading && history.length > 0 && (
                             <tbody>
                                 {currentRows.map((row, idx) => (
-                                    <tr key={row.id} className="hover:bg-gray-50">
+                                    <tr
+                                        key={row.id}
+                                        className={`hover:bg-gray-50 ${deleteMode && selectedIds.has(row.id) ? "bg-red-50" : ""}`}
+                                    >
                                         <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{startEntry + idx}</td>
                                         <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
                                             {formatDateID(row.dariTanggal)} s/d {formatDateID(row.sampaiTanggal)}
@@ -1030,21 +1062,19 @@ export default function CashOpname() {
                                                 >
                                                     <FaPrint style={{ fontSize: "13px" }} />
                                                 </button>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setDeleteTarget(row)}
-                                                    title="Hapus"
-                                                    style={{
-                                                        display: "inline-flex", alignItems: "center", justifyContent: "center",
-                                                        width: "32px", height: "32px",
-                                                        background: "#fff", border: "1.5px solid #fecaca", color: "#dc2626",
-                                                        borderRadius: "8px", cursor: "pointer",
-                                                    }}
-                                                >
-                                                    <FaTrashAlt style={{ fontSize: "13px" }} />
-                                                </button>
                                             </div>
                                         </td>
+                                        {/* Kolom checkbox seleksi hapus — hanya muncul saat deleteMode, disamakan dengan Advance */}
+                                        {deleteMode && (
+                                            <td className="p-3 border border-gray-300 text-center">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedIds.has(row.id)}
+                                                    onChange={() => toggleSelectRow(row.id)}
+                                                    className="w-4 h-4 accent-red-600 cursor-pointer"
+                                                />
+                                            </td>
+                                        )}
                                     </tr>
                                 ))}
                             </tbody>
@@ -1086,6 +1116,71 @@ export default function CashOpname() {
                     </div>
                 )}
             </div>
+
+            {/* ================= MODAL KONFIRMASI HAPUS BATCH (disamakan dengan Advance) ================= */}
+            {deleteBatchOpen && (
+                <div
+                    style={{
+                        position: "fixed", inset: 0, background: "rgba(17,24,39,0.5)", zIndex: 200,
+                        display: "flex", alignItems: "center", justifyContent: "center", padding: "16px",
+                    }}
+                    onClick={() => !deleting && setDeleteBatchOpen(false)}
+                >
+                    <div
+                        onClick={(e) => e.stopPropagation()}
+                        style={{
+                            background: "#fff", borderRadius: "16px", padding: "24px", maxWidth: "380px", width: "100%",
+                            boxShadow: "0 20px 50px rgba(0,0,0,0.25)", animation: "modalIn 0.2s ease",
+                        }}
+                    >
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
+                            <div style={{
+                                width: "36px", height: "36px", borderRadius: "10px", background: "#fef2f2",
+                                display: "flex", alignItems: "center", justifyContent: "center", color: "#dc2626", flexShrink: 0,
+                            }}>
+                                <FaExclamationTriangle style={{ fontSize: "16px" }} />
+                            </div>
+                            <h4 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#111827" }}>Hapus Data Terpilih?</h4>
+                        </div>
+                        <p style={{ margin: "0 0 20px", fontSize: "13px", color: "#6b7280", lineHeight: 1.5 }}>
+                            <strong>{selectedIds.size} data</strong> Cash Opname yang dipilih akan dihapus secara permanen dan tidak dapat dikembalikan.
+                        </p>
+
+                        {deleteError && (
+                            <div style={{ fontSize: "12px", color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "8px 12px", marginBottom: "14px" }}>
+                                {deleteError}
+                            </div>
+                        )}
+
+                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px" }}>
+                            <button
+                                type="button"
+                                onClick={() => setDeleteBatchOpen(false)}
+                                disabled={deleting}
+                                style={{
+                                    border: "1.5px solid #e5e7eb", borderRadius: "10px", padding: "8px 16px",
+                                    fontSize: "13px", fontWeight: 600, color: "#374151", background: "#fff",
+                                    cursor: deleting ? "not-allowed" : "pointer", opacity: deleting ? 0.6 : 1,
+                                }}
+                            >
+                                Batal
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleDeleteBatchConfirm}
+                                disabled={deleting}
+                                style={{
+                                    border: "none", borderRadius: "10px", padding: "8px 16px",
+                                    fontSize: "13px", fontWeight: 600, color: "#fff", background: "#dc2626",
+                                    cursor: deleting ? "not-allowed" : "pointer", opacity: deleting ? 0.7 : 1,
+                                }}
+                            >
+                                {deleting ? "Menghapus..." : "Ya, Hapus"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
