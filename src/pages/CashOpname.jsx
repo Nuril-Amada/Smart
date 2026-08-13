@@ -300,7 +300,7 @@ function buildReportContentHtml(record) {
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.kode}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.namaUser}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.keterangan}</td>
-            <td style="padding:4px 8px;text-align:right;border-bottom:1px solid #eee;">${info.jumlah}</td>
+            <td style="padding:4px 8px;text-align:right;padding-right: 40px;border-bottom:1px solid #eee;">${info.jumlah}</td>
         </tr>`;
         })
         .join("");
@@ -308,15 +308,13 @@ function buildReportContentHtml(record) {
     const rowsB = (record.advanceRows || [])
         .map((r) => {
             const info = getRowInfo(r);
-            if (!r.tipe) info.tipe = "UM" + (idx + 1);
             return `
         <tr>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.tanggal}</td>
-            <td style="padding:4px 8px;text-align:center;border-bottom:1px solid #eee;">${info.tipe}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.kode}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.namaUser}</td>
             <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.keterangan}</td>
-            <td style="padding:4px 8px;text-align:right;border-bottom:1px solid #eee;">${info.jumlah}</td>
+            <td style="padding:4px 8px;text-align:right;padding-right: 40px;border-bottom:1px solid #eee;">${info.jumlah}</td>
         </tr>`;
         })
         .join("");
@@ -1125,7 +1123,7 @@ export default function CashOpname() {
                                                     style={{
                                                         display: "inline-flex", alignItems: "center", justifyContent: "center",
                                                         width: "32px", height: "32px",
-                                                        background: "#fff", border: "1.5px solid #363D48", color: "#363D48",
+                                                        background: "#fff",
                                                         borderRadius: "8px", cursor: "pointer",
                                                     }}
                                                 >
@@ -1203,12 +1201,6 @@ export default function CashOpname() {
                         }}
                     >
                         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "12px" }}>
-                            <div style={{
-                                width: "36px", height: "36px", borderRadius: "10px", background: "#fef2f2",
-                                display: "flex", alignItems: "center", justifyContent: "center", color: "#dc2626", flexShrink: 0,
-                            }}>
-                                <FaExclamationTriangle style={{ fontSize: "16px" }} />
-                            </div>
                             <h4 style={{ margin: 0, fontSize: "15px", fontWeight: 700, color: "#111827" }}>Hapus Data Terpilih?</h4>
                         </div>
                         <p style={{ margin: "0 0 20px", fontSize: "13px", color: "#6b7280", lineHeight: 1.5 }}>
