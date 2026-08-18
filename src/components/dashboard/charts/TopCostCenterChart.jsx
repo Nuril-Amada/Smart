@@ -74,7 +74,7 @@ export default function TopCostCenterChart({
 
             <YAxis
               tickFormatter={(value) =>
-                `${(value / 1000000).toFixed(0)}M`
+                `${(value / 1000000).toFixed(0)}Juta`
               }
               tick={{ fontSize: 11 }}
             />

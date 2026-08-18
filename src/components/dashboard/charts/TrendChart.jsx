@@ -34,7 +34,7 @@ export default function TrendChart({ data, startDate, endDate, tanggalAwal, setT
         <LineChart data={data} margin={{ left: 15, right: 15 }}>
           <CartesianGrid strokeDasharray="3 3" />
           <XAxis dataKey="tanggal" tick={{ fontSize: 12 }} interval={0} />
-          <YAxis tickFormatter={(value) => `${value / 1000000}M`} tick={{ fontSize: 12 }} />
+          <YAxis tickFormatter={(value) => `${value / 1000000}Juta`} tick={{ fontSize: 12 }} />
           <Tooltip formatter={(value) => formatRupiah(value)} />
           {/* Average reference line */}
           {/* <ReferenceLine y={average} stroke="#ff0000" strokeWidth={2} strokeDasharray="3 3" /> */}

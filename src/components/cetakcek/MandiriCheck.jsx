@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import { formatNominalDisplay } from "../../utils/checkPdfExport";
 
 // Konfigurasi tampilan cek Bank Mandiri
 const template = {
@@ -64,7 +65,7 @@ const SUBLABEL_SUM_OF_WIDTH_CM = 2; // di bawah garis ketiga, kiri
 // Line 2: div pembungkus selebar LINE23_WIDTH_CM. Teks harus berhenti
 // sebelum label "atau pembawa *" di sisi kanan.
 const LINE2_STOP_BEFORE_LABEL_CM = 2.5;
-const LINE2_TRANSFER_LEFT_CM = 4.3;
+const LINE2_TRANSFER_LEFT_CM = 4.2;
 const LINE2_TRANSFER_WIDTH_CM =
     LINE23_WIDTH_CM - LINE2_TRANSFER_LEFT_CM - LINE2_STOP_BEFORE_LABEL_CM; // 9.5
 const LINE2_TUNAI_LEFT_CM = 4.2;
@@ -280,7 +281,7 @@ export default function MandiriCheck({ form }) {
             <div
                 className="absolute border-b border-gray-400 flex items-end justify-center"
                 style={{
-                    top: `${LINE_TANGGAL_TOP_CM - LINE_TANGGAL_BOX_HEIGHT_CM}cm`,
+                    top: `${LINE_TANGGAL_TOP_CM}cm`,
                     right: `${MARGIN_RIGHT_CM}cm`,
                     width: `${LINE_TANGGAL_WIDTH_CM}cm`,
                     height: `${LINE_TANGGAL_BOX_HEIGHT_CM}cm`,
@@ -541,7 +542,7 @@ export default function MandiriCheck({ form }) {
                 }}
             >
                 <span className="text-xs font-bold font-mono text-gray-900 whitespace-nowrap">
-                    {form.nominal ? Number(form.nominal).toLocaleString("id-ID") : ""}
+                    {formatNominalDisplay(form.nominal)}
                 </span>
             </div>
         </div>

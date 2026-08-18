@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import { formatNominalDisplay } from "../../utils/checkPdfExport";
 
 // Konfigurasi tampilan cek Sinarmas
 const template = {
@@ -455,7 +456,7 @@ export default function SinarmasCheck({ form }) {
                 }}
             >
                 <span className="text-xs font-bold font-mono text-gray-900 whitespace-nowrap">
-                    {form.nominal ? Number(form.nominal).toLocaleString("id-ID") : ""}
+                    {formatNominalDisplay(form.nominal)}
                 </span>
             </div>
         </div>

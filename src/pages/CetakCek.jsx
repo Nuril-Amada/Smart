@@ -895,7 +895,7 @@ export default function CetakCek() {
                       <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{item.bank}</td>
                       <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{item.nomorCek || "-"}</td>
                       <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300" style={{ paddingLeft: "10px" }}>
-                        {formatRupiah(item.nominal)}
+                        {formatRupiah(item.nominal !== undefined && item.nominal !== null ? item.nominal : item.amount)}
                       </td>
                       <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{item.vendor}</td>
                       <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{item.nomorRekening || "-"}</td>

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import { formatNominalDisplay } from "../../utils/checkPdfExport";
 
 // Konfigurasi tampilan cek BCA
 const template = {
@@ -449,7 +450,7 @@ export default function BCACheck({ form }) {
                         className="text-xs font-bold font-mono text-black whitespace-nowrap"
                         style={{ lineHeight: 1, marginBottom: "0.2cm" }} // <- samain dengan ScaledText, biar box teks presisi
                     >
-                        {form.nominal ? Number(form.nominal).toLocaleString("id-ID") : ""}
+                        {formatNominalDisplay(form.nominal)}
                     </span>
                 </div>
             </div>

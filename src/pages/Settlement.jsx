@@ -28,7 +28,12 @@ export default function Settlement() {
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
 
                 <div className="xl:col-span-12 min-w-0">
-                    <RecentSettlementTable />
+                    <RecentSettlementTable
+                        startDate={tanggalAwal}
+                        endDate={tanggalAkhir}
+                        tanggalAwal={tanggalAwal}
+                        tanggalAkhir={tanggalAkhir}
+                    />
                 </div>
 
             </div>

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from "react";
+import { formatNominalDisplay } from "../../utils/checkPdfExport";
 
 // Konfigurasi tampilan cek Maybank
 const template = {
@@ -278,7 +279,7 @@ export default function MaybankCheck({ form }) {
             <div
                 className="absolute border-b border-gray-400 flex items-end justify-center"
                 style={{
-                    top: `${LINE_TANGGAL_TOP_CM - LINE_TANGGAL_BOX_HEIGHT_CM}cm`,
+                    top: `${LINE_TANGGAL_TOP_CM}cm`,
                     right: `${MARGIN_RIGHT_CM}cm`,
                     width: `${LINE_TANGGAL_WIDTH_CM}cm`,
                     height: `${LINE_TANGGAL_BOX_HEIGHT_CM}cm`,
@@ -346,7 +347,7 @@ export default function MaybankCheck({ form }) {
                         leftCm={LINE2_CONTENT_LEFT_CM}
                         maxWidthCm={LINE2_CONTENT_WIDTH_CM}
                         bottomCm={CONTENT_BOTTOM_OFFSET_CM}
-                        className="text-[14px] text-black font-bold"
+                        className="text-sm text-black font-bold"
                     />
                 ) : (
                     <FitText
@@ -354,7 +355,7 @@ export default function MaybankCheck({ form }) {
                         leftCm={LINE2_CONTENT_LEFT_CM}
                         maxWidthCm={LINE2_CONTENT_WIDTH_CM}
                         bottomCm={CONTENT_BOTTOM_OFFSET_CM}
-                        className="text-sm text-black font-medium"
+                        className="text-sm text-black font-bold"
                     />
                 )}
             </div>
@@ -528,7 +529,7 @@ export default function MaybankCheck({ form }) {
                 }}
             >
                 <span className="text-sm font-bold font-mono text-gray-900 whitespace-nowrap">
-                    {form.nominal ? Number(form.nominal).toLocaleString("id-ID") : ""}
+                    {formatNominalDisplay(form.nominal)}
                 </span>
             </div>
         </div>

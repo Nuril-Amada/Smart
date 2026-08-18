@@ -1,27 +1,12 @@
-import { useState } from "react";
-
 export default function FilterAdvance({
     tanggalAwal,
     setTanggalAwal,
     tanggalAkhir,
     setTanggalAkhir,
 }) {
-    const [lokasi, setLokasi] = useState("Rungkut");
-
     const handleReset = () => {
         setTanggalAwal("");
         setTanggalAkhir("");
-    };
-
-    const handleFilter = () => {
-        console.log({
-            tanggalAwal,
-            tanggalAkhir,
-            lokasi,
-        });
-
-        // Nanti ketika backend sudah jadi
-        // tinggal panggil API di sini
     };
 
     return (
@@ -58,15 +43,6 @@ export default function FilterAdvance({
                             />
                         </div>
 
-                        {/* Filter */}
-                        <button
-                            onClick={handleFilter}
-                            className="bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition whitespace-nowrap text-sm"
-                            style={{ padding: "6px 12px" }}
-                        >
-                            Filter
-                        </button>
-
                         {/* Reset */}
                         <button
                             onClick={handleReset}
@@ -79,12 +55,6 @@ export default function FilterAdvance({
 
                     {/* Right Side: Toggle Lokasi + Actions (Import File and Export Report) */}
                     <div className="flex flex-nowrap items-end gap-2">
-                        <button
-                            className="border border-gray-600 text-gray-500 font-medium rounded-lg hover:bg-gray-50 transition whitespace-nowrap text-sm"
-                            style={{ padding: "6px 12px" }}
-                        >
-                            Import File
-                        </button>
                         <button
                             className="bg-gray-600 hover:bg-gray-500 text-white font-medium rounded-lg transition whitespace-nowrap text-sm"
                             style={{ padding: "6px 12px" }}

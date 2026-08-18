@@ -25,6 +25,17 @@ import { pdfLayout as maybankPdfLayout } from "../components/cetakcek/MaybankChe
 
 // ================= HELPER UMUM =================
 
+export function formatNominalDisplay(val) {
+  if (val === undefined || val === null || val === "") return "";
+  const str = String(val).trim();
+  const parts = str.split(".");
+  const intFormatted = Number(parts[0]).toLocaleString("id-ID");
+  if (parts.length > 1 && parts[1] !== undefined) {
+    return `${intFormatted},${parts[1]}`;
+  }
+  return intFormatted;
+}
+
 function formatTanggalNumeric(tanggal) {
   if (!tanggal) return "";
   const d = new Date(tanggal);
@@ -189,7 +200,7 @@ export function generateCheckPdf(form) {
   }
 
   // ----- 4. Nominal (angka saja, tanpa "Rp." label & tanpa kotak/garis) -----
-  const nominalText = form.nominal ? Number(form.nominal).toLocaleString("id-ID") : "";
+  const nominalText = formatNominalDisplay(form.nominal);
 
   if (layout.nominal) {
     const n = layout.nominal;
@@ -394,9 +405,7 @@ export function generatePrintHtml(form) {
   }
 
   // ── 4. Nominal ────────────────────────────────────────────────────────
-  const nominalText = form.nominal
-    ? Number(form.nominal).toLocaleString("id-ID")
-    : "";
+  const nominalText = formatNominalDisplay(form.nominal);
 
   if (nominalText) {
     if (layout.nominal) {
@@ -423,11 +432,11 @@ export function generatePrintHtml(form) {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Cetak Cek \u2013 ${form.bank}</title>
+  <title>Cetak Cek – ${form.bank}</title>
   <style>
     @page {
-      /* Ukuran halaman = ukuran fisik cek, tanpa margin */
-      size: ${layout.widthCm}cm ${layout.heightCm}cm;
+      /* Margin 0 agar konten menempel di tepi kertas cek */
+      /* Paper size & orientasi diatur di dialog cetak sistem (Ctrl+Shift+P) */
       margin: 0;
     }
     html, body {
@@ -436,11 +445,17 @@ export function generatePrintHtml(form) {
       width: ${layout.widthCm}cm;
       height: ${layout.heightCm}cm;
       background: transparent;
+      /* Pastikan warna & teks dicetak tajam, tidak di-blur/downscale browser */
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     * {
       font-family: "Arial Narrow", Arial, sans-serif;
       box-sizing: border-box;
       color: #000;
+      /* Rendering font tajam saat dicetak */
+      text-rendering: geometricPrecision;
+      -webkit-font-smoothing: antialiased;
     }
   </style>
 </head>
@@ -448,7 +463,8 @@ export function generatePrintHtml(form) {
   ${els.join("\n  ")}
   <script>
     window.addEventListener("load", function () {
-      setTimeout(function () { window.print(); }, 300);
+      // Beri waktu browser untuk selesai layout sebelum print (hindari blur)
+      setTimeout(function () { window.print(); }, 400);
       window.addEventListener("afterprint", function () { window.close(); });
     });
   <\/script>
@@ -544,9 +560,7 @@ export function generatePrintBodyHtml(form) {
   }
 
   // ── 4. Nominal ────────────────────────────────────────────────────────
-  const nominalText = form.nominal
-    ? Number(form.nominal).toLocaleString("id-ID")
-    : "";
+  const nominalText = formatNominalDisplay(form.nominal);
 
   if (nominalText) {
     if (layout.nominal) {

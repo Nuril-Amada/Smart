@@ -27,7 +27,12 @@ export default function Advance() {
 
             {/* Table */}
 
-            <WaitingAdvanceTable />
+            <WaitingAdvanceTable
+                startDate={tanggalAwal}
+                endDate={tanggalAkhir}
+                tanggalAwal={tanggalAwal}
+                tanggalAkhir={tanggalAkhir}
+            />
 
         </div>
     );

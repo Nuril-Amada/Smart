@@ -67,7 +67,7 @@ export default function CostCenterChart({ data = [] }) {
             />
 
             <YAxis
-              tickFormatter={(value) => `${value / 1000000}M`}
+              tickFormatter={(value) => `${value / 1000000}Juta`}
               tick={{ fontSize: 12 }}
             />
 
@@ -93,8 +93,8 @@ export default function CostCenterChart({ data = [] }) {
                   key={index}
                   fill={
                     entry.total === maxValue
-                      ? "#899097"
-                      : "#c5c3c6"
+                      ? "#4c5c68"
+                      : "#899097"
                   }
                 />
 

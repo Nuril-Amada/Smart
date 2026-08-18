@@ -16,15 +16,15 @@ import {
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
-import {
-    getCashOpnameHistory,
-    saveCashOpname,
-    updateCashOpname,
-    deleteCashOpname,
-    getSettlementRecap,
-    getAdvanceRecap,
-} from "../api/cash_opname";
-import { getEmployees } from "../api/employee";
+// import {
+//     getCashOpnameHistory,
+//     saveCashOpname,
+//     updateCashOpname,
+//     deleteCashOpname,
+//     getSettlementRecap,
+//     getAdvanceRecap,
+// } from "../api/cash_opname";
+// import { getEmployees } from "../api/employee";
 
 export const meta = {
     id: "cash_opname",
@@ -1129,7 +1129,7 @@ export default function CashOpname() {
                                                 >
                                                     <FaPrint style={{ fontSize: "13px" }} />
                                                 </button>
-                                                
+
                                             </div>
                                         </td>
                                         {/* Kolom checkbox seleksi hapus — hanya muncul saat deleteMode, disamakan dengan Advance */}

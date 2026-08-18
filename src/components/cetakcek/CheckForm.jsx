@@ -279,6 +279,7 @@ export default function CheckForm({
                         </label>
                         <input
                             type="number"
+                            step="any"
                             name="nominal"
                             value={form.nominal}
                             onChange={onChange}
