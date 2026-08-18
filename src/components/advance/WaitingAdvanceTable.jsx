@@ -160,7 +160,7 @@ function SettlementReceiptModal({ row, receiptData, receiptLoading, onClose }) {
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-none shadow-lg w-full max-w-sm font-mono" style={{ borderRadius: "20px" }}>
+            <div className="bg-white shadow-2xl w-full max-w-sm font-mono" style={{ borderRadius: "20px" }}>
                 <div className="px-8 py-7" style={{ padding: "20px 20px 15px" }}>
                     <h3 className="text-base font-semibold text-gray-700 mb-1" style={{ margin: "0 0 8px" }}>
                         Settlement Receipt
@@ -228,7 +228,7 @@ function SettlementFormModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-            <div className="bg-white rounded-none shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
+            <div className="bg-white shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
                 <div
                     className="px-8 py-7"
                     style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}
@@ -783,11 +783,11 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
             await submitSettlement(rowToSettle.id, payload);
 
             handleSettlementClose();
-            loadData();
             setSuccessMessage("Settlement berhasil disimpan.");
             setTimeout(() => {
                 setSuccessMessage("");
             }, 3000);
+            loadData();
 
         } catch (err) {
             console.error(err);
@@ -889,9 +889,7 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
                 </div>
             )}
 
-            {/* ================================================= */}
             {/* ================= TABLE 1: ADVANCE ================= */}
-            {/* ================================================= */}
             <div
                 className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5"
                 style={{ marginLeft: "20px", marginRight: "20px" }}
@@ -1162,106 +1160,7 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
                     </div>
                 )}
 
-                {/* MODAL EDIT ROW (Advance) */}
-                {rowToEdit && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                        <div className="bg-white shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
-                            <div className="flex items-center justify-between border-b border-gray-200" style={{ padding: "8px 24px 8px", marginRight: "20px" }}>
-                                <div style={{ marginLeft: "20px" }}>
-                                    <h3 className="text-lg font-semibold text-gray-700">Edit Advance</h3>
-                                    <p className="text-xs text-gray-400 mt-0.5">PPC No: <span className="font-mono font-semibold text-gray-600">{rowToEdit.ppc_no}</span></p>
-                                </div>
-                                <button type="button" onClick={handleEditClose} className="text-gray-400 hover:text-gray-600"><FaTimes /></button>
-                            </div>
 
-                            {(rowToEdit.status === "Settled" || rowToEdit.status === "Canceled") && (
-                                <div className="mx-6 mt-4 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2" style={{ marginLeft: "20px", marginRight: "20px", marginTop: "10px" }}>
-                                    Data dengan status <strong>{rowToEdit.status}</strong> tidak dapat diubah.
-                                </div>
-                            )}
-
-                            <form onSubmit={handleEditSubmit} className="px-6 py-5 flex flex-col gap-4" style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px" }}>
-                                <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Nama User</label>
-                                    <input
-                                        type="text"
-                                        name="employee_name"
-                                        value={editForm.employee_name}
-                                        onChange={handleEditChange}
-                                        disabled={rowToEdit.status === "Settled" || rowToEdit.status === "Canceled"}
-                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none disabled:bg-gray-50 disabled:text-gray-400"
-                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Cost Center</label>
-                                    <input
-                                        type="text"
-                                        name="cost_center"
-                                        value={editForm.cost_center}
-                                        onChange={handleEditChange}
-                                        disabled={rowToEdit.status === "Settled" || rowToEdit.status === "Canceled"}
-                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none disabled:bg-gray-50 disabled:text-gray-400"
-                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Description</label>
-                                    <textarea
-                                        name="purpose"
-                                        value={editForm.purpose}
-                                        onChange={handleEditChange}
-                                        rows={2}
-                                        disabled={rowToEdit.status === "Settled" || rowToEdit.status === "Canceled"}
-                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none resize-none disabled:bg-gray-50 disabled:text-gray-400"
-                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "8px" }}>Amount</label>
-                                    <input
-                                        type="number"
-                                        name="amount"
-                                        value={editForm.amount}
-                                        onChange={handleEditChange}
-                                        min="0"
-                                        disabled={rowToEdit.status === "Settled" || rowToEdit.status === "Canceled"}
-                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none disabled:bg-gray-50 disabled:text-gray-400"
-                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Due Date</label>
-                                    <input
-                                        type="date"
-                                        name="due_date"
-                                        value={editForm.due_date}
-                                        onChange={handleEditChange}
-                                        disabled={rowToEdit.status === "Settled" || rowToEdit.status === "Canceled"}
-                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none disabled:bg-gray-50 disabled:text-gray-400"
-                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
-                                    />
-                                </div>
-
-                                {editError && (
-                                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{editError}</div>
-                                )}
-
-                                <div className="flex justify-end gap-2 pt-4 border-t border-gray-100" style={{ padding: "10px 0 10px", gap: "10px" }}>
-                                    <button type="button" onClick={handleEditClose} disabled={editSubmitting}
-                                        className="border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40"
-                                        style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 500 }}
-                                    >Batal</button>
-                                    <button type="submit"
-                                        disabled={editSubmitting || rowToEdit.status === "Settled" || rowToEdit.status === "Canceled"}
-                                        className="text-white rounded-lg text-sm disabled:opacity-40"
-                                        style={{ padding: "4px 15px", background: "linear-gradient(135deg, #464444c9, #464444c9)", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}
-                                    >{editSubmitting ? "Menyimpan..." : "Simpan"}</button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                )}
 
                 {/* MODAL New Request (Advance) */}
                 {requestOpen && (
@@ -1453,28 +1352,28 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
 
                 {/* MODAL Konfirmasi Hapus Batch */}
                 {deleteBatchOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-                        <div className="bg-white rounded-xl shadow-lg w-full max-w-sm">
-                            <div className="px-6 py-5" style={{ marginTop: "15px", paddingLeft: "20px", paddingRight: "20px" }}>
-                                <h3 className="text-lg font-semibold text-gray-700 mb-2" style={{ margin: "0 0 8px" }}>
+                    <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}>
+                        <div style={{ background: "#fff", borderRadius: "20px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", width: "100%", maxWidth: "380px", animation: "slideDown 0.25s ease" }}>
+                            <div style={{ padding: "20px 20px 15px" }}>
+                                <h3 style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 700, color: "#1e1b4b" }}>
                                     Hapus Data Terpilih
                                 </h3>
-                                <p className="text-sm text-gray-500">
+                                <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
                                     Apakah Anda yakin ingin menghapus{" "}
-                                    <span className="font-semibold text-red-600">
+                                    <span style={{ fontWeight: 700, color: "#dc2626" }}>
                                         {selectedIds.size} data
                                     </span>{" "}
                                     yang telah dipilih?
                                 </p>
 
                                 {deleteError && (
-                                    <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                    <div style={{ marginTop: "12px", fontSize: "13px", color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "10px 12px" }}>
                                         {deleteError}
                                     </div>
                                 )}
                             </div>
 
-                            <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", paddingLeft: "10px", paddingRight: "10px" }}>
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", padding: "16px 24px 24px", borderTop: "1px solid #f1f5f9" }}>
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -1482,8 +1381,7 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
                                         handleExitDeleteMode();
                                     }}
                                     disabled={deleting}
-                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
-                                    style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 500 }}
+                                    style={{ border: "1.5px solid #e5e7eb", borderRadius: "10px", padding: "8px 20px", fontSize: "13px", color: "#6b7280", background: "#fff", cursor: "pointer", fontWeight: 500, opacity: deleting ? 0.6 : 1 }}
                                 >
                                     Batal
                                 </button>
@@ -1492,7 +1390,10 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
                                     type="button"
                                     onClick={handleDeleteBatchConfirm}
                                     disabled={deleting}
-                                    className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm " style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}
+                                    style={{
+                                        background: "linear-gradient(135deg, #ef4444, #dc2626)", border: "none", borderRadius: "10px",
+                                        padding: "8px 20px", fontSize: "13px", color: "#fff", cursor: "pointer", fontWeight: 600, opacity: deleting ? 0.6 : 1,
+                                    }}
                                 >
                                     {deleting ? "Menghapus..." : "Ya, Hapus"}
                                 </button>
@@ -1526,7 +1427,7 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
                 {/* MODAL Edit Advance Row */}
                 {rowToEdit && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                        <div className="bg-white rounded-xl shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
+                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
                             <div
                                 className="flex items-center justify-between border-b border-gray-200"
                                 style={{ padding: "8px 24px 8px", marginRight: "20px" }}
