@@ -1,20 +1,17 @@
 import { useState } from "react";
 import { FaMoneyBillWave, FaExchangeAlt, FaSave } from "react-icons/fa";
 
-// ======================================================================
 // AutocompleteInput — input teks dengan dropdown saran otomatis.
-// Dipakai untuk field Nama Vendor, Nama Bank Penerima, dan Nomor
-// Rekening di bawah, sama seperti pola autocomplete Nama User & Cost
-// Center di tabel Settlement.
-// ======================================================================
 function AutocompleteInput({
     name,
     value,
     onChange,
+    onSelect,
     suggestions = [],
     placeholder,
     className,
     inputStyle,
+    showBankInfo = false,
 }) {
     const [open, setOpen] = useState(false);
     const [highlight, setHighlight] = useState(-1);
@@ -25,8 +22,13 @@ function AutocompleteInput({
         setHighlight(-1);
     };
 
-    const handleSelect = (val) => {
-        onChange(val);
+    const handleSelect = (item) => {
+        if (onSelect) {
+            // Kirim object penuh ke parent (untuk auto-fill bank/rekening)
+            onSelect(item);
+        } else {
+            onChange(typeof item === "string" ? item : (item.vendor_name || item));
+        }
         setOpen(false);
         setHighlight(-1);
     };
@@ -68,16 +70,25 @@ function AutocompleteInput({
 
             {open && value && suggestions.length > 0 && (
                 <ul className="absolute z-20 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-lg shadow-md py-1">
-                    {suggestions.map((s, i) => (
+                    {suggestions.map((item, i) => (
                         <li
-                            key={s}
-                            onMouseDown={() => handleSelect(s)}
-                            className={`px-3 py-2 text-xs cursor-pointer ${i === highlight
+                            key={item.id}
+                            onMouseDown={() => handleSelect(item)}
+                            className={`pl-6 pr-3 py-2 text-xs cursor-pointer ${i === highlight
                                 ? "bg-gray-100 text-gray-800"
                                 : "text-gray-600 hover:bg-gray-50"
                                 }`}
                         >
-                            {s}
+                            <div style={{ marginLeft: "10px" }}>
+                                {item.vendor_name}
+                            </div>
+
+                            {showBankInfo && item.bank_name && (
+                                <div className="text-[11px] text-gray-400" style={{ marginLeft: "15px" }}>
+                                    {item.bank_name}
+                                    {item.bank_account_no && ` • ${item.bank_account_no}`}
+                                </div>
+                            )}
                         </li>
                     ))}
                 </ul>
@@ -86,28 +97,15 @@ function AutocompleteInput({
     );
 }
 
-// Catatan: saran (suggestions) untuk Nama Vendor, Nama Bank Penerima, dan
-// Nomor Rekening TIDAK lagi dihitung dari histori lokal — nantinya akan
-// diambil dari database backend, lalu dioper ke komponen ini lewat props
-// `vendorSuggestions`, `bankPenerimaSuggestions`, `nomorRekeningSuggestions`.
-// Contoh nanti (setelah backend siap):
-//
-//   const [vendorSuggestions, setVendorSuggestions] = useState([]);
-//   useEffect(() => {
-//     searchVendor(form.vendor).then(setVendorSuggestions);
-//   }, [form.vendor]);
-//
-// Catatan tambahan: field `nomorCek` di bawah ini SENGAJA input manual biasa
-// (tanpa autocomplete/suggestion). Nilainya TIDAK dikirim ke komponen preview
-// cetak cek (MandiriCheck) — nomor cek hanya dipakai saat data disimpan ke
-// tabel history cetak cek lewat tombol "Simpan".
-
-
 export default function CheckForm({
     form,
     onChange,
     onJenisCekChange,
+    onVendorChange,
     onSimpan,
+    onVendorSelect,
+    onBankSelect,
+    onAccountSelect,
     vendorSuggestions = [],
     bankPenerimaSuggestions = [],
     nomorRekeningSuggestions = [],
@@ -134,7 +132,7 @@ export default function CheckForm({
 
                 {/* KOLOM KIRI */}
                 <div className="space-y-5">
-                    {/* STEP 1: Pilih Bank */}
+                    {/* Bank */}
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                             1. Pilih Bank <span className="text-red-500">*</span>
@@ -153,7 +151,7 @@ export default function CheckForm({
                         </select>
                     </div>
 
-                    {/* STEP 2: Pilih Jenis Cetak Cek (Tarik Tunai vs Transfer) */}
+                    {/* Jenis Cetak Cek (Tarik Tunai vs Transfer) */}
                     <div>
                         <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                             2. Pilih Jenis Cetak Cek <span className="text-red-500">*</span>
@@ -184,7 +182,7 @@ export default function CheckForm({
                         </div>
                     </div>
 
-                    {/* STEP 3: Tanggal Cek */}
+                    {/* Tanggal Cek */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
                             Tanggal Cek <span className="text-red-500">*</span>
@@ -198,8 +196,7 @@ export default function CheckForm({
                         />
                     </div>
 
-                    {/* STEP 4: Nomor Cek — input manual biasa, TANPA autocomplete/rekomendasi.
-                        Tidak dipakai di preview cetak (MandiriCheck), hanya untuk tabel history. */}
+                    {/* Nomor Cek */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
                             Nomor Cek <span className="text-red-500">*</span>
@@ -215,7 +212,7 @@ export default function CheckForm({
                         />
                     </div>
 
-                    {/* STEP 5: Nama Vendor / PT — dengan autocomplete dari histori cek */}
+                    {/* Nama Vendor / PT */}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1.5">
                             Nama Vendor / PT <span className="text-red-500">*</span>
@@ -223,8 +220,10 @@ export default function CheckForm({
                         <AutocompleteInput
                             name="vendor"
                             value={form.vendor}
-                            onChange={(val) => setField("vendor", val)}
+                            onChange={onVendorChange}
+                            onSelect={onVendorSelect}
                             suggestions={vendorSuggestions}
+                            showBankInfo={form.jenisCek === "Transfer"}
                             placeholder="Contoh: PT SMART Tbk"
                             className="w-full border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gray-400 text-xs"
                             inputStyle={{ padding: "2px 5px" }}
