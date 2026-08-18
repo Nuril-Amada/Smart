@@ -550,7 +550,6 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
         marginRight: "20px",
       }}
     >
-
       {/* NOTIFIKASI SUKSES (toast) — sama seperti pada Employee.jsx */}
       <style>{`
         @keyframes toastIn {
@@ -814,7 +813,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
       {/* MODAL EDIT ROW (Settlement) */}
       {rowToEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white shadow-lg w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
             <div className="flex items-center justify-between border-b border-gray-200" style={{ padding: "8px 24px 8px", marginRight: "20px" }}>
               <div style={{ marginLeft: "20px" }}>
                 <h3 className="text-lg font-semibold text-gray-700">Edit Settlement</h3>
@@ -1066,33 +1065,33 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
 
       {
         deleteBatchOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-            <div className="bg-white rounded-xl shadow-lg w-full max-w-sm">
-              <div className="px-6 py-5" style={{ marginTop: "15px", paddingLeft: "20px", paddingRight: "20px" }}>
-                <h3 className="text-lg font-semibold text-gray-700 mb-2">
+          <div style={{ position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}>
+            <div style={{ background: "#fff", borderRadius: "20px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", width: "100%", maxWidth: "380px", animation: "slideDown 0.25s ease" }}>
+              <div style={{ padding: "20px 20px 15px" }}>
+                <h3 style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 700, color: "#1e1b4b" }}>
                   Hapus Data Terpilih
                 </h3>
-                <p className="text-sm text-gray-500">
+                <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
                   Apakah Anda yakin ingin menghapus{" "}
-                  <span className="font-semibold text-red-600">
+                  <span style={{ fontWeight: 700, color: "#dc2626" }}>
                     {checkedRows.length} data
                   </span>{" "}
                   yang telah dipilih?
                 </p>
 
                 {deleteError && (
-                  <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  <div style={{ marginTop: "12px", fontSize: "13px", color: "#dc2626", background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "8px", padding: "10px 12px" }}>
                     {deleteError}
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-end gap-2 px-6 py-4 border-t border-gray-100" style={{ marginBottom: "10px", paddingLeft: "10px", paddingRight: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", padding: "16px 24px 24px", borderTop: "1px solid #f1f5f9" }}>
                 <button
                   type="button"
                   onClick={handleDeleteBatchCancel}
                   disabled={deleting}
-                  className="border border-gray-300 rounded-lg text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40" style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 500 }}
+                  style={{ border: "1.5px solid #e5e7eb", borderRadius: "10px", padding: "8px 20px", fontSize: "13px", color: "#6b7280", background: "#fff", cursor: "pointer", fontWeight: 500, opacity: deleting ? 0.6 : 1 }}
                 >
                   Batal
                 </button>
@@ -1101,7 +1100,10 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                   type="button"
                   onClick={handleDeleteBatchConfirm}
                   disabled={deleting}
-                  className="bg-red-600 hover:bg-red-700 disabled:opacity-40 text-white rounded-lg text-sm" style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}
+                  style={{
+                    background: "linear-gradient(135deg, #ef4444, #dc2626)", border: "none", borderRadius: "10px",
+                    padding: "8px 20px", fontSize: "13px", color: "#fff", cursor: "pointer", fontWeight: 600, opacity: deleting ? 0.6 : 1,
+                  }}
                 >
                   {deleting ? "Menghapus..." : "Ya, Hapus"}
                 </button>
