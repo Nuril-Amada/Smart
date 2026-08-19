@@ -825,6 +825,20 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
         });
     }, [rows, filterUser, filterCostCenter, filterStatus]);
 
+    // Saat filter berubah di mode hapus, otomatis kurangi selectedIds
+    // hanya ke baris yang masih terlihat di filteredRows (tidak keluar filter)
+    useEffect(() => {
+        if (!deleteMode) return;
+        setSelectedIds((prev) => {
+            if (prev.size === 0) return prev;
+            const filteredIdSet = new Set(filteredRows.map((r) => r.id));
+            const next = new Set([...prev].filter((id) => filteredIdSet.has(id)));
+            // kembalikan referensi lama jika tidak ada perubahan (optimasi re-render)
+            return next.size === prev.size ? prev : next;
+        });
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filteredRows]);
+
     const computedSummary = useMemo(() => {
         const total_advance = filteredRows.length;
         const active_advance = filteredRows.filter((r) => r.status === "Active").length;
@@ -1008,6 +1022,37 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
                                 >
                                     <FaTrash className="text-xs" />
                                     Hapus {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        const allFilteredIds = new Set(filteredRows.map((r) => r.id));
+                                        const allSelected = filteredRows.length > 0 && filteredRows.every((r) => selectedIds.has(r.id));
+                                        if (allSelected) {
+                                            setSelectedIds(new Set());
+                                        } else {
+                                            setSelectedIds(allFilteredIds);
+                                        }
+                                    }}
+                                    disabled={filteredRows.length === 0}
+                                    className="flex items-center gap-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                                    style={{
+                                        padding: "5px 10px",
+                                        border: "1.5px solid #dc2626",
+                                        color: "#dc2626",
+                                        background: "#fff",
+                                        cursor: "pointer",
+                                    }}
+                                    title={
+                                        filteredRows.every((r) => selectedIds.has(r.id)) && filteredRows.length > 0
+                                            ? "Batalkan pilih semua"
+                                            : `Pilih semua ${filteredRows.length} data yang terfilter`
+                                    }
+                                >
+                                    {filteredRows.length > 0 && filteredRows.every((r) => selectedIds.has(r.id))
+                                        ? "Batal Pilih Semua"
+                                        : `Pilih Semua (${filteredRows.length})`}
                                 </button>
                             </>
                         )}
