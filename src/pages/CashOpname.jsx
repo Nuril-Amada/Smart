@@ -23,6 +23,7 @@ import html2canvas from "html2canvas";
 //     deleteCashOpname,
 //     getSettlementRecap,
 //     getAdvanceRecap,
+//     downloadCashOpnamePdf,
 // } from "../api/cash_opname";
 // import { getEmployees } from "../api/employee";
 
@@ -33,12 +34,15 @@ export const meta = {
     color: "#363D48",
 };
 
-const COMPANY_NAME = "PT. SMART Tbk Unit SURABAYA";
+const COMPANY_NAME = "PT. SMART Tbk UNIT SURABAYA";
 
-// Ukuran kertas & margin cetak/unduh: A4, margin 2,54 cm di semua sisi
+// Ukuran kertas & margin cetak/unduh: A4
+// Margin atas/bawah: 2,54 cm | Margin kiri/kanan: 1,5 cm | Margin atas hal 1: 1,2 cm
 const PDF_PAGE_WIDTH_CM = 21.0;
 const PDF_PAGE_HEIGHT_CM = 29.7;
-const PDF_MARGIN_CM = 2.54;
+const PDF_MARGIN_CM = 2.54;       // margin atas & bawah
+const PDF_MARGIN_SIDE_CM = 1.5;   // margin kiri & kanan
+const PDF_MARGIN_TOP_PAGE1_CM = 1.2;
 
 function formatCurrency(n) {
     const num = Number(n) || 0;
@@ -181,8 +185,6 @@ function getRowInfo(r) {
 }
 
 // ===== CSS laporan (dipakai bersama oleh jendela cetak & proses unduh PDF) =====
-// Catatan: aturan @page (ukuran A4 + margin 2,54cm) hanya relevan untuk jendela
-// cetak (window.print()). Untuk unduh PDF, ukuran & margin diatur langsung lewat jsPDF.
 const REPORT_STYLES = `
 .cop-report {
     font-family: Arial, sans-serif;
@@ -195,77 +197,55 @@ const REPORT_STYLES = `
 }
 .cop-report .header-title {
     text-align: center;
-    margin-bottom: 16px;
+    margin-bottom: 25px;
 }
 .cop-report .header-title h1 {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: bold;
     margin: 0 0 2px 0;
     letter-spacing: 0.5px;
 }
 .cop-report .header-title h2 {
-    font-size: 12px;
+    font-size: 14px;
     font-weight: bold;
     margin: 0 0 10px 0;
 }
 .cop-report .header-title .period {
-    font-size: 11px;
+    font-size: 12px;
     font-weight: bold;
-    margin-bottom: 12px;
-}
-.cop-report .saldo-header {
-    display: flex;
-    justify-content: space-between;
-    font-weight: bold;
-    font-size: 11px;
-    margin-bottom: 12px;
-    padding-bottom: 4px;
+    margin-bottom: 4px;
 }
 .cop-report table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 4px;
+    border: none;
 }
 .cop-report th {
-    text-align: left;
+    text-align: center;
+    vertical-align: middle;
     font-weight: bold;
-    padding: 4px 8px;
+    padding: 5px 8px;
     font-size: 11px;
-    border-bottom: 1px solid #333;
+    border: 1px solid #000;
+    background-color: #f8fafc;
 }
 .cop-report td {
-    font-size: 11px;
+    font-size: 10px;
+    padding: 4px 8px;
+    border: 1px solid #000;
+    vertical-align: middle;
 }
-.cop-report .section-label {
-    font-weight: bold;
-    font-size: 11px;
-    margin-top: 14px;
-    margin-bottom: 4px;
-}
-.cop-report .subtotal-row td {
-    font-weight: bold;
-    padding: 6px 8px;
-    border-top: 1px solid #333;
-}
-.cop-report .summary-container {
-    margin-top: 16px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-}
-.cop-report .summary-table {
-    width: 320px;
-    margin-top: 4px;
-}
-.cop-report .summary-table td {
-    padding: 4px 6px;
-    font-weight: bold;
-    font-size: 11px;
+.cop-report tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 .cop-report .signature-section {
-    margin-top: 60px;
+    margin-top: 35px;
     display: flex;
     justify-content: space-between;
+    page-break-inside: avoid;
+    break-inside: avoid;
 }
 .cop-report .sign-box-left {
     width: 55%;
@@ -276,7 +256,7 @@ const REPORT_STYLES = `
 }
 .cop-report .sign-header {
     font-weight: bold;
-    margin-bottom: 55px;
+    margin-bottom: 45px;
 }
 .cop-report .sign-names-left {
     display: flex;
@@ -296,11 +276,12 @@ function buildReportContentHtml(record) {
             const info = getRowInfo(r);
             return `
         <tr>
-            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.tanggal}</td>
-            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.kode}</td>
-            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.namaUser}</td>
-            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.keterangan}</td>
-            <td style="padding:4px 8px;text-align:right;padding-right: 40px;border-bottom:1px solid #eee;">${info.jumlah}</td>
+            <td style="text-align:center; border:1px solid #000;">${info.tanggal}</td>
+            <td style="text-align:center; border:1px solid #000;">${info.kode}</td>
+            <td style="border:1px solid #000;">${info.namaUser}</td>
+            <td style="border:1px solid #000;">${info.keterangan}</td>
+            <td style="text-align:right; border:1px solid #000;">Rp. ${info.jumlah}</td>
+            <td style="border:none;"></td>
         </tr>`;
         })
         .join("");
@@ -310,83 +291,88 @@ function buildReportContentHtml(record) {
             const info = getRowInfo(r);
             return `
         <tr>
-            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.tanggal}</td>
-            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.kode}</td>
-            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.namaUser}</td>
-            <td style="padding:4px 8px;border-bottom:1px solid #eee;">${info.keterangan}</td>
-            <td style="padding:4px 8px;text-align:right;padding-right: 40px;border-bottom:1px solid #eee;">${info.jumlah}</td>
+            <td style="text-align:center; border:1px solid #000;">${info.tanggal}</td>
+            <td style="text-align:center; border:1px solid #000;">${info.kode}</td>
+            <td style="border:1px solid #000;">${info.namaUser}</td>
+            <td style="border:1px solid #000;">${info.keterangan}</td>
+            <td style="text-align:right; border:1px solid #000;">Rp. ${info.jumlah}</td>
+            <td style="border:none;"></td>
         </tr>`;
         })
         .join("");
+
+    const saldoAwalFormatted = "Rp. " + formatNumberID(record.saldoAwal) + ",00";
 
     return `
         <div class="header-title">
             <h1>LAPORAN PETTY CASH</h1>
             <h2>${COMPANY_NAME}</h2>
-            <div class="period">PER TGL : ${formatDateID(record.sampaiTanggal)}</div>
+            <div class="period">PER TANGGAL : ${formatDateID(record.sampaiTanggal)}</div>
         </div>
 
-        <div class="saldo-header">
-            <span>PETTY CASH SURABAYA</span>
-            <span>${formatNumberID(record.saldoAwal)},00</span>
-        </div>
-
-        <div class="section-label">A. PENGELUARAN YANG SUDAH SELESAI</div>
         <table>
-            <thead>
-                <tr>
-                    <th style="width: 14%;">Tanggal</th>
-                    <th style="width: 18%;">Nomor PPC</th>
-                    <th style="width: 22%;">Nama User</th>
-                    <th style="width: 30%;">Keterangan</th>
-                    <th style="width: 16%; text-align: right; padding-right: 40px;">Jumlah</th>
-                </tr>
-            </thead>
+            <colgroup>
+                <col style="width: 8%;" />
+                <col style="width: 11%;" />
+                <col style="width: 18%;" />
+                <col style="width: 35%;" />
+                <col style="width: 14%;" />
+                <col style="width: 15%;" />
+            </colgroup>
             <tbody>
-                ${rowsA ||
-        `<tr><td colSpan="5" style="text-align:center;padding:8px;color:#888;">Tidak ada data pengeluaran</td></tr>`
-        }
+                <tr>
+                    <td colSpan="5" style="font-weight:bold; padding:5px 0; border:none;">SALDO AWAL PETTY CASH</td>
+                    <td style="font-weight:bold; text-align:right; padding:5px 0; border:none;">${saldoAwalFormatted}</td>
+                </tr>
+                <tr>
+                    <td colSpan="6" style="font-weight:bold; padding:10px 0 4px 0; border:none;">A. PENGELUARAN YANG SUDAH SELESAI</td>
+                </tr>
+                <tr>
+                    <th style="text-align:center; border:1px solid #000;">Tanggal</th>
+                    <th style="text-align:center; border:1px solid #000;">Nomor PPC</th>
+                    <th style="text-align:center; border:1px solid #000;">Nama User</th>
+                    <th style="text-align:center; border:1px solid #000;">Keterangan</th>
+                    <th style="text-align:center; border:1px solid #000;">Jumlah</th>
+                    <th style="border:none; background:transparent;"></th>
+                </tr>
+                ${rowsA || `<tr><td colSpan="5" style="text-align:center;padding:8px;color:#888;border:1px solid #000;">Tidak ada data pengeluaran</td><td style="border:none;"></td></tr>`}
                 <tr class="subtotal-row">
-                    <td colSpan="4"></td>
-                    <td style="text-align: right; padding-right: 40px;">${formatNumberID(record.totalA)}</td>
+                    <td colSpan="4" style="border:none;"></td>
+                    <td style="text-align:right; font-weight:bold; font-style:italic; border:1px solid #000; border-top:1.5px solid #000; border-bottom:1.5px solid #000;">Rp. ${formatNumberID(record.totalA)}</td>
+                    <td style="border:none;"></td>
+                </tr>
+                <tr>
+                    <td colSpan="6" style="font-weight:bold; padding:14px 0 4px 0; border:none;">B. UANG MUKA</td>
+                </tr>
+                <tr>
+                    <th style="text-align:center; border:1px solid #000;">Tanggal</th>
+                    <th style="text-align:center; border:1px solid #000;">Nomor PPC</th>
+                    <th style="text-align:center; border:1px solid #000;">Nama User</th>
+                    <th style="text-align:center; border:1px solid #000;">Keterangan</th>
+                    <th style="text-align:center; border:1px solid #000;">Jumlah</th>
+                    <th style="border:none; background:transparent;"></th>
+                </tr>
+                ${rowsB || `<tr><td colSpan="5" style="text-align:center;padding:8px;color:#888;border:1px solid #000;">Tidak ada data uang muka</td><td style="border:none;"></td></tr>`}
+                <tr class="subtotal-row">
+                    <td colSpan="4" style="border:none;"></td>
+                    <td style="text-align:right; font-weight:bold; font-style:italic; border:1px solid #000; border-top:1.5px solid #000; border-bottom:1.5px solid #000;">Rp. ${formatNumberID(record.totalB)}</td>
+                    <td style="border:none;"></td>
+                </tr>
+                <tr style="height:20px;">
+                    <td style="border:none;"></td><td style="border:none;"></td><td style="border:none;"></td><td style="border:none;"></td><td style="border:none;"></td><td style="border:none;"></td>
+                </tr>
+                <tr>
+                    <td colSpan="3" style="border:none;"></td>
+                    <td colSpan="2" style="font-weight:bold; padding:5px 8px; border:none; text-align:right;">TOTAL PENGELUARAN</td>
+                    <td style="font-weight:bold; text-align:right; border:none; padding:5px 8px; border-bottom:1.5px solid #000;">Rp. ${formatNumberID(record.totalAB)}</td>
+                </tr>
+                <tr>
+                    <td colSpan="3" style="border:none;"></td>
+                    <td colSpan="2" style="font-weight:bold; padding:5px 8px; border:none; text-align:right;">SALDO AKHIR</td>
+                    <td style="font-weight:bold; text-align:right; border:none; padding:5px 8px; border-bottom:3px double #000;">Rp. ${formatNumberID(record.saldoAkhir)}</td>
                 </tr>
             </tbody>
         </table>
-
-        <div class="section-label" style="margin-top: 16px;">B. UANG MUKA</div>
-        <table>
-            <thead>
-                <tr>
-                    <th style="width: 14%;">Tanggal</th>
-                    <th style="width: 18%;">Nomor PPC</th>
-                    <th style="width: 22%;">Nama User</th>
-                    <th style="width: 30%;">Keterangan</th>
-                    <th style="width: 16%; text-align: right; padding-right: 40px;">Jumlah</th>
-                </tr>
-            </thead>
-            <tbody>
-                ${rowsB ||
-        `<tr><td colSpan="5" style="text-align:center;padding:8px;color:#888;">Tidak ada data uang muka</td></tr>`
-        }
-                <tr class="subtotal-row">
-                     <td colSpan="4"></td>
-                    <td style="text-align: right; padding-right: 40px;">${formatNumberID(record.totalB)}</td>
-                </tr>
-            </tbody>
-        </table>
-
-        <div class="summary-container">
-            <table class="summary-table">
-                <tr>
-                    <td style="text-align: right; width: 60%;">TOTAL A + B</td>
-                    <td style="text-align: right; width: 40%;">${formatNumberID(record.totalAB)}</td>
-                </tr>
-                <tr>
-                    <td style="text-align: right;">SALDO AKHIR</td>
-                    <td style="text-align: right;">${formatNumberID(record.saldoAkhir)}</td>
-                </tr>
-            </table>
-        </div>
 
         <div class="signature-section">
             <div class="sign-box-left">
@@ -402,21 +388,29 @@ function buildReportContentHtml(record) {
                     <span>${record.mengetahui}</span>
                 </div>
             </div>
-            </div>`;
+        </div>`;
 }
 
-// ===== HTML lengkap untuk jendela cetak (window.print) — A4, margin 2,54cm =====
+// ===== HTML lengkap untuk jendela cetak (window.print) — A4, margin 2,54cm (margin atas hal 1: 1,2cm) =====
 function buildPrintHtml(record) {
     return `
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="utf-8" />
-        <title>PETTY CASH - PER TGL : ${formatDateID(record.sampaiTanggal)}</title>
+        <title>Cash Opname: ${formatDateID(record.sampaiTanggal)}</title>
         <style>
             @page {
                 size: A4 portrait;
-                margin: ${PDF_MARGIN_CM}cm;
+                margin-top: ${PDF_MARGIN_CM}cm;
+                margin-bottom: ${PDF_MARGIN_CM}cm;
+                margin-left: ${PDF_MARGIN_SIDE_CM}cm;
+                margin-right: ${PDF_MARGIN_SIDE_CM}cm;
+            }
+            @page :first {
+                margin-top: ${PDF_MARGIN_TOP_PAGE1_CM}cm;
+                margin-left: ${PDF_MARGIN_SIDE_CM}cm;
+                margin-right: ${PDF_MARGIN_SIDE_CM}cm;
             }
             body {
                 margin: 0;
@@ -424,6 +418,12 @@ function buildPrintHtml(record) {
             }
             ${REPORT_STYLES}
         </style>
+        <script>
+            window.addEventListener("load", function () {
+                setTimeout(function () { window.print(); }, 300);
+                window.addEventListener("afterprint", function () { window.close(); });
+            });
+        </script>
     </head>
     <body>
         <div class="cop-report">
@@ -439,38 +439,62 @@ function printRecord(record) {
     printWindow.document.write(buildPrintHtml(record));
     printWindow.document.close();
     printWindow.focus();
-    setTimeout(() => {
-        printWindow.print();
-    }, 300);
 }
 
-// Tidak menampilkan preview/dialog cetak — file PDF langsung tersimpan ke folder unduhan browser.
 async function generatePdfFromElement(element, filename) {
     const canvas = await html2canvas(element, {
-        scale: 2,
+        scale: 3,
         useCORS: true,
         backgroundColor: "#ffffff",
+        logging: false,
     });
 
     const pdf = new jsPDF({ unit: "cm", format: "a4", orientation: "portrait" });
 
-    const contentWidthCm = PDF_PAGE_WIDTH_CM - PDF_MARGIN_CM * 2;
+    const contentWidthCm = PDF_PAGE_WIDTH_CM - PDF_MARGIN_SIDE_CM * 2;
+    const contentHeightPage1Cm = PDF_PAGE_HEIGHT_CM - (PDF_MARGIN_TOP_PAGE1_CM + PDF_MARGIN_CM);
     const contentHeightCm = PDF_PAGE_HEIGHT_CM - PDF_MARGIN_CM * 2;
 
     const pxToCm = contentWidthCm / canvas.width;
     const totalHeightCm = canvas.height * pxToCm;
 
-    if (totalHeightCm <= contentHeightCm) {
+    if (totalHeightCm <= contentHeightPage1Cm) {
         const imgData = canvas.toDataURL("image/png");
-        pdf.addImage(imgData, "PNG", PDF_MARGIN_CM, PDF_MARGIN_CM, contentWidthCm, totalHeightCm);
+        pdf.addImage(imgData, "PNG", PDF_MARGIN_SIDE_CM, PDF_MARGIN_TOP_PAGE1_CM, contentWidthCm, totalHeightCm);
     } else {
-        // Konten lebih tinggi dari 1 halaman A4 -> dipotong per halaman
-        const pageHeightPx = Math.floor(contentHeightCm / pxToCm);
+        const elementRect = element.getBoundingClientRect();
+        const canvasScale = canvas.height / (elementRect.height || 1);
+
+        const breakNodes = Array.from(
+            element.querySelectorAll("tr, .section-label, .summary-container, .signature-section")
+        );
+        const boxes = breakNodes.map((el) => {
+            const r = el.getBoundingClientRect();
+            return {
+                top: (r.top - elementRect.top) * canvasScale,
+                bottom: (r.bottom - elementRect.top) * canvasScale,
+            };
+        });
+
         let sourceY = 0;
         let firstPage = true;
 
         while (sourceY < canvas.height) {
-            const sliceHeightPx = Math.min(pageHeightPx, canvas.height - sourceY);
+            const currentContentHeightCm = firstPage ? contentHeightPage1Cm : contentHeightCm;
+            const currentPageHeightPx = Math.floor(currentContentHeightCm / pxToCm);
+
+            let sliceHeightPx = Math.min(currentPageHeightPx, canvas.height - sourceY);
+
+            if (sourceY + sliceHeightPx < canvas.height) {
+                const targetY = sourceY + sliceHeightPx;
+                const intersected = boxes.find(
+                    (b) => b.top < targetY && b.bottom > targetY
+                );
+
+                if (intersected && intersected.top > sourceY + (40 * canvasScale)) {
+                    sliceHeightPx = Math.floor(intersected.top - sourceY);
+                }
+            }
 
             const sliceCanvas = document.createElement("canvas");
             sliceCanvas.width = canvas.width;
@@ -486,7 +510,8 @@ async function generatePdfFromElement(element, filename) {
             const sliceHeightCm = sliceHeightPx * pxToCm;
 
             if (!firstPage) pdf.addPage();
-            pdf.addImage(sliceData, "PNG", PDF_MARGIN_CM, PDF_MARGIN_CM, contentWidthCm, sliceHeightCm);
+            const marginTop = firstPage ? PDF_MARGIN_TOP_PAGE1_CM : PDF_MARGIN_CM;
+            pdf.addImage(sliceData, "PNG", PDF_MARGIN_SIDE_CM, marginTop, contentWidthCm, sliceHeightCm);
 
             sourceY += sliceHeightPx;
             firstPage = false;
@@ -501,20 +526,34 @@ async function downloadRecordAsPdf(record) {
     container.style.position = "fixed";
     container.style.left = "-9999px";
     container.style.top = "0";
-    container.style.width = "700px";
+    container.style.width = "680px";
     container.style.background = "#ffffff";
-    container.innerHTML = `<style>${REPORT_STYLES}</style><div class="cop-report">${buildReportContentHtml(record)}</div>`;
+    container.innerHTML = `
+        <style>
+            ${REPORT_STYLES}
+            .cop-report {
+                -webkit-font-smoothing: antialiased;
+                -moz-osx-font-smoothing: grayscale;
+                text-rendering: optimizeLegibility;
+            }
+        </style>
+        <div class="cop-report" style="padding-bottom: 20px;">
+            ${buildReportContentHtml(record)}
+        </div>
+    `;
     document.body.appendChild(container);
 
     try {
+        await new Promise((resolve) => setTimeout(resolve, 150));
         await generatePdfFromElement(
             container,
-            `CashOpname_${record.dariTanggal}_${record.sampaiTanggal}.pdf`
+            `Cash Opname: ${formatDateID(record.sampaiTanggal)}.pdf`
         );
     } finally {
         document.body.removeChild(container);
     }
 }
+
 
 export default function CashOpname() {
     const [dariTanggal, setDariTanggal] = useState("");
@@ -597,8 +636,13 @@ export default function CashOpname() {
                     getSettlementRecap({ start_date: dariTanggal, end_date: sampaiTanggal }),
                     getAdvanceRecap({ start_date: dariTanggal, end_date: sampaiTanggal }),
                 ]);
+                const activeAndOverdueAdvance = (advanceData || []).filter((r) => {
+                    if (!r.status) return true;
+                    const s = String(r.status).trim().toLowerCase();
+                    return s === "active" || s === "overdue";
+                });
                 setSettlementRows(settlementData || []);
-                setAdvanceRows(advanceData || []);
+                setAdvanceRows(activeAndOverdueAdvance);
             } catch (err) {
                 console.error("Gagal memuat rekap cash opname:", err);
             }
@@ -690,9 +734,9 @@ export default function CashOpname() {
                 await saveCashOpname(record);
             }
             await refreshHistory();
-            setEditingId(null);
             setSuccessMessage(editingId ? "Cash Opname berhasil diperbarui." : "Cash Opname berhasil disimpan.");
             setTimeout(() => setSuccessMessage(""), 3000);
+            handleCancelEdit();
         } catch (err) {
             console.error("Gagal menyimpan Cash Opname:", err);
             setFormError("Gagal menyimpan Cash Opname ke server. Silakan coba lagi.");
@@ -711,10 +755,13 @@ export default function CashOpname() {
             } else {
                 await saveCashOpname(record);
             }
+
+            printRecord(record);
+
             await refreshHistory();
-            setEditingId(null);
-            setSuccessMessage(editingId ? "Cash Opname diperbarui & PDF berhasil diunduh." : "Cash Opname berhasil diunduh (PDF) dan disimpan ke histori.");
+            setSuccessMessage(editingId ? "Cash Opname diperbarui & PDF berhasil diunduh." : "Cash Opname berhasil diunduh.");
             setTimeout(() => setSuccessMessage(""), 3000);
+            handleCancelEdit();
         } catch (err) {
             console.error("Gagal mengunduh PDF Cash Opname:", err);
             setFormError("Gagal mengunduh PDF Cash Opname. Silakan coba lagi.");
@@ -846,14 +893,38 @@ export default function CashOpname() {
 
             {/* ================= FORM CASH OPNAME ================= */}
             <div
+                ref={formRef}
                 style={{
-                    background: "#fff", border: "1px solid #e5e7eb", borderRadius: "14px",
-                    padding: "16px 20px", margin: "20px", boxShadow: "0 1px 6px rgba(0,0,0,0.05)",
+                    background: "#fff", border: `1px solid ${editingId ? "#6b7280" : "#e5e7eb"}`,
+                    borderRadius: "14px",
+                    padding: "16px 20px", margin: "20px", boxShadow: editingId ? "0 1px 8px rgba(107,114,128,0.2)" : "0 1px 6px rgba(0,0,0,0.05)",
+                    transition: "border-color 0.2s, box-shadow 0.2s",
                 }}
             >
-                <h3 style={{ margin: "0 0 12px", fontSize: "14px", fontWeight: 700, color: "#363D48" }}>
-                    Buat Cash Opname
-                </h3>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+                    <h3 style={{ margin: 0, fontSize: "14px", fontWeight: 700, color: editingId ? "#4b5563" : "#363D48", display: "flex", alignItems: "center", gap: "8px" }}>
+                        {editingId ? (
+                            <>
+                                <FaEdit style={{ fontSize: "13px" }} />
+                                Edit Cash Opname
+                            </>
+                        ) : "Buat Cash Opname"}
+                    </h3>
+                    {editingId && (
+                        <button
+                            type="button"
+                            onClick={handleCancelEdit}
+                            style={{
+                                display: "inline-flex", alignItems: "center", gap: "6px",
+                                border: "1.5px solid #d1d5db", borderRadius: "8px", padding: "4px 10px",
+                                fontSize: "12px", fontWeight: 600, color: "#6b7280", background: "#fff",
+                                cursor: "pointer",
+                            }}
+                        >
+                            <FaTimes style={{ fontSize: "10px" }} /> Batal Edit
+                        </button>
+                    )}
+                </div>
 
                 {/* BARIS 1: Dari Tanggal, Sampai Tanggal, Jam, Saldo Awal */}
                 <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "10px" }}>
@@ -958,20 +1029,6 @@ export default function CashOpname() {
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "12px" }}>
                     <button
                         type="button"
-                        onClick={handleUnduh}
-                        disabled={actionLoading !== null}
-                        style={{
-                            display: "flex", alignItems: "center", gap: "6px", border: "1.5px solid #363D48",
-                            borderRadius: "8px", padding: "5px 12px", fontSize: "12px", color: "#363D48",
-                            background: "#fff", cursor: actionLoading !== null ? "not-allowed" : "pointer", fontWeight: 600,
-                            opacity: actionLoading !== null ? 0.6 : 1,
-                        }}
-                    >
-                        <FaDownload style={{ fontSize: "11px" }} />
-                        {actionLoading === "unduh" ? "Membuat & Mengunduh PDF..." : "Unduh PDF"}
-                    </button>
-                    <button
-                        type="button"
                         onClick={handleSimpan}
                         disabled={actionLoading !== null}
                         style={{
@@ -1059,7 +1116,6 @@ export default function CashOpname() {
                                 <th className="p-3 font-medium border border-gray-300">Mengetahui</th>
                                 <th className="p-3 font-medium border border-gray-300">Total A + B</th>
                                 <th className="p-3 font-medium border border-gray-300">Saldo Akhir</th>
-                                <th className="p-3 font-medium border border-gray-300">Aksi Terakhir</th>
                                 <th className="p-3 font-medium border border-gray-300">Cetak</th>
                                 {deleteMode && (
                                     <th className="p-3 font-medium border border-gray-300"></th>
@@ -1070,7 +1126,7 @@ export default function CashOpname() {
                         {historyLoading && (
                             <tbody>
                                 <tr>
-                                    <td colSpan={deleteMode ? 10 : 9} className="p-8 text-center text-gray-400 border border-gray-300">
+                                    <td colSpan={deleteMode ? 9 : 8} className="p-8 text-center text-gray-400 border border-gray-300">
                                         Memuat history Cash Opname...
                                     </td>
                                 </tr>
@@ -1080,7 +1136,7 @@ export default function CashOpname() {
                         {!historyLoading && history.length === 0 && (
                             <tbody>
                                 <tr>
-                                    <td colSpan={9} className="p-8 text-center text-gray-400 border border-gray-300">
+                                    <td colSpan={8} className="p-8 text-center text-gray-400 border border-gray-300">
                                         Belum ada history Cash Opname.
                                     </td>
                                 </tr>
@@ -1089,62 +1145,73 @@ export default function CashOpname() {
 
                         {!historyLoading && history.length > 0 && (
                             <tbody>
-                                {currentRows.map((row, idx) => (
-                                    <tr
-                                        key={row.id}
-                                        className={`hover:bg-gray-50 ${deleteMode && selectedIds.has(row.id) ? "bg-red-50" : ""}`}
-                                    >
-                                        <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{startEntry + idx}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
-                                            {formatDateID(row.dariTanggal)} s/d {formatDateID(row.sampaiTanggal)}
-                                        </td>
-                                        <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.jam}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.dibuatOleh1} & {row.dibuatOleh2}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.mengetahui}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{formatCurrency(row.totalAB)}</td>
-                                        <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{formatCurrency(row.saldoAkhir)}</td>
-                                        <td className="p-3 border border-gray-300">
-                                            <span
-                                                style={{
-                                                    fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "999px",
-                                                    background: row.aksi === "Simpan" ? "#ecfdf5" : row.aksi === "Cetak" ? "#eff6ff" : "#fef3c7",
-                                                    color: row.aksi === "Simpan" ? "#047857" : row.aksi === "Cetak" ? "#1d4ed8" : "#b45309",
-                                                }}
-                                            >
-                                                {row.aksi}
-                                            </span>
-                                        </td>
-                                        <td className="p-3 border border-gray-300">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleCetakUlang(row)}
-                                                    title="Cetak Ulang"
-                                                    style={{
-                                                        display: "inline-flex", alignItems: "center", justifyContent: "center",
-                                                        width: "32px", height: "32px",
-                                                        background: "#fff",
-                                                        borderRadius: "8px", cursor: "pointer",
-                                                    }}
-                                                >
-                                                    <FaPrint style={{ fontSize: "13px" }} />
-                                                </button>
-
-                                            </div>
-                                        </td>
-                                        {/* Kolom checkbox seleksi hapus — hanya muncul saat deleteMode, disamakan dengan Advance */}
-                                        {deleteMode && (
-                                            <td className="p-3 border border-gray-300 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedIds.has(row.id)}
-                                                    onChange={() => toggleSelectRow(row.id)}
-                                                    className="w-4 h-4 accent-red-600 cursor-pointer"
-                                                />
+                                {currentRows.map((row, idx) => {
+                                    const isEditing = editingId === row.id;
+                                    const isSelected = deleteMode && selectedIds.has(row.id);
+                                    return (
+                                        <tr
+                                            key={row.id}
+                                            onClick={() => {
+                                                if (deleteMode) {
+                                                    toggleSelectRow(row.id);
+                                                } else {
+                                                    handleEditRow(row);
+                                                }
+                                            }}
+                                            title={deleteMode ? "Klik untuk pilih/batal pilih" : "Klik untuk edit data ini"}
+                                            style={{
+                                                cursor: "pointer",
+                                                background: isEditing
+                                                    ? "#f3f4f6"
+                                                    : isSelected
+                                                        ? "#fef2f2"
+                                                        : undefined,
+                                                outline: isEditing ? "2px solid #9ca3af" : undefined,
+                                                outlineOffset: "-2px",
+                                            }}
+                                            className={`transition-colors ${!isEditing && !isSelected ? "hover:bg-gray-50" : ""}`}
+                                        >
+                                            <td className="py-3 px-5 text-gray-700 border border-gray-300 text-center">{startEntry + idx}</td>
+                                            <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
+                                                {formatDateID(row.dariTanggal)} s/d {formatDateID(row.sampaiTanggal)}
                                             </td>
-                                        )}
-                                    </tr>
-                                ))}
+                                            <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.jam}</td>
+                                            <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.dibuatOleh1} & {row.dibuatOleh2}</td>
+                                            <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.mengetahui}</td>
+                                            <td className="py-3 px-5 text-gray-700 border border-gray-300 text-right" style={{ paddingRight: "10px" }}>{formatCurrency(row.totalAB)}</td>
+                                            <td className="py-3 px-5 text-gray-700 border border-gray-300 text-right" style={{ paddingRight: "10px" }}>{formatCurrency(row.saldoAkhir)}</td>
+                                            <td className="py-3 px-5 border border-gray-300" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={(e) => { e.stopPropagation(); handleCetakUlang(row); }}
+                                                        title="Cetak Ulang"
+                                                        style={{
+                                                            display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                                            width: "32px", height: "32px",
+                                                            background: "#fff",
+                                                            borderRadius: "8px", cursor: "pointer",
+                                                        }}
+                                                    >
+                                                        <FaPrint style={{ fontSize: "13px" }} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                            {/* Kolom checkbox seleksi hapus — hanya muncul saat deleteMode */}
+                                            {deleteMode && (
+                                                <td className="p-3 border border-gray-300 text-center" onClick={(e) => e.stopPropagation()}>
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedIds.has(row.id)}
+                                                        onChange={() => toggleSelectRow(row.id)}
+                                                        onClick={(e) => e.stopPropagation()}
+                                                        className="w-4 h-4 accent-red-600 cursor-pointer"
+                                                    />
+                                                </td>
+                                            )}
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         )}
                     </table>
