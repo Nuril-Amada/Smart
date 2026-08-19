@@ -14,94 +14,165 @@ import { formatRupiah } from "../../../utils/formatCurrency";
 
 export default function TopCostCenterChart({
   data = [],
+  totalExpense = 0,
   loading = false,
 }) {
 
+  // ==========================
+  // Top 10 Cost Center
+  // ==========================
+
+  const chartData = [...data]
+    .sort((a, b) => b.total_amount - a.total_amount)
+    .slice(0, 10);
+
+  // ==========================
+  // Average
+  // ==========================
+
   const average =
-    data.length > 0
-      ? data.reduce((sum, item) => sum + item.total, 0) / data.length
+    chartData.length > 0
+      ? chartData.reduce(
+        (sum, item) => sum + item.total_amount,
+        0
+      ) / chartData.length
       : 0;
 
+  // ==========================
+  // Max Value
   const maxValue =
-    data.length > 0
-      ? Math.max(...data.map((item) => item.total))
+    chartData.length > 0
+      ? Math.max(
+        ...chartData.map(item => item.total_amount)
+      )
       : 0;
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl shadow-sm border p-6 h-[420px] flex items-center justify-center">
+      <div className="bg-white rounded-2xl shadow-sm border p-6 h-[520px] flex items-center justify-center">
         Memuat data...
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6" style={{ marginLeft: "20px", marginBottom: "20px" }}>
-
-      <h3 className="text-lg font-semibold text-center mb-5 text-gray-700" style={{ marginTop: "10px" }}>
-        Top 10 Pengeluaran Cost Center
+    <div
+      className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6"
+      style={{
+        marginLeft: "20px",
+        marginBottom: "20px",
+      }}
+    >
+      <h3
+        className="text-lg font-semibold text-center mb-5"
+        style={{ marginTop: "10px" }}
+      >
+        Top 10 Expense By Cost Center
       </h3>
 
-      {data.length === 0 ? (
+      {chartData.length === 0 ? (
 
-        <div className="h-[320px] flex items-center justify-center text-gray-400">
+        <div className="h-[420px] flex items-center justify-center text-gray-400">
           Belum ada data
         </div>
 
       ) : (
 
-        <ResponsiveContainer width="100%" height={330}>
+        <ResponsiveContainer
+          width="100%"
+          height={430}
+        >
 
           <BarChart
-            data={data}
+            data={chartData}
+            layout="vertical"
             margin={{
-              top: 15,
-              right: 15,
-              left: 15,
-              bottom: 15,
+              top: 20,
+              right: 40,
+              left: 10,
+              bottom: 10,
             }}
           >
 
             <CartesianGrid strokeDasharray="3 3" />
 
             <XAxis
-              dataKey="name"
-              angle={-30}
-              textAnchor="end"
-              interval={0}
-              tick={{ fontSize: 11 }}
+              type="number"
+              tickFormatter={(value) =>
+                `${(value / 1000000).toFixed(0)} Juta`
+              }
+              tick={{
+                fontSize: 11,
+              }}
             />
 
             <YAxis
-              tickFormatter={(value) =>
-                `${(value / 1000000).toFixed(0)}Juta`
-              }
-              tick={{ fontSize: 11 }}
+              type="category"
+              dataKey="cost_center"
+              width={110}
+              tick={{
+                fontSize: 11,
+              }}
             />
 
             <Tooltip
-              formatter={(value) => formatRupiah(value)}
+              content={({ active, payload, label }) => {
+
+                if (!active || !payload?.length) return null;
+
+                const value = Number(payload[0].value);
+
+                const percentage =
+                  totalExpense > 0
+                    ? ((value / totalExpense) * 100).toFixed(2)
+                    : "0.00";
+
+                return (
+                  <div className="bg-white border border-gray-300 rounded-lg shadow-md p-3" style={{ margin: "10px", padding: "10px" }}>
+
+                    <p className="font-medium text-[14px] text-gray-700">
+                      Cost Center : {label}
+                    </p>
+
+                    <p className="text-gray-600 mt-1 text-[14px]">
+                      Expense : {formatRupiah(value)}
+                    </p>
+
+                    <p className="text-gray-600 mt-1 text-[14px]">
+                      Persentase : {percentage}%
+                    </p>
+
+                  </div>
+                );
+
+              }}
             />
 
             {/* <ReferenceLine
-              y={average}
+              x={average}
               stroke="#ef4444"
+              strokeWidth={2}
               strokeDasharray="5 5"
+              label={{
+                value: "Avg",
+                position: "top",
+                fill: "#ef4444",
+              }}
             /> */}
 
             <Bar
-              dataKey="total"
-              radius={[8, 8, 0, 0]}
+              dataKey="total_amount"
+              radius={[0, 8, 8, 0]}
             >
 
-              {data.map((item, index) => (
+              {chartData.map((item, index) => (
 
                 <Cell
                   key={index}
                   fill={
-                    item.total === maxValue
-                      ? "#899097"
-                      : "#c5c3c6"
+                    item.total_amount === maxValue
+                      ? "#1d4ed8"
+                      : "#60a5fa"
                   }
                 />
 
