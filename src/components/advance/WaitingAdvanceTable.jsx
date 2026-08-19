@@ -323,7 +323,19 @@ function SettlementFormModal({
 }
 
 
-export default function Table({ startDate, endDate, refreshKey, setRefreshKey, onSummaryUpdate }) {
+export default function Table({
+    startDate,
+    endDate,
+    refreshKey,
+    setRefreshKey,
+    onSummaryUpdate,
+    filterUser,
+    setFilterUser,
+    filterCostCenter,
+    setFilterCostCenter,
+    filterStatus,
+    setFilterStatus
+}) {
     // ================= TABLE 1: ADVANCE =================
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -331,10 +343,6 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
 
     const [page, setPage] = useState(1);
     const perPage = 10;
-
-    const [filterUser, setFilterUser] = useState("");
-    const [filterCostCenter, setFilterCostCenter] = useState("");
-    const [filterStatus, setFilterStatus] = useState("All Status");
 
     const userInputRef = useRef(null);
     const ccInputRef = useRef(null);
@@ -656,6 +664,12 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
             setDeleteBatchOpen(false);
             setDeleteMode(false);
             setSelectedIds(new Set());
+
+            // Reset filters to show remaining data
+            if (setFilterUser) setFilterUser("");
+            if (setFilterCostCenter) setFilterCostCenter("");
+            if (setFilterStatus) setFilterStatus("All Status");
+
             loadData();
             setSuccessMessage("Data terpilih berhasil dihapus.");
             setTimeout(() => {
@@ -825,8 +839,6 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
         });
     }, [rows, filterUser, filterCostCenter, filterStatus]);
 
-    // Saat filter berubah di mode hapus, otomatis kurangi selectedIds
-    // hanya ke baris yang masih terlihat di filteredRows (tidak keluar filter)
     useEffect(() => {
         if (!deleteMode) return;
         setSelectedIds((prev) => {
@@ -964,7 +976,7 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
                             className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-200"
                             style={{ marginBottom: "10px", padding: "1px 5px" }}
                         >
-                            <option>All Status</option>
+                            <option value="All Status">Semua Status</option>
                             <option>Active</option>
                             <option>Settled</option>
                             <option>Overdue</option>
@@ -1061,18 +1073,18 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
 
                 {/* TABLE */}
                 <div className="overflow-x-auto" style={{ marginLeft: "10px", marginRight: "10px" }}>
-                    <table className="w-full text-sm border border-gray-300 text-left">
+                    <table className="w-full text-sm border border-gray-300">
                         <thead>
                             <tr className="text-xs uppercase tracking-wide bg-gray-50 text-center">
                                 <th className="p-3 font-medium border border-gray-300">Tanggal</th>
                                 <th className="p-3 font-medium border border-gray-300">No PPC</th>
                                 <th className="p-3 font-medium border border-gray-300">Nama User</th>
                                 <th className="p-3 font-medium border border-gray-300">Cost Center</th>
-                                <th className="p-3 font-medium border border-gray-300">Description</th>
-                                <th className="p-3 font-medium border border-gray-300">Amount</th>
-                                <th className="p-3 font-medium border border-gray-300">Due Date</th>
+                                <th className="p-3 font-medium border border-gray-300">Deskripsi</th>
+                                <th className="p-3 font-medium border border-gray-300">Jumlah</th>
+                                <th className="p-3 font-medium border border-gray-300">Tgl Penyelesaian</th>
                                 <th className="p-3 font-medium border border-gray-300">Status</th>
-                                <th className="p-3 font-medium border border-gray-300">Action</th>
+                                <th className="p-3 font-medium border border-gray-300">Aksi</th>
                             </tr>
                         </thead>
 
@@ -1096,20 +1108,20 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
                                         className={`hover:bg-gray-100 cursor-pointer transition-colors ${deleteMode && selectedIds.has(row.id) ? "bg-red-50" : ""}`}
                                         onClick={(e) => deleteMode ? toggleSelectRow(row.id) : handleEditRowOpen(row, e)}
                                     >
-                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300" style={{ paddingLeft: "10px" }}>
+                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
                                             {formatDate(row.tanggal)}
                                         </td>
-                                        <td className="py-3 px-5 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.ppc_no}</td>
-                                        <td className="py-3 px-5 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.nama_user}</td>
-                                        <td className="py-3 px-5 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.cost_center}</td>
-                                        <td className="py-3 px-5 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.keterangan}</td>
-                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300" style={{ paddingLeft: "10px" }}>
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.ppc_no}</td>
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.nama_user}</td>
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.cost_center}</td>
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.keterangan}</td>
+                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300 text-right" style={{ paddingRight: "10px" }}>
                                             {formatRupiah(row.jumlah)}
                                         </td>
-                                        <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300" style={{ paddingLeft: "10px" }}>
+                                        <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
                                             {formatDate(row.due_date)}
                                         </td>
-                                        <td className="py-3 px-5 border border-gray-300" style={{ paddingLeft: "10px" }}>
+                                        <td className="py-3 px-5 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
                                             <span
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -1468,156 +1480,156 @@ export default function Table({ startDate, endDate, refreshKey, setRefreshKey, o
                     submitting={settlementSubmitting}
                     error={settlementError}
                 />
+            </div>
 
-                {/* MODAL Edit Advance Row */}
-                {rowToEdit && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-                        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
-                            <div
-                                className="flex items-center justify-between border-b border-gray-200"
-                                style={{ padding: "8px 24px 8px", marginRight: "20px" }}
+            {/* MODAL Edit Advance Row */}
+            {rowToEdit && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
+                        <div
+                            className="flex items-center justify-between border-b border-gray-200"
+                            style={{ padding: "8px 24px 8px", marginRight: "20px" }}
+                        >
+                            <h3 className="text-lg font-semibold text-gray-700" style={{ marginLeft: "20px" }}>
+                                Edit Advance Request
+                            </h3>
+                            <button
+                                type="button"
+                                onClick={handleEditClose}
+                                className="text-gray-400 hover:text-gray-600"
                             >
-                                <h3 className="text-lg font-semibold text-gray-700" style={{ marginLeft: "20px" }}>
-                                    Edit Advance Request
-                                </h3>
+                                <FaTimes />
+                            </button>
+                        </div>
+
+                        <form
+                            onSubmit={handleEditSubmit}
+                            className="px-6 py-3 flex flex-col gap-2.5"
+                            style={{
+                                marginRight: "20px",
+                                marginLeft: "20px",
+                                marginBottom: "10px",
+                                marginTop: "10px",
+                            }}
+                        >
+                            <div>
+                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                    PPC Number
+                                </label>
+                                <input
+                                    type="text"
+                                    value={rowToEdit.ppc_no || "-"}
+                                    readOnly
+                                    className="w-full border border-gray-200 rounded-[10px] text-[13px] bg-gray-50 text-gray-600"
+                                    style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                    Nama User
+                                </label>
+                                <input
+                                    type="text"
+                                    name="employee_name"
+                                    value={editForm.employee_name}
+                                    onChange={handleEditChange}
+                                    required
+                                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                    style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                    Cost Center
+                                </label>
+                                <input
+                                    type="text"
+                                    name="cost_center"
+                                    value={editForm.cost_center}
+                                    onChange={handleEditChange}
+                                    required
+                                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                    style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                    Purpose / Description
+                                </label>
+                                <textarea
+                                    rows={2}
+                                    name="purpose"
+                                    value={editForm.purpose}
+                                    onChange={handleEditChange}
+                                    required
+                                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none resize-none"
+                                    style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                    Amount
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    name="amount"
+                                    value={editForm.amount}
+                                    onChange={handleEditChange}
+                                    required
+                                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                    style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                    Due Date
+                                </label>
+                                <input
+                                    type="date"
+                                    name="due_date"
+                                    value={editForm.due_date ? editForm.due_date.split("T")[0] : ""}
+                                    onChange={handleEditChange}
+                                    required
+                                    className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
+                                    style={{ padding: "5px 12px", borderWidth: "1.5px" }}
+                                />
+                            </div>
+
+                            {editError && (
+                                <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                                    {editError}
+                                </div>
+                            )}
+
+                            <div className="flex justify-end gap-2 pt-4 border-t border-gray-100" style={{ padding: "5px 0 5px", gap: "10px" }}>
                                 <button
                                     type="button"
                                     onClick={handleEditClose}
-                                    className="text-gray-400 hover:text-gray-600"
+                                    disabled={editSubmitting}
+                                    className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
+                                    style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 500 }}
                                 >
-                                    <FaTimes />
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={editSubmitting}
+                                    className="bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
+                                    style={{ padding: "4px 15px", background: "linear-gradient(135deg, #464444c9, #464444c9)", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}
+                                >
+                                    {editSubmitting ? "Menyimpan..." : "Simpan"}
                                 </button>
                             </div>
-
-                            <form
-                                onSubmit={handleEditSubmit}
-                                className="px-6 py-3 flex flex-col gap-2.5"
-                                style={{
-                                    marginRight: "20px",
-                                    marginLeft: "20px",
-                                    marginBottom: "10px",
-                                    marginTop: "10px",
-                                }}
-                            >
-                                <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
-                                        PPC Number
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={rowToEdit.ppc_no || "-"}
-                                        readOnly
-                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] bg-gray-50 text-gray-600"
-                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
-                                        Nama User
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="employee_name"
-                                        value={editForm.employee_name}
-                                        onChange={handleEditChange}
-                                        required
-                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
-                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
-                                        Cost Center
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name="cost_center"
-                                        value={editForm.cost_center}
-                                        onChange={handleEditChange}
-                                        required
-                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
-                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
-                                        Purpose / Description
-                                    </label>
-                                    <textarea
-                                        rows={2}
-                                        name="purpose"
-                                        value={editForm.purpose}
-                                        onChange={handleEditChange}
-                                        required
-                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none resize-none"
-                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
-                                        Amount
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        name="amount"
-                                        value={editForm.amount}
-                                        onChange={handleEditChange}
-                                        required
-                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
-                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
-                                        Due Date
-                                    </label>
-                                    <input
-                                        type="date"
-                                        name="due_date"
-                                        value={editForm.due_date ? editForm.due_date.split("T")[0] : ""}
-                                        onChange={handleEditChange}
-                                        required
-                                        className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
-                                        style={{ padding: "5px 12px", borderWidth: "1.5px" }}
-                                    />
-                                </div>
-
-                                {editError && (
-                                    <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
-                                        {editError}
-                                    </div>
-                                )}
-
-                                <div className="flex justify-end gap-2 pt-4 border-t border-gray-100" style={{ padding: "5px 0 5px", gap: "10px" }}>
-                                    <button
-                                        type="button"
-                                        onClick={handleEditClose}
-                                        disabled={editSubmitting}
-                                        className="border border-gray-300 rounded-lg text-sm px-4 py-2 text-gray-600 hover:bg-gray-50 disabled:opacity-40"
-                                        style={{ padding: "4px 15px", border: "1.5px solid #e5e7eb", borderRadius: "10px", cursor: "pointer", fontWeight: 500 }}
-                                    >
-                                        Batal
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={editSubmitting}
-                                        className="bg-gray-600 hover:bg-gray-700 disabled:opacity-40 text-white rounded-lg text-sm px-4 py-2"
-                                        style={{ padding: "4px 15px", background: "linear-gradient(135deg, #464444c9, #464444c9)", border: "none", borderRadius: "10px", cursor: "pointer", fontWeight: 600 }}
-                                    >
-                                        {editSubmitting ? "Menyimpan..." : "Simpan"}
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
+                        </form>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </>
     );
 }
