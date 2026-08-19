@@ -116,6 +116,9 @@ export default function TopCostCenterChart({
             />
 
             <Tooltip
+              allowEscapeViewBox={{ x: false, y: false }}
+              offset={10}
+              wrapperStyle={{ zIndex: 9999, pointerEvents: "none" }}
               content={({ active, payload, label }) => {
 
                 if (!active || !payload?.length) return null;
@@ -128,7 +131,16 @@ export default function TopCostCenterChart({
                     : "0.00";
 
                 return (
-                  <div className="bg-white border border-gray-300 rounded-lg shadow-md p-3" style={{ margin: "10px", padding: "10px" }}>
+                  <div
+                    className="bg-white border border-gray-300 rounded-lg shadow-md"
+                    style={{
+                      margin: "10px",
+                      padding: "10px",
+                      maxWidth: "260px",
+                      wordBreak: "break-word",
+                      whiteSpace: "normal",
+                    }}
+                  >
 
                     <p className="font-medium text-[14px] text-gray-700">
                       Cost Center : {label}
