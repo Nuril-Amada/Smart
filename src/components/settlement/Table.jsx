@@ -1071,12 +1071,16 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                 <h3 style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 700, color: "#1e1b4b" }}>
                   Hapus Data Terpilih
                 </h3>
-                <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
+                <p style={{ margin: 0, fontSize: "13px", color: "#6b7280", lineHeight: "1.6" }}>
                   Apakah Anda yakin ingin menghapus{" "}
                   <span style={{ fontWeight: 700, color: "#dc2626" }}>
                     {checkedRows.length} data
                   </span>{" "}
-                  yang telah dipilih?
+                  yang telah dipilih dengan total nominal{" "}
+                  <span style={{ fontWeight: 700, color: "#dc2626" }}>
+                    {formatRupiah(checkedRows.reduce((sum, r) => sum + (r.settlement_amount || 0), 0))}
+                  </span>
+                  ?
                 </p>
 
                 {deleteError && (
