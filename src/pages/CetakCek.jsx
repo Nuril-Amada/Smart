@@ -14,8 +14,8 @@ import MandiriCheck from "../components/cetakcek/MandiriCheck";
 import BCACheck from "../components/cetakcek/BCACheck";
 import SinarmasCheck from "../components/cetakcek/SinarmasCheck";
 import MaybankCheck from "../components/cetakcek/MaybankCheck";
-import { getChecks, createCheck, deleteCheck, exportCheck } from "../api/check";
-import { getVendors } from "../api/vendor";
+// import { getChecks, createCheck, deleteCheck, exportCheck } from "../api/check";
+// import { getVendors } from "../api/vendor";
 
 // Peta nama bank (sesuai value pada <select> di CheckForm) ke komponennya
 const BANK_COMPONENTS = {
