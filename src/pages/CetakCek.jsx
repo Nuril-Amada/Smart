@@ -14,8 +14,8 @@ import MandiriCheck from "../components/cetakcek/MandiriCheck";
 import BCACheck from "../components/cetakcek/BCACheck";
 import SinarmasCheck from "../components/cetakcek/SinarmasCheck";
 import MaybankCheck from "../components/cetakcek/MaybankCheck";
-// import { getChecks, createCheck, deleteCheck, exportCheck } from "../api/check";
-// import { getVendors } from "../api/vendor";
+import { getChecks, createCheck, deleteCheck, exportCheck } from "../api/check";
+import { getVendors } from "../api/vendor";
 
 // Peta nama bank (sesuai value pada <select> di CheckForm) ke komponennya
 const BANK_COMPONENTS = {
@@ -115,14 +115,13 @@ function formatDate(date) {
 // Format nominal persis apa adanya tanpa pembulatan
 function formatRupiah(amount) {
   if (amount === undefined || amount === null || amount === "") return "-";
-  const num = Number(amount);
-  if (isNaN(num)) return String(amount);
-
-  const str = String(amount).trim();
-  const parts = str.split(".");
-  const intFormatted = Number(parts[0]).toLocaleString("id-ID");
-  if (parts.length > 1 && parts[1]) {
-    return `Rp ${intFormatted},${parts[1]}`;
+  const str = String(amount).trim().replace(/,/g, ".");
+  const dotIdx = str.indexOf(".");
+  const intStr = dotIdx >= 0 ? str.slice(0, dotIdx) : str;
+  const decStr = dotIdx >= 0 ? str.slice(dotIdx + 1) : "";
+  const intFormatted = Number(intStr).toLocaleString("id-ID");
+  if (decStr.length > 0) {
+    return `Rp ${intFormatted},${decStr}`;
   }
   return `Rp ${intFormatted}`;
 }
@@ -130,14 +129,16 @@ function formatRupiah(amount) {
 // Format nominal tampilan tanpa simbol Rp untuk preview cek
 export function formatNominalDisplay(val) {
   if (val === undefined || val === null || val === "") return "";
-  const str = String(val).trim();
-  const num = Number(str);
-  if (isNaN(num)) return str;
-
-  const parts = str.split(".");
-  const intFormatted = Number(parts[0]).toLocaleString("id-ID");
-  if (parts.length > 1 && parts[1]) {
-    return `${intFormatted},${parts[1]}`;
+  // Normalisasi: ganti koma desimal ke titik jika user input "25000000,75"
+  const str = String(val).trim().replace(/,/g, ".");
+  // Pisahkan bagian integer dan desimal berdasarkan titik pertama
+  const dotIdx = str.indexOf(".");
+  const intStr = dotIdx >= 0 ? str.slice(0, dotIdx) : str;
+  const decStr = dotIdx >= 0 ? str.slice(dotIdx + 1) : "";
+  const intFormatted = Number(intStr).toLocaleString("id-ID");
+  // Tampilkan desimal hanya jika ada digit desimal yang tidak kosong
+  if (decStr.length > 0) {
+    return `${intFormatted},${decStr}`;
   }
   return intFormatted;
 }
@@ -485,6 +486,9 @@ export default function CetakCek() {
     setDeleteMode(false);
     setSelectedIds(new Set());
     setDeleteError("");
+    setDateFrom("");
+    setDateTo("");
+    setFilterBank("");
   };
 
   // ===== eksekusi hapus batch =====
@@ -498,6 +502,12 @@ export default function CetakCek() {
       setDeleteBatchOpen(false);
       setDeleteMode(false);
       setSelectedIds(new Set());
+
+      // Reset filters to show remaining data
+      setDateFrom("");
+      setDateTo("");
+      setFilterBank("");
+
       showToast("Data cek terpilih berhasil dihapus.");
     } catch (err) {
       const msg = err?.response?.data?.detail || "Gagal menghapus data cek.";
@@ -847,7 +857,7 @@ export default function CetakCek() {
 
         {/* ================= TABLE ================= */}
         <div className="overflow-x-auto" style={{ marginLeft: "10px", marginRight: "10px" }}>
-          <table className="w-full text-sm border border-gray-300 text-left">
+          <table className="w-full text-sm border border-gray-300">
             <thead>
               <tr className="text-xs uppercase tracking-wide bg-gray-50">
                 <th className="p-3 font-medium border border-gray-300 text-center">Tanggal</th>
@@ -876,29 +886,36 @@ export default function CetakCek() {
               <tbody>
                 {currentRows.map((item) => {
                   const isSelected = deleteMode && selectedIds.has(item.id);
+                  const isEditing = !deleteMode && form.id === item.id;
                   const isPreviewSelected = !deleteMode && activePreviewForm?.nomorCek && activePreviewForm.nomorCek === (item.nomorCek || item.check_number);
+                  const isActive = isEditing || isPreviewSelected;
                   return (
                     <tr
                       key={item.id}
                       onClick={() => deleteMode ? toggleSelectRow(item.id) : handleRowClick(item)}
-                      className={`cursor-pointer transition-colors ${isSelected
-                        ? "bg-red-50"
-                        : isPreviewSelected
-                          ? "bg-gray-50/80 hover:bg-gray-100/80"
-                          : "hover:bg-gray-50"
-                        }`}
+                      style={{
+                        cursor: "pointer",
+                        background: isActive
+                          ? "#f3f4f6"
+                          : isSelected
+                            ? "#fef2f2"
+                            : undefined,
+                        outline: isActive ? "2px solid #9ca3af" : undefined,
+                        outlineOffset: "-2px",
+                      }}
+                      className={`cursor-pointer transition-colors ${!isActive && !isSelected ? "hover:bg-gray-50" : ""}`}
                       title={deleteMode ? "Klik untuk pilih/batal pilih" : "Klik untuk lihat preview & cetak tanpa edit"}
                     >
-                      <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300" style={{ paddingLeft: "10px" }}>
+                      <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
                         {formatDate(item.tanggal)}
                       </td>
-                      <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{item.bank}</td>
-                      <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{item.nomorCek || "-"}</td>
-                      <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300" style={{ paddingLeft: "10px" }}>
+                      <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{item.bank}</td>
+                      <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{item.nomorCek || "-"}</td>
+                      <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300 text-right" style={{ paddingRight: "10px" }}>
                         {formatRupiah(item.nominal !== undefined && item.nominal !== null ? item.nominal : item.amount)}
                       </td>
-                      <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{item.vendor}</td>
-                      <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{item.nomorRekening || "-"}</td>
+                      <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{item.vendor}</td>
+                      <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{item.nomorRekening || "-"}</td>
                       <td className="p-3 border border-gray-300" style={{ paddingLeft: "10px" }}>
                         <span
                           className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap ${STATUS_STYLE[item.jenisCek]}`} style={{ paddingLeft: "5px", paddingRight: "5px" }}
