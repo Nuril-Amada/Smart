@@ -526,6 +526,18 @@ export default function CetakCek() {
     });
   }, [history, dateFrom, dateTo, filterBank]);
 
+  // Sinkronkan selectedIds saat filter berubah (buang id yang sudah tidak terfilter)
+  useEffect(() => {
+    if (!deleteMode) return;
+    setSelectedIds((prev) => {
+      if (prev.size === 0) return prev;
+      const filteredIdSet = new Set(filteredHistory.map((r) => r.id));
+      const next = new Set([...prev].filter((id) => filteredIdSet.has(id)));
+      return next.size === prev.size ? prev : next;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filteredHistory]);
+
   // Pagination
   const total = filteredHistory.length;
   const totalPages = Math.max(1, Math.ceil(total / perPage));
@@ -828,7 +840,7 @@ export default function CetakCek() {
               </>
             )}
 
-            {/* Mode hapus AKTIF → Batal + Hapus (N) */}
+            {/* Mode hapus AKTIF → Batal + Hapus (N) + Pilih Semua */}
             {deleteMode && (
               <>
                 <button
@@ -849,6 +861,37 @@ export default function CetakCek() {
                 >
                   <FaTrash className="text-xs" />
                   Hapus {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allFilteredIds = new Set(filteredHistory.map((r) => r.id));
+                    const allSelected = filteredHistory.length > 0 && filteredHistory.every((r) => selectedIds.has(r.id));
+                    if (allSelected) {
+                      setSelectedIds(new Set());
+                    } else {
+                      setSelectedIds(allFilteredIds);
+                    }
+                  }}
+                  disabled={filteredHistory.length === 0}
+                  className="flex items-center gap-2 text-sm font-medium rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{
+                    padding: "5px 10px",
+                    border: "1.5px solid #dc2626",
+                    color: "#dc2626",
+                    background: "#fff",
+                    cursor: "pointer",
+                  }}
+                  title={
+                    filteredHistory.every((r) => selectedIds.has(r.id)) && filteredHistory.length > 0
+                      ? "Batalkan pilih semua"
+                      : `Pilih semua ${filteredHistory.length} data yang terfilter`
+                  }
+                >
+                  {filteredHistory.length > 0 && filteredHistory.every((r) => selectedIds.has(r.id))
+                    ? "Batal Pilih Semua"
+                    : `Pilih Semua (${filteredHistory.length})`}
                 </button>
               </>
             )}
