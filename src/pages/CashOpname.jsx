@@ -10,6 +10,7 @@ import {
     FaChevronRight,
     FaTrash,
     FaTrashAlt,
+    FaFileExport,
     FaExclamationTriangle,
     FaEdit,
 } from "react-icons/fa";
@@ -554,6 +555,138 @@ async function downloadRecordAsPdf(record) {
     }
 }
 
+// ===== Bangun file Excel (.xls, format HTML-Excel) dari laporan Cash Opname =====
+function buildReportExcelHtml(record) {
+    const rowsA = (record.settlementRows || [])
+        .map((r) => {
+            const info = getRowInfo(r);
+            return `<tr>
+                <td>${info.tanggal}</td>
+                <td>${info.kode}</td>
+                <td>${info.namaUser}</td>
+                <td>${info.keterangan}</td>
+                <td align="right">Rp. ${info.jumlah}</td>
+            </tr>`;
+        })
+        .join("");
+
+    const rowsB = (record.advanceRows || [])
+        .map((r) => {
+            const info = getRowInfo(r);
+            return `<tr>
+                <td>${info.tanggal}</td>
+                <td>${info.kode}</td>
+                <td>${info.namaUser}</td>
+                <td>${info.keterangan}</td>
+                <td align="right">Rp. ${info.jumlah}</td>
+            </tr>`;
+        })
+        .join("");
+
+    const saldoAwalFormatted = "Rp. " + formatNumberID(record.saldoAwal) + ",00";
+
+    return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+    <head>
+        <meta charset="UTF-8" />
+        <!--[if gte mso 9]>
+        <xml>
+            <x:ExcelWorkbook>
+                <x:ExcelWorksheets>
+                    <x:ExcelWorksheet>
+                        <x:Name>Cash Opname</x:Name>
+                        <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
+                    </x:ExcelWorksheet>
+                </x:ExcelWorksheets>
+            </x:ExcelWorkbook>
+        </xml>
+        <![endif]-->
+    </head>
+    <body>
+        <table border="1" style="border-collapse:collapse;font-family:Arial;font-size:12px;">
+            <tr><td colspan="5" align="center" style="font-weight:bold;font-size:14px;">LAPORAN PETTY CASH</td></tr>
+            <tr><td colspan="5" align="center" style="font-weight:bold;">${COMPANY_NAME}</td></tr>
+            <tr><td colspan="5" align="center" style="font-weight:bold;">PER TANGGAL : ${formatDateID(record.sampaiTanggal)}</td></tr>
+            <tr><td colspan="5"></td></tr>
+            <tr>
+                <td colspan="4" style="font-weight:bold;">SALDO AWAL PETTY CASH</td>
+                <td align="right" style="font-weight:bold;">${saldoAwalFormatted}</td>
+            </tr>
+            <tr><td colspan="5"></td></tr>
+
+            <tr><td colspan="5" style="font-weight:bold;">A. PENGELUARAN YANG SUDAH SELESAI</td></tr>
+            <tr style="font-weight:bold;background-color:#f3f4f6;">
+                <td>Tanggal</td>
+                <td>Nomor PPC</td>
+                <td>Nama User</td>
+                <td>Keterangan</td>
+                <td align="right">Jumlah</td>
+            </tr>
+            ${rowsA || `<tr><td colspan="5" align="center">Tidak ada data pengeluaran</td></tr>`}
+            <tr style="font-weight:bold;border-top:1px solid #333;">
+                <td colspan="4" align="right">Subtotal A</td>
+                <td align="right">Rp. ${formatNumberID(record.totalA)}</td>
+            </tr>
+            <tr><td colspan="5"></td></tr>
+
+            <tr><td colspan="5" style="font-weight:bold;">B. UANG MUKA</td></tr>
+            <tr style="font-weight:bold;background-color:#f3f4f6;">
+                <td>Tanggal</td>
+                <td>Nomor PPC</td>
+                <td>Nama User</td>
+                <td>Keterangan</td>
+                <td align="right">Jumlah</td>
+            </tr>
+            ${rowsB || `<tr><td colspan="5" align="center">Tidak ada data uang muka</td></tr>`}
+            <tr style="font-weight:bold;border-top:1px solid #333;">
+                <td colspan="4" align="right">Subtotal B</td>
+                <td align="right">Rp. ${formatNumberID(record.totalB)}</td>
+            </tr>
+            <tr><td colspan="5"></td></tr>
+
+            <tr>
+                <td colspan="4" align="right" style="font-weight:bold;">TOTAL PENGELUARAN</td>
+                <td align="right" style="font-weight:bold;">Rp. ${formatNumberID(record.totalAB)}</td>
+            </tr>
+            <tr>
+                <td colspan="4" align="right" style="font-weight:bold;">SALDO AKHIR</td>
+                <td align="right" style="font-weight:bold;">Rp. ${formatNumberID(record.saldoAkhir)}</td>
+            </tr>
+            <tr><td colspan="5"></td></tr>
+
+            <tr>
+                <td style="font-weight:bold;">Dibuat oleh :</td>
+                <td></td>
+                <td></td>
+                <td style="font-weight:bold;">Mengetahui,</td>
+                <td></td>
+            </tr>
+            <tr><td colspan="5"></td></tr>
+            <tr><td colspan="5"></td></tr>
+            <tr>
+                <td style="font-weight:bold;">${record.dibuatOleh1}</td>
+                <td style="font-weight:bold;">${record.dibuatOleh2}</td>
+                <td></td>
+                <td style="font-weight:bold;">${record.mengetahui}</td>
+                <td></td>
+            </tr>
+        </table>
+    </body>
+    </html>`;
+}
+
+function downloadRecordAsExcel(record) {
+    const excelFile = buildReportExcelHtml(record);
+    const blob = new Blob([excelFile], { type: "application/vnd.ms-excel" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Cash Opname_${formatDateID(record.sampaiTanggal)}.xls`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
 
 export default function CashOpname() {
     const [dariTanggal, setDariTanggal] = useState("");
@@ -765,6 +898,31 @@ export default function CashOpname() {
         } catch (err) {
             console.error("Gagal mengunduh PDF Cash Opname:", err);
             setFormError("Gagal mengunduh PDF Cash Opname. Silakan coba lagi.");
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleExport = async () => {
+        if (!validateForm()) return;
+        const record = buildRecord("Export (Excel)");
+        setActionLoading("export");
+        try {
+            if (editingId) {
+                await updateCashOpname(editingId, record);
+            } else {
+                await saveCashOpname(record);
+            }
+
+            downloadRecordAsExcel(record);
+
+            await refreshHistory();
+            setSuccessMessage(editingId ? "Cash Opname diperbarui & Excel berhasil diunduh." : "Cash Opname berhasil diunduh (Excel).");
+            setTimeout(() => setSuccessMessage(""), 3000);
+            handleCancelEdit();
+        } catch (err) {
+            console.error("Gagal mengunduh Excel Cash Opname:", err);
+            setFormError("Gagal mengunduh Excel Cash Opname. Silakan coba lagi.");
         } finally {
             setActionLoading(null);
         }
@@ -1027,6 +1185,21 @@ export default function CashOpname() {
                 )}
 
                 <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "12px" }}>
+                    <button
+                        type="button"
+                        onClick={handleExport}
+                        disabled={actionLoading !== null}
+                        style={{
+                            display: "flex", alignItems: "center", gap: "6px", border: "1.5px solid #363D48",
+                            borderRadius: "8px", padding: "5px 12px", fontSize: "12px", color: "#363D48",
+                            background: "#fff", cursor: actionLoading !== null ? "not-allowed" : "pointer", fontWeight: 600,
+                            opacity: actionLoading !== null ? 0.6 : 1,
+                        }}
+                    >
+                        <FaFileExport style={{ fontSize: "11px" }} />
+                        {actionLoading === "export" ? "Mengunduh..." : "Export"}
+                    </button>
+
                     <button
                         type="button"
                         onClick={handleSimpan}
