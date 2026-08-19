@@ -12,89 +12,178 @@ import {
 
 import { formatRupiah } from "../../../utils/formatCurrency";
 
-export default function CostCenterChart({ data = [] }) {
+export default function CostCenterChart({
+  data = [],
+  costCenter = null,
+  loading = false,
+}) {
+
+  // ==========================
+  // Data (Tertinggi → Terendah)
+  // ==========================
+
+  const chartData = data;
+
+  // ==========================
+  // Average
+  // ==========================
 
   const average =
-    data.length > 0
-      ? data.reduce((sum, item) => sum + item.total, 0) / data.length
+    chartData.length > 0
+      ? chartData.reduce(
+        (sum, item) => sum + item.total_amount,
+        0
+      ) / chartData.length
       : 0;
 
+  // ==========================
+  // Nilai Terbesar
+  // ==========================
+
   const maxValue =
-    data.length > 0
-      ? Math.max(...data.map((item) => item.total))
+    chartData.length > 0
+      ? Math.max(
+        ...chartData.map(
+          (item) => item.total_amount
+        )
+      )
       : 0;
+  const totalExpense = chartData.reduce(
+    (sum, item) => sum + item.total_amount,
+    0
+  );
+  if (loading) {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm border p-6 h-[500px] flex items-center justify-center">
+        Memuat data...
+      </div>
+    );
+  }
 
   return (
     <div
       className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6"
-      style={{ marginRight: "20px", marginBottom: "20px" }}
+      style={{
+        marginRight: "20px",
+        marginBottom: "20px",
+      }}
     >
-      <h3 className="text-lg font-semibold text-gray-700 text-center" style={{ marginTop: "10px" }}>
-        Pengeluaran Cost Center Tertinggi
+      <h3
+        className="text-lg font-semibold text-center mb-5"
+        style={{ marginTop: "10px" }}
+      >
+        Highest Cost Center Detail
       </h3>
 
       <p className="text-sm font-normal text-gray-600 text-center mb-2" style={{ marginTop: "5px" }}>
-        Jumlah Pengeluaran: {formatRupiah(maxValue)}
+        Cost Center : {costCenter || "-"}
       </p>
 
-      {data.length === 0 ? (
+      {chartData.length === 0 ? (
 
-        <div className="h-[320px] flex items-center justify-center text-gray-400">
-
+        <div className="h-[420px] flex items-center justify-center text-gray-400">
           Belum ada data
-
         </div>
 
       ) : (
 
-        <ResponsiveContainer width="100%" height={320}>
+        <ResponsiveContainer
+          width="100%"
+          height={450}
+        >
 
           <BarChart
-            data={data}
+            layout="vertical"
+            data={chartData}
             margin={{
-              left: 15,
-              right: 15,
-              bottom: 15,
-              top: 15,
+              top: 20,
+              right: 40,
+              left: 10,
+              bottom: 10,
             }}
           >
 
             <CartesianGrid strokeDasharray="3 3" />
 
             <XAxis
-              dataKey="name"
-              tick={{ fontSize: 12 }}
+              type="number"
+              tickFormatter={(value) =>
+                `${(value / 1000000).toFixed(0)} Juta`
+              }
+              tick={{
+                fontSize: 11,
+              }}
             />
 
+
             <YAxis
-              tickFormatter={(value) => `${value / 1000000}Juta`}
-              tick={{ fontSize: 12 }}
+              type="category"
+              dataKey="gl_name"
+              width={170}
+              tick={{
+                fontSize: 11,
+              }}
             />
 
             <Tooltip
-              formatter={(value) => formatRupiah(value)}
+              content={({ active, payload, label }) => {
+
+                if (!active || !payload?.length) return null;
+
+                const value = payload[0].value;
+
+                const percentage =
+                  totalExpense > 0
+                    ? ((value / totalExpense) * 100).toFixed(2)
+                    : 0;
+
+                return (
+                  <div className="bg-white border border-gray-300 rounded-lg shadow-md p-3" style={{ margin: "10px", padding: "10px" }}>
+
+                    <p className="font-medium text-[14px] text-gray-700">
+                      GL Account : {label}
+                    </p>
+
+                    <p className="text-gray-600 text-[14px]">
+                      Expense : {formatRupiah(value)}
+                    </p>
+
+                    <p className="text-gray-600 text-[14px]">
+                      Persentase : {percentage}%
+                    </p>
+
+                  </div>
+                );
+
+              }}
             />
 
             {/* <ReferenceLine
-              y={average}
+              x={average}
               stroke="#ef4444"
               strokeWidth={2}
-              strokeDasharray="3 3"
+              strokeDasharray="5 5"
+              label={{
+                value: "Average",
+                position: "insideTopRight",
+                fill: "#ef4444",
+                fontSize: 12,
+              }}
             /> */}
 
             <Bar
-              dataKey="total"
-              radius={[8, 8, 0, 0]}
+              dataKey="total_amount"
+              radius={[0, 8, 8, 0]}
             >
 
-              {data.map((entry, index) => (
+              {chartData.map((item, index) => (
 
                 <Cell
                   key={index}
                   fill={
-                    entry.total === maxValue
-                      ? "#4c5c68"
-                      : "#899097"
+                    item.total_amount === maxValue
+                      ? "#1d4ed8"
+                      : "#60a5fa"
                   }
                 />
 
