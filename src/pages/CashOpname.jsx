@@ -28,7 +28,6 @@ import ExcelJS from "exceljs";
 //     downloadCashOpnamePdf,
 // } from "../api/cash_opname";
 // import { getEmployees } from "../api/employee";
-
 export const meta = {
     id: "cash_opname",
     label: "Cash Opname",
@@ -48,7 +47,7 @@ const PDF_MARGIN_TOP_PAGE1_CM = 1.2;
 
 function formatCurrency(n) {
     const num = Number(n) || 0;
-    return "Rp " + num.toLocaleString("id-ID");
+    return num.toLocaleString("id-ID");
 }
 
 function formatNumberID(n) {
@@ -78,6 +77,22 @@ function formatTimeID(date) {
         second: "2-digit",
         hour12: false,
     }).format(date);
+}
+
+// Format tanggal & waktu cetak dalam WIB (sesuai backend): dd/mm/yyyy HH:MM:SS WIB
+function formatPrintDateTime(date) {
+    const wib = new Intl.DateTimeFormat("id-ID", {
+        timeZone: "Asia/Jakarta",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false,
+    }).format(date);
+    // Format "dd/mm/yyyy, HH.MM.SS" -> "dd/mm/yyyy HH:MM:SS WIB"
+    return wib.replace(",", "").replace(/\./g, ":").trim() + " WIB";
 }
 
 function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder, inputStyle, wrapperStyle }) {
@@ -266,7 +281,7 @@ const REPORT_STYLES = `
 }
 .cop-report .sign-header {
     font-weight: bold;
-    margin-bottom: 45px;
+    margin-bottom: 65px;
 }
 .cop-report .sign-names-left {
     display: flex;
@@ -280,7 +295,8 @@ const REPORT_STYLES = `
 `;
 
 // ===== Bangun isi (inner content) laporan, dipakai bersama oleh cetak & unduh PDF =====
-function buildReportContentHtml(record) {
+// printedAt: string timestamp "dd/mm/yyyy HH:MM:SS WIB" yang di-generate saat user menekan cetak/unduh
+function buildReportContentHtml(record, printedAt) {
     const rowsA = (record.settlementRows || [])
         .map((r) => {
             const info = getRowInfo(r);
@@ -290,7 +306,12 @@ function buildReportContentHtml(record) {
             <td style="text-align:center; border:1px solid #000;">${info.kode}</td>
             <td style="border:1px solid #000;">${info.namaUser}</td>
             <td style="border:1px solid #000;">${info.keterangan}</td>
-            <td style="text-align:right; border:1px solid #000;">Rp. ${info.jumlah}</td>
+            <td style="border:1px solid #000; padding: 4px 8px;">
+                <div style="display: flex; justify-content: space-between; width: 100%;">
+                    <span>Rp.</span>
+                    <span>${info.jumlah}</span>
+                </div>
+            </td>
             <td style="border:none;"></td>
         </tr>`;
         })
@@ -305,13 +326,16 @@ function buildReportContentHtml(record) {
             <td style="text-align:center; border:1px solid #000;">${info.kode}</td>
             <td style="border:1px solid #000;">${info.namaUser}</td>
             <td style="border:1px solid #000;">${info.keterangan}</td>
-            <td style="text-align:right; border:1px solid #000;">Rp. ${info.jumlah}</td>
+            <td style="border:1px solid #000; padding: 4px 8px;">
+                <div style="display: flex; justify-content: space-between; width: 100%;">
+                    <span>Rp.</span>
+                    <span>${info.jumlah}</span>
+                </div>
+            </td>
             <td style="border:none;"></td>
         </tr>`;
         })
         .join("");
-
-    const saldoAwalFormatted = "Rp. " + formatNumberID(record.saldoAwal) + ",00";
 
     return `
         <div class="header-title">
@@ -332,7 +356,12 @@ function buildReportContentHtml(record) {
             <tbody>
                 <tr>
                     <td colSpan="5" style="font-weight:bold; padding:5px 0; border:none;">SALDO AWAL PETTY CASH</td>
-                    <td style="font-weight:bold; text-align:right; padding:5px 0; border:none;">${saldoAwalFormatted}</td>
+                    <td style="font-weight:bold; border:none; padding:5px 0;">
+                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <span>Rp.</span>
+                            <span>${formatNumberID(record.saldoAwal)},00</span>
+                        </div>
+                    </td>
                 </tr>
                 <tr>
                     <td colSpan="6" style="font-weight:bold; padding:10px 0 4px 0; border:none;">A. PENGELUARAN YANG SUDAH SELESAI</td>
@@ -348,7 +377,12 @@ function buildReportContentHtml(record) {
                 ${rowsA || `<tr><td colSpan="5" style="text-align:center;padding:8px;color:#888;border:1px solid #000;">Tidak ada data pengeluaran</td><td style="border:none;"></td></tr>`}
                 <tr class="subtotal-row">
                     <td colSpan="4" style="border:none;"></td>
-                    <td style="text-align:right; font-weight:bold; font-style:italic; border:1px solid #000; border-top:1.5px solid #000; border-bottom:1.5px solid #000;">Rp. ${formatNumberID(record.totalA)}</td>
+                    <td style="font-weight:bold; font-style:italic; border:1px solid #000; border-top:1.5px solid #000; border-bottom:1.5px solid #000; padding: 4px 8px;">
+                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <span>Rp.</span>
+                            <span>${formatNumberID(record.totalA)}</span>
+                        </div>
+                    </td>
                     <td style="border:none;"></td>
                 </tr>
                 <tr>
@@ -365,7 +399,12 @@ function buildReportContentHtml(record) {
                 ${rowsB || `<tr><td colSpan="5" style="text-align:center;padding:8px;color:#888;border:1px solid #000;">Tidak ada data uang muka</td><td style="border:none;"></td></tr>`}
                 <tr class="subtotal-row">
                     <td colSpan="4" style="border:none;"></td>
-                    <td style="text-align:right; font-weight:bold; font-style:italic; border:1px solid #000; border-top:1.5px solid #000; border-bottom:1.5px solid #000;">Rp. ${formatNumberID(record.totalB)}</td>
+                    <td style="font-weight:bold; font-style:italic; border:1px solid #000; border-top:1.5px solid #000; border-bottom:1.5px solid #000; padding: 4px 8px;">
+                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <span>Rp.</span>
+                            <span>${formatNumberID(record.totalB)}</span>
+                        </div>
+                    </td>
                     <td style="border:none;"></td>
                 </tr>
                 <tr style="height:20px;">
@@ -374,12 +413,22 @@ function buildReportContentHtml(record) {
                 <tr>
                     <td colSpan="3" style="border:none;"></td>
                     <td colSpan="2" style="font-weight:bold; padding:5px 8px; border:none; text-align:right;">TOTAL PENGELUARAN</td>
-                    <td style="font-weight:bold; text-align:right; border:none; padding:5px 8px; border-bottom:1.5px solid #000;">Rp. ${formatNumberID(record.totalAB)}</td>
+                    <td style="font-weight:bold; border:none; padding:5px 8px; border-bottom:1.5px solid #000;">
+                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <span>Rp.</span>
+                            <span>${formatNumberID(record.totalAB)}</span>
+                        </div>
+                    </td>
                 </tr>
                 <tr>
                     <td colSpan="3" style="border:none;"></td>
                     <td colSpan="2" style="font-weight:bold; padding:5px 8px; border:none; text-align:right;">SALDO AKHIR</td>
-                    <td style="font-weight:bold; text-align:right; border:none; padding:5px 8px; border-bottom:3px double #000;">Rp. ${formatNumberID(record.saldoAkhir)}</td>
+                    <td style="font-weight:bold; border:none; padding:5px 8px; border-bottom:3px double #000;">
+                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <span>Rp.</span>
+                            <span>${formatNumberID(record.saldoAkhir)}</span>
+                        </div>
+                    </td>
                 </tr>
             </tbody>
         </table>
@@ -398,11 +447,13 @@ function buildReportContentHtml(record) {
                     <span>${record.mengetahui}</span>
                 </div>
             </div>
-        </div>`;
+        </div>
+
+        ${printedAt ? `<div style="margin-top:30px; font-size:9px; color:#666; text-align:left;">Dicetak pada: ${printedAt}</div>` : ""}`;
 }
 
-// ===== HTML lengkap untuk jendela cetak (window.print) — A4, margin 2,54cm (margin atas hal 1: 1,2cm) =====
-function buildPrintHtml(record) {
+// HTML lengkap untuk jendela cetak (window.print) — A4, margin 2,54cm (margin atas hal 1: 1,2cm)
+function buildPrintHtml(record, printedAt) {
     return `
     <!DOCTYPE html>
     <html>
@@ -437,16 +488,17 @@ function buildPrintHtml(record) {
     </head>
     <body>
         <div class="cop-report">
-            ${buildReportContentHtml(record)}
+            ${buildReportContentHtml(record, printedAt)}
         </div>
     </body>
     </html>`;
 }
 
 function printRecord(record) {
+    const printedAt = formatPrintDateTime(new Date());
     const printWindow = window.open("", "_blank", "width=900,height=1000");
     if (!printWindow) return;
-    printWindow.document.write(buildPrintHtml(record));
+    printWindow.document.write(buildPrintHtml(record, printedAt));
     printWindow.document.close();
     printWindow.focus();
 }
@@ -538,6 +590,7 @@ async function downloadRecordAsPdf(record) {
     container.style.top = "0";
     container.style.width = "680px";
     container.style.background = "#ffffff";
+    const printedAt = formatPrintDateTime(new Date());
     container.innerHTML = `
         <style>
             ${REPORT_STYLES}
@@ -548,7 +601,7 @@ async function downloadRecordAsPdf(record) {
             }
         </style>
         <div class="cop-report" style="padding-bottom: 20px;">
-            ${buildReportContentHtml(record)}
+            ${buildReportContentHtml(record, printedAt)}
         </div>
     `;
     document.body.appendChild(container);
@@ -613,8 +666,9 @@ async function downloadRecordAsExcel(record) {
     ws.mergeCells(`A${r}:E${r}`);
     ws.getCell(`A${r}`).value = "SALDO AWAL PETTY CASH";
     ws.getCell(`A${r}`).font = boldFont;
-    ws.getCell(`F${r}`).value = "Rp. " + formatNumberID(record.saldoAwal) + ",00";
+    ws.getCell(`F${r}`).value = Number(record.saldoAwal);
     ws.getCell(`F${r}`).font = boldFont;
+    ws.getCell(`F${r}`).numFmt = '"Rp. "* #,##0.00';
     ws.getCell(`F${r}`).alignment = { horizontal: "right" };
     r++;
 
@@ -646,20 +700,26 @@ async function downloadRecordAsExcel(record) {
     } else {
         rowsA.forEach((row) => {
             const info = getRowInfo(row);
-            const values = [info.tanggal, info.kode, info.namaUser, info.keterangan, "Rp. " + info.jumlah];
+            const values = [info.tanggal, info.kode, info.namaUser, info.keterangan, Number(row.jumlah)];
             values.forEach((v, i) => {
                 const cell = ws.getCell(r, i + 1);
                 cell.value = v;
                 cell.border = tableBorder;
-                cell.alignment = { horizontal: i === 4 ? "right" : (i <= 1 ? "center" : "left") };
+                if (i === 4) {
+                    cell.numFmt = '"Rp. "* #,##0';
+                    cell.alignment = { horizontal: "right" };
+                } else {
+                    cell.alignment = { horizontal: i <= 1 ? "center" : "left" };
+                }
             });
             r++;
         });
     }
 
-    // Subtotal A — tanpa label, border hanya di kolom nominal (E) atas-bawah-kiri-kanan
-    ws.getCell(`E${r}`).value = "Rp. " + formatNumberID(record.totalA);
-    ws.getCell(`E${r}`).font = { bold: true, italic: true };
+    // Subtotal A 
+    ws.getCell(`E${r}`).value = Number(record.totalA);
+    ws.getCell(`E${r}`).font = { bold: true };
+    ws.getCell(`E${r}`).numFmt = '"Rp. "* #,##0';
     ws.getCell(`E${r}`).alignment = { horizontal: "right" };
     ws.getCell(`E${r}`).border = tableBorder;
     r++;
@@ -692,20 +752,26 @@ async function downloadRecordAsExcel(record) {
     } else {
         rowsB.forEach((row) => {
             const info = getRowInfo(row);
-            const values = [info.tanggal, info.kode, info.namaUser, info.keterangan, "Rp. " + info.jumlah];
+            const values = [info.tanggal, info.kode, info.namaUser, info.keterangan, Number(row.jumlah)];
             values.forEach((v, i) => {
                 const cell = ws.getCell(r, i + 1);
                 cell.value = v;
                 cell.border = tableBorder;
-                cell.alignment = { horizontal: i === 4 ? "right" : (i <= 1 ? "center" : "left") };
+                if (i === 4) {
+                    cell.numFmt = '"Rp. "* #,##0';
+                    cell.alignment = { horizontal: "right" };
+                } else {
+                    cell.alignment = { horizontal: i <= 1 ? "center" : "left" };
+                }
             });
             r++;
         });
     }
 
-    // Subtotal B — tanpa label, border hanya di kolom nominal (E) atas-bawah-kiri-kanan
-    ws.getCell(`E${r}`).value = "Rp. " + formatNumberID(record.totalB);
-    ws.getCell(`E${r}`).font = { bold: true, italic: true };
+    // Subtotal B
+    ws.getCell(`E${r}`).value = Number(record.totalB);
+    ws.getCell(`E${r}`).font = { bold: true };
+    ws.getCell(`E${r}`).numFmt = '"Rp. "* #,##0';
     ws.getCell(`E${r}`).alignment = { horizontal: "right" };
     ws.getCell(`E${r}`).border = tableBorder;
     r++;
@@ -716,8 +782,9 @@ async function downloadRecordAsExcel(record) {
     ws.getCell(`E${r}`).value = "TOTAL PENGELUARAN";
     ws.getCell(`E${r}`).font = boldFont;
     ws.getCell(`E${r}`).alignment = { horizontal: "right" };
-    ws.getCell(`F${r}`).value = "Rp. " + formatNumberID(record.totalAB);
+    ws.getCell(`F${r}`).value = Number(record.totalAB);
     ws.getCell(`F${r}`).font = boldFont;
+    ws.getCell(`F${r}`).numFmt = '"Rp. "* #.##0';
     ws.getCell(`F${r}`).alignment = { horizontal: "right" };
     ws.getCell(`F${r}`).border = { bottom: thinBorder };
     r++;
@@ -726,8 +793,9 @@ async function downloadRecordAsExcel(record) {
     ws.getCell(`E${r}`).value = "SALDO AKHIR";
     ws.getCell(`E${r}`).font = boldFont;
     ws.getCell(`E${r}`).alignment = { horizontal: "right" };
-    ws.getCell(`F${r}`).value = "Rp. " + formatNumberID(record.saldoAkhir);
+    ws.getCell(`F${r}`).value = Number(record.saldoAkhir);
     ws.getCell(`F${r}`).font = boldFont;
+    ws.getCell(`F${r}`).numFmt = '"Rp. "* #,##0';
     ws.getCell(`F${r}`).alignment = { horizontal: "right" };
     ws.getCell(`F${r}`).border = { bottom: { style: "double", color: { argb: "FF000000" } } };
     r++;
@@ -752,16 +820,16 @@ async function downloadRecordAsExcel(record) {
     const blob = new Blob([buffer], {
         type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     });
+
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `Cash Opname_${formatDateForFilename(record.sampaiTanggal)}.xlsx`;
+    link.download = `Cash Opname ${formatDateForFilename(record.sampaiTanggal)}.xlsx`;
     document.body.appendChild(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
 }
-
 
 export default function CashOpname() {
     const [dariTanggal, setDariTanggal] = useState("");
@@ -839,22 +907,36 @@ export default function CashOpname() {
                 setAdvanceRows([]);
                 return;
             }
+
             try {
                 const [settlementData, advanceData] = await Promise.all([
-                    getSettlementRecap({ start_date: dariTanggal, end_date: sampaiTanggal }),
-                    getAdvanceRecap({ start_date: dariTanggal, end_date: sampaiTanggal }),
+                    getSettlementRecap({
+                        start_date: dariTanggal,
+                        end_date: sampaiTanggal,
+                    }),
+                    getAdvanceRecap({
+                        start_date: dariTanggal,
+                        end_date: sampaiTanggal,
+                    }),
                 ]);
                 const activeAndOverdueAdvance = (advanceData || []).filter((r) => {
-                    if (!r.status) return true;
-                    const s = String(r.status).trim().toLowerCase();
-                    return s === "active" || s === "overdue";
+                    const status = String(r.status || "")
+                        .trim()
+                        .toLowerCase();
+
+                    return status === "active" || status === "overdue";
                 });
+
                 setSettlementRows(settlementData || []);
                 setAdvanceRows(activeAndOverdueAdvance);
             } catch (err) {
                 console.error("Gagal memuat rekap cash opname:", err);
+
+                setSettlementRows([]);
+                setAdvanceRows([]);
             }
         };
+
         loadRecap();
     }, [dariTanggal, sampaiTanggal]);
 
@@ -989,10 +1071,10 @@ export default function CashOpname() {
                 await saveCashOpname(record);
             }
 
-            await downloadRecordAsExcel(record);
+            downloadRecordAsExcel(record);
 
             await refreshHistory();
-            setSuccessMessage(editingId ? "Cash Opname diperbarui & Excel berhasil diunduh." : "Cash Opname berhasil diunduh (Excel).");
+            setSuccessMessage(editingId ? "Cash Opname diperbarui & Excel berhasil diunduh." : "Cash Opname berhasil diunduh.");
             setTimeout(() => setSuccessMessage(""), 3000);
             handleCancelEdit();
         } catch (err) {
@@ -1362,8 +1444,8 @@ export default function CashOpname() {
                                 <th className="p-3 font-medium border border-gray-300">Jam</th>
                                 <th className="p-3 font-medium border border-gray-300">Dibuat Oleh</th>
                                 <th className="p-3 font-medium border border-gray-300">Mengetahui</th>
-                                <th className="p-3 font-medium border border-gray-300">Total A + B</th>
-                                <th className="p-3 font-medium border border-gray-300">Saldo Akhir</th>
+                                <th className="p-3 font-medium border border-gray-300">Total Pengeluaran (IDR)</th>
+                                <th className="p-3 font-medium border border-gray-300">Saldo Akhir (IDR)</th>
                                 <th className="p-3 font-medium border border-gray-300">Cetak</th>
                                 {deleteMode && (
                                     <th className="p-3 font-medium border border-gray-300"></th>
