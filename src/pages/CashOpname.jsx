@@ -16,6 +16,7 @@ import {
 } from "react-icons/fa";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
+import ExcelJS from "exceljs";
 
 // import {
 //     getCashOpnameHistory,
@@ -60,6 +61,14 @@ function formatDateID(isoDate) {
     const [y, m, d] = isoDate.split("-");
     if (!y || !m || !d) return isoDate;
     return `${d}/${m}/${y}`;
+}
+
+// Format tanggal khusus untuk nama file (tanpa karakter "/" yang tidak valid di nama file)
+function formatDateForFilename(isoDate) {
+    if (!isoDate) return "-";
+    const [y, m, d] = isoDate.split("-");
+    if (!y || !m || !d) return isoDate;
+    return `${d}-${m}-${y}`;
 }
 
 function formatTimeID(date) {
@@ -555,132 +564,206 @@ async function downloadRecordAsPdf(record) {
     }
 }
 
-// ===== Bangun file Excel (.xls, format HTML-Excel) dari laporan Cash Opname =====
-function buildReportExcelHtml(record) {
-    const rowsA = (record.settlementRows || [])
-        .map((r) => {
-            const info = getRowInfo(r);
-            return `<tr>
-                <td>${info.tanggal}</td>
-                <td>${info.kode}</td>
-                <td>${info.namaUser}</td>
-                <td>${info.keterangan}</td>
-                <td align="right">Rp. ${info.jumlah}</td>
-            </tr>`;
-        })
-        .join("");
+// ===== Bangun & unduh file Excel (.xlsx) — tata letak disamakan dengan hasil PDF/cetak =====
+async function downloadRecordAsExcel(record) {
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = "openpyxl";
+    workbook.created = new Date();
 
-    const rowsB = (record.advanceRows || [])
-        .map((r) => {
-            const info = getRowInfo(r);
-            return `<tr>
-                <td>${info.tanggal}</td>
-                <td>${info.kode}</td>
-                <td>${info.namaUser}</td>
-                <td>${info.keterangan}</td>
-                <td align="right">Rp. ${info.jumlah}</td>
-            </tr>`;
-        })
-        .join("");
+    const ws = workbook.addWorksheet("Cash Opname");
 
-    const saldoAwalFormatted = "Rp. " + formatNumberID(record.saldoAwal) + ",00";
+    // Lebar kolom: A-E = kolom data tabel (Tanggal s/d Jumlah), F = kolom tambahan untuk nominal saldo/total (sejajar)
+    ws.columns = [
+        { width: 12 },
+        { width: 16 },
+        { width: 20 },
+        { width: 32 },
+        { width: 14 },
+        { width: 16 },
+    ];
 
-    return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-    <head>
-        <meta charset="UTF-8" />
-        <!--[if gte mso 9]>
-        <xml>
-            <x:ExcelWorkbook>
-                <x:ExcelWorksheets>
-                    <x:ExcelWorksheet>
-                        <x:Name>Cash Opname</x:Name>
-                        <x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions>
-                    </x:ExcelWorksheet>
-                </x:ExcelWorksheets>
-            </x:ExcelWorkbook>
-        </xml>
-        <![endif]-->
-    </head>
-    <body>
-        <table border="1" style="border-collapse:collapse;font-family:Arial;font-size:12px;">
-            <tr><td colspan="5" align="center" style="font-weight:bold;font-size:14px;">LAPORAN PETTY CASH</td></tr>
-            <tr><td colspan="5" align="center" style="font-weight:bold;">${COMPANY_NAME}</td></tr>
-            <tr><td colspan="5" align="center" style="font-weight:bold;">PER TANGGAL : ${formatDateID(record.sampaiTanggal)}</td></tr>
-            <tr><td colspan="5"></td></tr>
-            <tr>
-                <td colspan="4" style="font-weight:bold;">SALDO AWAL PETTY CASH</td>
-                <td align="right" style="font-weight:bold;">${saldoAwalFormatted}</td>
-            </tr>
-            <tr><td colspan="5"></td></tr>
+    const thinBorder = { style: "thin", color: { argb: "FF000000" } };
+    const tableBorder = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
+    const boldFont = { bold: true };
 
-            <tr><td colspan="5" style="font-weight:bold;">A. PENGELUARAN YANG SUDAH SELESAI</td></tr>
-            <tr style="font-weight:bold;background-color:#f3f4f6;">
-                <td>Tanggal</td>
-                <td>Nomor PPC</td>
-                <td>Nama User</td>
-                <td>Keterangan</td>
-                <td align="right">Jumlah</td>
-            </tr>
-            ${rowsA || `<tr><td colspan="5" align="center">Tidak ada data pengeluaran</td></tr>`}
-            <tr style="font-weight:bold;border-top:1px solid #333;">
-                <td colspan="4" align="right">Subtotal A</td>
-                <td align="right">Rp. ${formatNumberID(record.totalA)}</td>
-            </tr>
-            <tr><td colspan="5"></td></tr>
+    let r = 1;
 
-            <tr><td colspan="5" style="font-weight:bold;">B. UANG MUKA</td></tr>
-            <tr style="font-weight:bold;background-color:#f3f4f6;">
-                <td>Tanggal</td>
-                <td>Nomor PPC</td>
-                <td>Nama User</td>
-                <td>Keterangan</td>
-                <td align="right">Jumlah</td>
-            </tr>
-            ${rowsB || `<tr><td colspan="5" align="center">Tidak ada data uang muka</td></tr>`}
-            <tr style="font-weight:bold;border-top:1px solid #333;">
-                <td colspan="4" align="right">Subtotal B</td>
-                <td align="right">Rp. ${formatNumberID(record.totalB)}</td>
-            </tr>
-            <tr><td colspan="5"></td></tr>
+    // ===== Judul laporan (tanpa border) =====
+    ws.mergeCells(`A${r}:F${r}`);
+    ws.getCell(`A${r}`).value = "LAPORAN PETTY CASH";
+    ws.getCell(`A${r}`).font = { bold: true, size: 14 };
+    ws.getCell(`A${r}`).alignment = { horizontal: "center" };
+    r++;
 
-            <tr>
-                <td colspan="4" align="right" style="font-weight:bold;">TOTAL PENGELUARAN</td>
-                <td align="right" style="font-weight:bold;">Rp. ${formatNumberID(record.totalAB)}</td>
-            </tr>
-            <tr>
-                <td colspan="4" align="right" style="font-weight:bold;">SALDO AKHIR</td>
-                <td align="right" style="font-weight:bold;">Rp. ${formatNumberID(record.saldoAkhir)}</td>
-            </tr>
-            <tr><td colspan="5"></td></tr>
+    ws.mergeCells(`A${r}:F${r}`);
+    ws.getCell(`A${r}`).value = COMPANY_NAME;
+    ws.getCell(`A${r}`).font = boldFont;
+    ws.getCell(`A${r}`).alignment = { horizontal: "center" };
+    r++;
 
-            <tr>
-                <td style="font-weight:bold;">Dibuat oleh :</td>
-                <td></td>
-                <td></td>
-                <td style="font-weight:bold;">Mengetahui,</td>
-                <td></td>
-            </tr>
-            <tr><td colspan="5"></td></tr>
-            <tr><td colspan="5"></td></tr>
-            <tr>
-                <td style="font-weight:bold;">${record.dibuatOleh1}</td>
-                <td style="font-weight:bold;">${record.dibuatOleh2}</td>
-                <td></td>
-                <td style="font-weight:bold;">${record.mengetahui}</td>
-                <td></td>
-            </tr>
-        </table>
-    </body>
-    </html>`;
-}
+    ws.mergeCells(`A${r}:F${r}`);
+    ws.getCell(`A${r}`).value = `PER TANGGAL : ${formatDateID(record.sampaiTanggal)}`;
+    ws.getCell(`A${r}`).font = boldFont;
+    ws.getCell(`A${r}`).alignment = { horizontal: "center" };
+    r++;
 
-function downloadRecordAsExcel(record) {
-    const excelFile = buildReportExcelHtml(record);
-    const blob = new Blob([excelFile], { type: "application/vnd.ms-excel" });
+    r++; // baris kosong
+
+    // ===== Saldo Awal — nominal digeser 1 kotak ke kanan (kolom F), tanpa border =====
+    ws.mergeCells(`A${r}:E${r}`);
+    ws.getCell(`A${r}`).value = "SALDO AWAL PETTY CASH";
+    ws.getCell(`A${r}`).font = boldFont;
+    ws.getCell(`F${r}`).value = "Rp. " + formatNumberID(record.saldoAwal) + ",00";
+    ws.getCell(`F${r}`).font = boldFont;
+    ws.getCell(`F${r}`).alignment = { horizontal: "right" };
+    r++;
+
+    r++; // baris kosong
+
+    // ===== Bagian A: Pengeluaran yang sudah selesai =====
+    ws.mergeCells(`A${r}:F${r}`);
+    ws.getCell(`A${r}`).value = "A. PENGELUARAN YANG SUDAH SELESAI";
+    ws.getCell(`A${r}`).font = boldFont;
+    r++;
+
+    ["Tanggal", "Nomor PPC", "Nama User", "Keterangan", "Jumlah"].forEach((text, i) => {
+        const cell = ws.getCell(r, i + 1);
+        cell.value = text;
+        cell.font = boldFont;
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = tableBorder;
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+    });
+    r++;
+
+    const rowsA = record.settlementRows || [];
+    if (rowsA.length === 0) {
+        ws.mergeCells(`A${r}:E${r}`);
+        ws.getCell(`A${r}`).value = "Tidak ada data pengeluaran";
+        ws.getCell(`A${r}`).alignment = { horizontal: "center" };
+        for (let c = 1; c <= 5; c++) ws.getCell(r, c).border = tableBorder;
+        r++;
+    } else {
+        rowsA.forEach((row) => {
+            const info = getRowInfo(row);
+            const values = [info.tanggal, info.kode, info.namaUser, info.keterangan, "Rp. " + info.jumlah];
+            values.forEach((v, i) => {
+                const cell = ws.getCell(r, i + 1);
+                cell.value = v;
+                cell.border = tableBorder;
+                cell.alignment = { horizontal: i === 4 ? "right" : (i <= 1 ? "center" : "left") };
+            });
+            r++;
+        });
+    }
+
+    // Subtotal A — tetap sejajar kolom Jumlah tabel (E), diberi border atas & bawah (garis subtotal)
+    ws.getCell(`D${r}`).value = "Subtotal A";
+    ws.getCell(`D${r}`).font = { bold: true, italic: true };
+    ws.getCell(`D${r}`).alignment = { horizontal: "right" };
+    ws.getCell(`D${r}`).border = { top: thinBorder, bottom: thinBorder };
+    ws.getCell(`E${r}`).value = "Rp. " + formatNumberID(record.totalA);
+    ws.getCell(`E${r}`).font = { bold: true, italic: true };
+    ws.getCell(`E${r}`).alignment = { horizontal: "right" };
+    ws.getCell(`E${r}`).border = { top: thinBorder, bottom: thinBorder };
+    r++;
+
+    r++; // baris kosong
+
+    // ===== Bagian B: Uang Muka =====
+    ws.mergeCells(`A${r}:F${r}`);
+    ws.getCell(`A${r}`).value = "B. UANG MUKA";
+    ws.getCell(`A${r}`).font = boldFont;
+    r++;
+
+    ["Tanggal", "Nomor PPC", "Nama User", "Keterangan", "Jumlah"].forEach((text, i) => {
+        const cell = ws.getCell(r, i + 1);
+        cell.value = text;
+        cell.font = boldFont;
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        cell.border = tableBorder;
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+    });
+    r++;
+
+    const rowsB = record.advanceRows || [];
+    if (rowsB.length === 0) {
+        ws.mergeCells(`A${r}:E${r}`);
+        ws.getCell(`A${r}`).value = "Tidak ada data uang muka";
+        ws.getCell(`A${r}`).alignment = { horizontal: "center" };
+        for (let c = 1; c <= 5; c++) ws.getCell(r, c).border = tableBorder;
+        r++;
+    } else {
+        rowsB.forEach((row) => {
+            const info = getRowInfo(row);
+            const values = [info.tanggal, info.kode, info.namaUser, info.keterangan, "Rp. " + info.jumlah];
+            values.forEach((v, i) => {
+                const cell = ws.getCell(r, i + 1);
+                cell.value = v;
+                cell.border = tableBorder;
+                cell.alignment = { horizontal: i === 4 ? "right" : (i <= 1 ? "center" : "left") };
+            });
+            r++;
+        });
+    }
+
+    // Subtotal B
+    ws.getCell(`D${r}`).value = "Subtotal B";
+    ws.getCell(`D${r}`).font = { bold: true, italic: true };
+    ws.getCell(`D${r}`).alignment = { horizontal: "right" };
+    ws.getCell(`D${r}`).border = { top: thinBorder, bottom: thinBorder };
+    ws.getCell(`E${r}`).value = "Rp. " + formatNumberID(record.totalB);
+    ws.getCell(`E${r}`).font = { bold: true, italic: true };
+    ws.getCell(`E${r}`).alignment = { horizontal: "right" };
+    ws.getCell(`E${r}`).border = { top: thinBorder, bottom: thinBorder };
+    r++;
+
+    r += 2; // baris kosong
+
+    // ===== TOTAL PENGELUARAN — tulisan & nominal digeser 1 kotak ke kanan (E & F), garis bawah tunggal =====
+    ws.getCell(`E${r}`).value = "TOTAL PENGELUARAN";
+    ws.getCell(`E${r}`).font = boldFont;
+    ws.getCell(`E${r}`).alignment = { horizontal: "right" };
+    ws.getCell(`F${r}`).value = "Rp. " + formatNumberID(record.totalAB);
+    ws.getCell(`F${r}`).font = boldFont;
+    ws.getCell(`F${r}`).alignment = { horizontal: "right" };
+    ws.getCell(`F${r}`).border = { bottom: thinBorder };
+    r++;
+
+    // ===== SALDO AKHIR — tulisan & nominal digeser 1 kotak ke kanan (E & F), garis bawah dobel =====
+    ws.getCell(`E${r}`).value = "SALDO AKHIR";
+    ws.getCell(`E${r}`).font = boldFont;
+    ws.getCell(`E${r}`).alignment = { horizontal: "right" };
+    ws.getCell(`F${r}`).value = "Rp. " + formatNumberID(record.saldoAkhir);
+    ws.getCell(`F${r}`).font = boldFont;
+    ws.getCell(`F${r}`).alignment = { horizontal: "right" };
+    ws.getCell(`F${r}`).border = { bottom: { style: "double", color: { argb: "FF000000" } } };
+    r++;
+
+    r += 2; // baris kosong
+
+    // ===== Tanda tangan =====
+    ws.getCell(`A${r}`).value = "Dibuat oleh :";
+    ws.getCell(`A${r}`).font = boldFont;
+    ws.getCell(`D${r}`).value = "Mengetahui,";
+    ws.getCell(`D${r}`).font = boldFont;
+    r += 3;
+
+    ws.getCell(`A${r}`).value = record.dibuatOleh1;
+    ws.getCell(`A${r}`).font = boldFont;
+    ws.getCell(`B${r}`).value = record.dibuatOleh2;
+    ws.getCell(`B${r}`).font = boldFont;
+    ws.getCell(`D${r}`).value = record.mengetahui;
+    ws.getCell(`D${r}`).font = boldFont;
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `Cash Opname_${formatDateID(record.sampaiTanggal)}.xls`;
+    link.download = `Cash Opname_${formatDateForFilename(record.sampaiTanggal)}.xlsx`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -914,7 +997,7 @@ export default function CashOpname() {
                 await saveCashOpname(record);
             }
 
-            downloadRecordAsExcel(record);
+            await downloadRecordAsExcel(record);
 
             await refreshHistory();
             setSuccessMessage(editingId ? "Cash Opname diperbarui & Excel berhasil diunduh." : "Cash Opname berhasil diunduh (Excel).");
