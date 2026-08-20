@@ -657,14 +657,7 @@ async function downloadRecordAsExcel(record) {
         });
     }
 
-    // Subtotal A — dijadikan baris tabel penuh, border mengikuti tabel di atasnya (kolom A-E)
-    for (let c = 1; c <= 3; c++) {
-        ws.getCell(r, c).border = tableBorder;
-    }
-    ws.getCell(`D${r}`).value = "Subtotal A";
-    ws.getCell(`D${r}`).font = { bold: true, italic: true };
-    ws.getCell(`D${r}`).alignment = { horizontal: "right" };
-    ws.getCell(`D${r}`).border = tableBorder;
+    // Subtotal A — tanpa label, border hanya di kolom nominal (E) atas-bawah-kiri-kanan
     ws.getCell(`E${r}`).value = "Rp. " + formatNumberID(record.totalA);
     ws.getCell(`E${r}`).font = { bold: true, italic: true };
     ws.getCell(`E${r}`).alignment = { horizontal: "right" };
@@ -710,14 +703,7 @@ async function downloadRecordAsExcel(record) {
         });
     }
 
-    // Subtotal B — dijadikan baris tabel penuh, border mengikuti tabel di atasnya (kolom A-E)
-    for (let c = 1; c <= 3; c++) {
-        ws.getCell(r, c).border = tableBorder;
-    }
-    ws.getCell(`D${r}`).value = "Subtotal B";
-    ws.getCell(`D${r}`).font = { bold: true, italic: true };
-    ws.getCell(`D${r}`).alignment = { horizontal: "right" };
-    ws.getCell(`D${r}`).border = tableBorder;
+    // Subtotal B — tanpa label, border hanya di kolom nominal (E) atas-bawah-kiri-kanan
     ws.getCell(`E${r}`).value = "Rp. " + formatNumberID(record.totalB);
     ws.getCell(`E${r}`).font = { bold: true, italic: true };
     ws.getCell(`E${r}`).alignment = { horizontal: "right" };
