@@ -618,6 +618,11 @@ async function downloadRecordAsPdf(record) {
 }
 
 // ===== Bangun & unduh file Excel (.xlsx) — tata letak disamakan dengan hasil PDF/cetak =====
+// Nominal "Rp." & angka ditulis di 2 sel bersebelahan (bukan numFmt) supaya titik ribuan
+// SELALU tampil sama seperti hasil cetak/PDF, tidak ikut berubah ke koma sesuai
+// regional setting Excel di komputer yang membuka file. Border antar sel dihilangkan
+// (kiri sel angka & kanan sel "Rp." tidak diberi garis) sehingga terlihat menyatu
+// seperti satu kolom "Jumlah" biasa, dengan "Rp." rata kiri dan nominal rata kanan.
 async function downloadRecordAsExcel(record) {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = "openpyxl";
@@ -625,36 +630,66 @@ async function downloadRecordAsExcel(record) {
 
     const ws = workbook.addWorksheet("Cash Opname");
 
-    // Lebar kolom: A-E = kolom data tabel (Tanggal s/d Jumlah), F = kolom tambahan untuk nominal saldo/total (sejajar)
+    // Lebar kolom:
+    // A-D = kolom data tabel (Tanggal, Nomor PPC, Nama User, Keterangan)
+    // E   = "Rp." untuk kolom Jumlah tabel (sempit, rata kiri)
+    // F   = Angka untuk kolom Jumlah tabel (rata kanan)
+    // G   = "Rp." untuk Saldo Awal / Total Pengeluaran / Saldo Akhir (digeser 1 kotak ke kanan, rata kiri)
+    // H   = Angka untuk Saldo Awal / Total Pengeluaran / Saldo Akhir (rata kanan)
     ws.columns = [
         { width: 12 },
         { width: 16 },
         { width: 20 },
         { width: 32 },
+        { width: 5 },
         { width: 14 },
-        { width: 16 },
+        { width: 5 },
+        { width: 14 },
     ];
 
     const thinBorder = { style: "thin", color: { argb: "FF000000" } };
     const tableBorder = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
+    // Border untuk pasangan sel "Rp." (kiri) + Angka (kanan) tanpa garis pemisah di tengah,
+    // supaya kelihatan menyatu seperti satu kolom.
+    const pairBorderLeft = { top: thinBorder, left: thinBorder, bottom: thinBorder };
+    const pairBorderRight = { top: thinBorder, bottom: thinBorder, right: thinBorder };
     const boldFont = { bold: true };
+
+    // Helper: isi sepasang sel "Rp." (kolom kiri) + nominal (kolom kanan) sebagai teks biasa,
+    // supaya titik ribuan dijamin tampil (tidak bergantung pada numFmt/locale Excel).
+    const writeRpPair = (rowNum, colRp, colAngka, amount, opts = {}) => {
+        const rpCell = ws.getCell(rowNum, colRp);
+        const angkaCell = ws.getCell(rowNum, colAngka);
+        rpCell.value = "Rp.";
+        angkaCell.value = formatNumberID(amount) + (opts.suffix || "");
+        rpCell.alignment = { horizontal: "left" };
+        angkaCell.alignment = { horizontal: "right" };
+        if (opts.font) {
+            rpCell.font = opts.font;
+            angkaCell.font = opts.font;
+        }
+        if (opts.border) {
+            rpCell.border = opts.borderLeft || pairBorderLeft;
+            angkaCell.border = opts.borderRight || pairBorderRight;
+        }
+    };
 
     let r = 1;
 
     // ===== Judul laporan (tanpa border) =====
-    ws.mergeCells(`A${r}:F${r}`);
+    ws.mergeCells(`A${r}:H${r}`);
     ws.getCell(`A${r}`).value = "LAPORAN PETTY CASH";
     ws.getCell(`A${r}`).font = { bold: true, size: 14 };
     ws.getCell(`A${r}`).alignment = { horizontal: "center" };
     r++;
 
-    ws.mergeCells(`A${r}:F${r}`);
+    ws.mergeCells(`A${r}:H${r}`);
     ws.getCell(`A${r}`).value = COMPANY_NAME;
     ws.getCell(`A${r}`).font = boldFont;
     ws.getCell(`A${r}`).alignment = { horizontal: "center" };
     r++;
 
-    ws.mergeCells(`A${r}:F${r}`);
+    ws.mergeCells(`A${r}:H${r}`);
     ws.getCell(`A${r}`).value = `PER TANGGAL : ${formatDateID(record.sampaiTanggal)}`;
     ws.getCell(`A${r}`).font = boldFont;
     ws.getCell(`A${r}`).alignment = { horizontal: "center" };
@@ -662,25 +697,22 @@ async function downloadRecordAsExcel(record) {
 
     r++; // baris kosong
 
-    // ===== Saldo Awal — nominal digeser 1 kotak ke kanan (kolom F), tanpa border =====
-    ws.mergeCells(`A${r}:E${r}`);
+    // ===== Saldo Awal — label A:F, nilai di G (Rp.) + H (angka), tanpa border =====
+    ws.mergeCells(`A${r}:F${r}`);
     ws.getCell(`A${r}`).value = "SALDO AWAL PETTY CASH";
     ws.getCell(`A${r}`).font = boldFont;
-    ws.getCell(`F${r}`).value = Number(record.saldoAwal);
-    ws.getCell(`F${r}`).font = boldFont;
-    ws.getCell(`F${r}`).numFmt = '"Rp. "* #,##0.00';
-    ws.getCell(`F${r}`).alignment = { horizontal: "right" };
+    writeRpPair(r, 7, 8, record.saldoAwal, { font: boldFont, suffix: ",00" });
     r++;
 
     r++; // baris kosong
 
     // ===== Bagian A: Pengeluaran yang sudah selesai =====
-    ws.mergeCells(`A${r}:F${r}`);
+    ws.mergeCells(`A${r}:H${r}`);
     ws.getCell(`A${r}`).value = "A. PENGELUARAN YANG SUDAH SELESAI";
     ws.getCell(`A${r}`).font = boldFont;
     r++;
 
-    ["Tanggal", "Nomor PPC", "Nama User", "Keterangan", "Jumlah"].forEach((text, i) => {
+    ["Tanggal", "Nomor PPC", "Nama User", "Keterangan"].forEach((text, i) => {
         const cell = ws.getCell(r, i + 1);
         cell.value = text;
         cell.font = boldFont;
@@ -688,51 +720,56 @@ async function downloadRecordAsExcel(record) {
         cell.border = tableBorder;
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
     });
+    ws.mergeCells(`E${r}:F${r}`);
+    ws.getCell(`E${r}`).value = "Jumlah";
+    ws.getCell(`E${r}`).font = boldFont;
+    ws.getCell(`E${r}`).alignment = { horizontal: "center", vertical: "middle" };
+    ws.getCell(`E${r}`).border = tableBorder;
+    ws.getCell(`F${r}`).border = tableBorder;
+    ws.getCell(`E${r}`).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+    ws.getCell(`F${r}`).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
     r++;
 
     const rowsA = record.settlementRows || [];
     if (rowsA.length === 0) {
-        ws.mergeCells(`A${r}:E${r}`);
+        ws.mergeCells(`A${r}:F${r}`);
         ws.getCell(`A${r}`).value = "Tidak ada data pengeluaran";
         ws.getCell(`A${r}`).alignment = { horizontal: "center" };
-        for (let c = 1; c <= 5; c++) ws.getCell(r, c).border = tableBorder;
+        for (let c = 1; c <= 6; c++) ws.getCell(r, c).border = tableBorder;
         r++;
     } else {
         rowsA.forEach((row) => {
             const info = getRowInfo(row);
-            const values = [info.tanggal, info.kode, info.namaUser, info.keterangan, Number(row.jumlah)];
+            const values = [info.tanggal, info.kode, info.namaUser, info.keterangan];
             values.forEach((v, i) => {
                 const cell = ws.getCell(r, i + 1);
                 cell.value = v;
                 cell.border = tableBorder;
-                if (i === 4) {
-                    cell.numFmt = '"Rp. "* #,##0';
-                    cell.alignment = { horizontal: "right" };
-                } else {
-                    cell.alignment = { horizontal: i <= 1 ? "center" : "left" };
-                }
+                cell.alignment = { horizontal: i <= 1 ? "center" : "left" };
             });
+            writeRpPair(r, 5, 6, row.jumlah, { border: true });
             r++;
         });
     }
 
-    // Subtotal A 
-    ws.getCell(`E${r}`).value = Number(record.totalA);
-    ws.getCell(`E${r}`).font = { bold: true };
-    ws.getCell(`E${r}`).numFmt = '"Rp. "* #,##0';
-    ws.getCell(`E${r}`).alignment = { horizontal: "right" };
-    ws.getCell(`E${r}`).border = tableBorder;
+    // Subtotal A — Rp. + angka di E,F tanpa garis pemisah tengah, garis tebal atas-bawah
+    writeRpPair(r, 5, 6, record.totalA, {
+        font: { bold: true, italic: true },
+        border: true,
+        borderLeft: { top: { style: "medium", color: { argb: "FF000000" } }, left: thinBorder, bottom: { style: "medium", color: { argb: "FF000000" } } },
+        borderRight: { top: { style: "medium", color: { argb: "FF000000" } }, bottom: { style: "medium", color: { argb: "FF000000" } }, right: thinBorder },
+    });
     r++;
 
     r++; // baris kosong
 
     // ===== Bagian B: Uang Muka =====
-    ws.mergeCells(`A${r}:F${r}`);
+    ws.mergeCells(`A${r}:H${r}`);
     ws.getCell(`A${r}`).value = "B. UANG MUKA";
     ws.getCell(`A${r}`).font = boldFont;
     r++;
 
-    ["Tanggal", "Nomor PPC", "Nama User", "Keterangan", "Jumlah"].forEach((text, i) => {
+    ["Tanggal", "Nomor PPC", "Nama User", "Keterangan"].forEach((text, i) => {
         const cell = ws.getCell(r, i + 1);
         cell.value = text;
         cell.font = boldFont;
@@ -740,64 +777,74 @@ async function downloadRecordAsExcel(record) {
         cell.border = tableBorder;
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
     });
+    ws.mergeCells(`E${r}:F${r}`);
+    ws.getCell(`E${r}`).value = "Jumlah";
+    ws.getCell(`E${r}`).font = boldFont;
+    ws.getCell(`E${r}`).alignment = { horizontal: "center", vertical: "middle" };
+    ws.getCell(`E${r}`).border = tableBorder;
+    ws.getCell(`F${r}`).border = tableBorder;
+    ws.getCell(`E${r}`).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
+    ws.getCell(`F${r}`).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF8FAFC" } };
     r++;
 
     const rowsB = record.advanceRows || [];
     if (rowsB.length === 0) {
-        ws.mergeCells(`A${r}:E${r}`);
+        ws.mergeCells(`A${r}:F${r}`);
         ws.getCell(`A${r}`).value = "Tidak ada data uang muka";
         ws.getCell(`A${r}`).alignment = { horizontal: "center" };
-        for (let c = 1; c <= 5; c++) ws.getCell(r, c).border = tableBorder;
+        for (let c = 1; c <= 6; c++) ws.getCell(r, c).border = tableBorder;
         r++;
     } else {
         rowsB.forEach((row) => {
             const info = getRowInfo(row);
-            const values = [info.tanggal, info.kode, info.namaUser, info.keterangan, Number(row.jumlah)];
+            const values = [info.tanggal, info.kode, info.namaUser, info.keterangan];
             values.forEach((v, i) => {
                 const cell = ws.getCell(r, i + 1);
                 cell.value = v;
                 cell.border = tableBorder;
-                if (i === 4) {
-                    cell.numFmt = '"Rp. "* #,##0';
-                    cell.alignment = { horizontal: "right" };
-                } else {
-                    cell.alignment = { horizontal: i <= 1 ? "center" : "left" };
-                }
+                cell.alignment = { horizontal: i <= 1 ? "center" : "left" };
             });
+            writeRpPair(r, 5, 6, row.jumlah, { border: true });
             r++;
         });
     }
 
     // Subtotal B
-    ws.getCell(`E${r}`).value = Number(record.totalB);
-    ws.getCell(`E${r}`).font = { bold: true };
-    ws.getCell(`E${r}`).numFmt = '"Rp. "* #,##0';
-    ws.getCell(`E${r}`).alignment = { horizontal: "right" };
-    ws.getCell(`E${r}`).border = tableBorder;
+    writeRpPair(r, 5, 6, record.totalB, {
+        font: { bold: true, italic: true },
+        border: true,
+        borderLeft: { top: { style: "medium", color: { argb: "FF000000" } }, left: thinBorder, bottom: { style: "medium", color: { argb: "FF000000" } } },
+        borderRight: { top: { style: "medium", color: { argb: "FF000000" } }, bottom: { style: "medium", color: { argb: "FF000000" } }, right: thinBorder },
+    });
     r++;
 
     r += 2; // baris kosong
 
-    // ===== TOTAL PENGELUARAN — tulisan & nominal digeser 1 kotak ke kanan (E & F), garis bawah tunggal =====
-    ws.getCell(`E${r}`).value = "TOTAL PENGELUARAN";
-    ws.getCell(`E${r}`).font = boldFont;
-    ws.getCell(`E${r}`).alignment = { horizontal: "right" };
-    ws.getCell(`F${r}`).value = Number(record.totalAB);
-    ws.getCell(`F${r}`).font = boldFont;
-    ws.getCell(`F${r}`).numFmt = '"Rp. "* #.##0';
-    ws.getCell(`F${r}`).alignment = { horizontal: "right" };
-    ws.getCell(`F${r}`).border = { bottom: thinBorder };
+    // ===== TOTAL PENGELUARAN — label A:F, nilai G (Rp.) + H (angka), garis bawah tunggal =====
+    ws.mergeCells(`A${r}:F${r}`);
+    ws.getCell(`A${r}`).value = "TOTAL PENGELUARAN";
+    ws.getCell(`A${r}`).font = boldFont;
+    ws.getCell(`A${r}`).alignment = { horizontal: "right" };
+    writeRpPair(r, 7, 8, record.totalAB, {
+        font: boldFont,
+        border: true,
+        borderLeft: { bottom: thinBorder },
+        borderRight: { bottom: thinBorder },
+    });
     r++;
 
-    // ===== SALDO AKHIR — tulisan & nominal digeser 1 kotak ke kanan (E & F), garis bawah dobel =====
-    ws.getCell(`E${r}`).value = "SALDO AKHIR";
-    ws.getCell(`E${r}`).font = boldFont;
-    ws.getCell(`E${r}`).alignment = { horizontal: "right" };
-    ws.getCell(`F${r}`).value = Number(record.saldoAkhir);
-    ws.getCell(`F${r}`).font = boldFont;
-    ws.getCell(`F${r}`).numFmt = '"Rp. "* #,##0';
-    ws.getCell(`F${r}`).alignment = { horizontal: "right" };
-    ws.getCell(`F${r}`).border = { bottom: { style: "double", color: { argb: "FF000000" } } };
+    // ===== SALDO AKHIR — label A:F, nilai G (Rp.) + H (angka), garis bawah dobel =====
+    ws.mergeCells(`A${r}:F${r}`);
+    ws.getCell(`A${r}`).value = "SALDO AKHIR";
+    ws.getCell(`A${r}`).font = boldFont;
+    ws.getCell(`A${r}`).alignment = { horizontal: "right" };
+    const doubleBottom = { style: "double", color: { argb: "FF000000" } };
+    writeRpPair(r, 7, 8, record.saldoAkhir, {
+        font: boldFont,
+        border: true,
+        borderLeft: { bottom: doubleBottom },
+        borderRight: { bottom: doubleBottom },
+    });
     r++;
 
     r += 2; // baris kosong
