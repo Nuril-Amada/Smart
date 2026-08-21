@@ -784,7 +784,7 @@ async function downloadRecordAsExcel(record) {
     ws.getCell(`E${r}`).alignment = { horizontal: "right" };
     ws.getCell(`F${r}`).value = Number(record.totalAB);
     ws.getCell(`F${r}`).font = boldFont;
-    ws.getCell(`F${r}`).numFmt = '"Rp. "* #.##0';
+    ws.getCell(`F${r}`).numFmt = '"Rp. "* #,##0';
     ws.getCell(`F${r}`).alignment = { horizontal: "right" };
     ws.getCell(`F${r}`).border = { bottom: thinBorder };
     r++;
