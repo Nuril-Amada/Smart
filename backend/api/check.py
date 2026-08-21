@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional
 from pydantic import BaseModel
 from fastapi import (
@@ -23,14 +24,15 @@ router = APIRouter(
 
 # schema
 class CheckCreate(BaseModel):
-    transaction_date:date
-    check_number:str
-    transaction_type:CheckType
-    bank_type:BankType
-    vendor_name:str
-    amount:float
-    vendor_bank:Optional[str]=None
-    vendor_account_number:Optional[str]=None
+    id: Optional[int] = None
+    transaction_date: date
+    check_number: str
+    transaction_type: CheckType
+    bank_type: BankType
+    vendor_name: str
+    amount: Decimal
+    vendor_bank: Optional[str] = None
+    vendor_account_number: Optional[str] = None
 
 # GET CHECK
 @router.get("")
@@ -96,7 +98,7 @@ def get_check(
             "vendor_name": item.vendor_name,
             "vendor_bank": item.vendor_bank,
             "vendor_account_number": item.vendor_account_number,
-            "amount": item.amount,
+            "amount": float(item.amount) if item.amount is not None else None,
 
             # Legacy key compatibility
             "tanggal": item.transaction_date,
@@ -105,7 +107,7 @@ def get_check(
             "bank": f"Bank {item.bank_type.value}" if item.bank_type else "",
             "vendor": item.vendor_name,
             "nomorRekening": item.vendor_account_number,
-            "nominal": item.amount
+            "nominal": float(item.amount) if item.amount is not None else None
         })
 
     return {
@@ -113,25 +115,31 @@ def get_check(
         "data": results
     }
 
-# CREATE / UPDATE CHECK (UPSERT BY CHECK NUMBER)
+# CREATE / UPDATE CHECK
 @router.post("")
 def create_check(
-    payload:CheckCreate,
-    db:Session=Depends(get_db)
+    payload: CheckCreate,
+    db: Session = Depends(get_db)
 ):
-    existing = (
-        db.query(
-            PrintedCheck
-        )
-        .filter(
-            PrintedCheck.check_number ==
-            payload.check_number
-        )
-        .first()
-    )
+    if payload.id is not None:
+        # Edit mode (user clicked Edit button on existing row)
+        existing = db.query(PrintedCheck).filter(PrintedCheck.id == payload.id).first()
+        if not existing:
+            raise HTTPException(status_code=404, detail="Data cek tidak ditemukan.")
+        
+        # Check if new check_number belongs to another record
+        duplicate = db.query(PrintedCheck).filter(
+            PrintedCheck.check_number == payload.check_number,
+            PrintedCheck.id != payload.id
+        ).first()
+        if duplicate:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Nomor cek '{payload.check_number}' sudah pernah digunakan oleh data lain."
+            )
 
-    if existing:
         existing.transaction_date = payload.transaction_date
+        existing.check_number = payload.check_number
         existing.transaction_type = payload.transaction_type
         existing.bank_type = payload.bank_type
         existing.vendor_name = payload.vendor_name
@@ -148,39 +156,35 @@ def create_check(
             "id": existing.id,
             "is_update": True
         }
+    else:
+        # Create mode (new check form submission)
+        existing = db.query(PrintedCheck).filter(PrintedCheck.check_number == payload.check_number).first()
+        if existing:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Nomor cek '{payload.check_number}' sudah pernah digunakan. Ganti nomor cek atau klik tombol Edit pada data yang ada."
+            )
 
-    new_check = PrintedCheck(
-        transaction_date=
-        payload.transaction_date,
-        check_number=
-        payload.check_number,
-        transaction_type=
-        payload.transaction_type,
-        bank_type=
-        payload.bank_type,
-        vendor_name=
-        payload.vendor_name,
-        amount=
-        payload.amount,
-        vendor_bank=
-        payload.vendor_bank,
-        vendor_account_number=
-        payload.vendor_account_number
-    )
+        new_check = PrintedCheck(
+            transaction_date=payload.transaction_date,
+            check_number=payload.check_number,
+            transaction_type=payload.transaction_type,
+            bank_type=payload.bank_type,
+            vendor_name=payload.vendor_name,
+            amount=payload.amount,
+            vendor_bank=payload.vendor_bank,
+            vendor_account_number=payload.vendor_account_number
+        )
 
-    db.add(
-        new_check
-    )
-    db.commit()
-    db.refresh(
-        new_check
-    )
+        db.add(new_check)
+        db.commit()
+        db.refresh(new_check)
 
-    return {
-        "message": "Data cek berhasil disimpan.",
-        "id": new_check.id,
-        "is_update": False
-    }
+        return {
+            "message": "Data cek berhasil disimpan.",
+            "id": new_check.id,
+            "is_update": False
+        }
 
 # DELETE CHECK
 @router.delete("/{check_id}")

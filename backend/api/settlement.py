@@ -29,12 +29,12 @@ class ReimbursementCreate(BaseModel):
     description: str
     settlement_amount: float
 
-# class ReimbursementUpdate(BaseModel):
-#     employee_name: Optional[str] = None
-#     settlement_date: Optional[date] = None
-#     cost_center: Optional[str] = None
-#     description: Optional[str] = None
-#     settlement_amount: Optional[float] = None
+class ReimbursementUpdate(BaseModel):
+    employee_name: Optional[str] = None
+    settlement_date: Optional[date] = None
+    cost_center: Optional[str] = None
+    description: Optional[str] = None
+    settlement_amount: Optional[float] = None
 
 def serialize_settlement(item: Settlement):
 
@@ -286,77 +286,72 @@ def create_reimbursement(
             serialize_settlement(settlement)
     }
 
-# # UPDATE REIMBURSEMENT
-# @router.put("/reimbursement/{settlement_id}")
-# def update_reimbursement(
-#     settlement_id: int,
-#     data: ReimbursementUpdate,
-#     db: Session = Depends(get_db)
-# ):
+# UPDATE SETTLEMENT
+@router.put("/reimbursement/{settlement_id}")
+def update_settlement(
+    settlement_id: int,
+    data: ReimbursementUpdate,
+    db: Session = Depends(get_db)
+):
 
-#     settlement = (
-#         db.query(Settlement)
-#         .filter(
-#             Settlement.id == settlement_id
-#         )
-#         .first()
-#     )
+    settlement = (
+        db.query(Settlement)
+        .filter(
+            Settlement.id == settlement_id,
+            Settlement.is_deleted == False
+        )
+        .first()
+    )
 
-#     if not settlement:
-#         raise HTTPException(
-#             status_code=404,
-#             detail="Settlement tidak ditemukan."
-#         )
+    if not settlement:
+        raise HTTPException(
+            status_code=404,
+            detail="Settlement tidak ditemukan."
+        )
 
-#     if settlement.source != SettlementSource.REIMBURSEMENT:
-#         raise HTTPException(
-#             status_code=400,
-#             detail="Settlement Advance tidak dapat diubah."
-#         )
-#     # Update employee
-#     if data.employee_name is not None:
-#         employee_name = data.employee_name.strip()
+    # Update employee apabila diubah
+    if data.employee_name is not None:
+        employee_name = data.employee_name.strip()
 
-#         employee = (
-#             db.query(Employee)
-#             .filter(
-#                 Employee.employee_name.ilike(
-#                     employee_name
-#                 )
-#             )
-#             .first()
-#         )
+        employee = (
+            db.query(Employee)
+            .filter(
+                Employee.employee_name.ilike(
+                    employee_name
+                )
+            )
+            .first()
+        )
 
-#         if not employee:
-#             raise HTTPException(
-#                 status_code=404,
-#                 detail="Employee tidak ditemukan."
-#             )
+        if not employee:
+            raise HTTPException(
+                status_code=404,
+                detail="Employee tidak ditemukan."
+            )
 
-#         settlement.employee_id = employee.id
-#         settlement.email = employee.employee_email
+        settlement.employee_name = employee.employee_name
 
-#     if data.settlement_date is not None:
-#         settlement.settlement_date = data.settlement_date
-#     if data.cost_center is not None:
-#         settlement.cost_center = data.cost_center
-#     if data.description is not None:
-#         settlement.description = data.description
-#     if data.settlement_amount is not None:
-#         if data.settlement_amount <= 0:
-#             raise HTTPException(
-#                 status_code=400,
-#                 detail="Settlement amount harus lebih dari 0."
-#             )
+    if data.settlement_date is not None:
+        settlement.settlement_date = data.settlement_date
+    if data.cost_center is not None:
+        settlement.cost_center = data.cost_center
+    if data.description is not None:
+        settlement.description = data.description
+    if data.settlement_amount is not None:
+        if data.settlement_amount <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Settlement amount harus lebih dari 0."
+            )
 
-#         settlement.settlement_amount = data.settlement_amount
+        settlement.settlement_amount = data.settlement_amount
 
-#     db.commit()
-#     db.refresh(settlement)
-#     return {
-#         "message": "Reimbursement berhasil diperbarui.",
-#         "data": serialize_settlement(settlement)
-#     }
+    db.commit()
+    db.refresh(settlement)
+    return {
+        "message": "Settlement berhasil diperbarui.",
+        "data": serialize_settlement(settlement)
+    }
 
 # DELETE REIMBURSEMENT
 @router.delete("/{settlement_id}")
@@ -396,7 +391,7 @@ def search_users(
     q: str = "",
     db: Session = Depends(get_db)
 ):
-
+                                           
     if not q:
         return []
 

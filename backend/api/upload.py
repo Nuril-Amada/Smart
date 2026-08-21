@@ -8,10 +8,6 @@ from database.models import Transaction
 from etl.pipeline import run_pipeline
 from etl.gl_loader import load_gl
 from etl.utils.gl_column_mapper import map_columns as map_gl_columns
-from etl.utils.settlement_mapper import map_columns as map_settlement_columns
-from etl.utils.advance_mapper import map_columns as map_advance_columns
-from etl.settlement_loader import load_settlement
-from etl.advance_loader import load_advance
 from etl.employee_loader import load_employee
 from etl.utils.employee_mapper import map_columns as map_employee_columns
 from api.dashboard import DashboardSource
@@ -140,103 +136,7 @@ def upload_gl_account(
             detail=str(e)
         )
 
-# Import Settlement Excel
-@router.post("/settlement/import")
-async def import_settlement(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db)
-):
 
-    # Validasi File
-    if not file.filename.endswith((".xlsx", ".xls")):
-
-        raise HTTPException(
-            status_code=400,
-            detail="File harus berupa Excel (.xlsx atau .xls)"
-        )
-
-    try:
-
-        # Read Excel
-        df = pd.read_excel(file.file)
-
-        if df.empty:
-
-            raise HTTPException(
-                status_code=400,
-                detail="File Excel kosong."
-            )
-
-        # Mapping Kolom
-        df = map_settlement_columns(df)
-
-        # Load ke Database
-        result = load_settlement(df, db)
-
-        # Response
-        return {
-            "message": "Import Settlement berhasil",
-            "filename": file.filename,
-            **result
-        }
-
-    except HTTPException:
-        raise
-    
-    except Exception as e:
-        raise HTTPException(
-
-            status_code=500,
-
-            detail=f"Gagal import Settlement : {str(e)}"
-        )
-    
-# IMPORT PPC
-@router.post("/advance/import")
-async def import_ppc(
-    file: UploadFile = File(...),
-    db: Session = Depends(get_db)
-):
-
-    # Validasi file
-    if not file.filename.endswith((".xlsx", ".xls")):
-        raise HTTPException(
-            status_code=400,
-            detail="File harus berupa Excel (.xlsx atau .xls)"
-        )
-
-    try:
-
-        # Baca Excel
-        df = pd.read_excel(file.file)
-
-        if df.empty:
-            raise HTTPException(
-                status_code=400,
-                detail="File Excel kosong."
-            )
-
-        # Mapping kolom
-        df = map_advance_columns(df)
-
-        # Load ke database
-        result = load_advance(df, db)
-
-        return {
-            "message": "Import PPC berhasil",
-            "filename": file.filename,
-            **result
-        }
-
-    except HTTPException:
-        raise
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Gagal import PPC : {str(e)}"
-        )
-    
 # IMPORT EMPLOYEE
 @router.post("/employee/import")
 async def import_employee(

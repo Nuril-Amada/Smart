@@ -5,7 +5,9 @@ from sqlalchemy import (
     Integer,
     Boolean,
     String,
+    Text,
     Float,
+    Numeric,
     Date,
     DateTime,
     ForeignKey,
@@ -495,7 +497,7 @@ class PrintedCheck(Base):
     )
 
     amount = Column(
-        Float,
+        Numeric(precision=18, scale=2),
         nullable=False
     )
 
@@ -563,3 +565,126 @@ class Vendor(Base):
         default=func.now(),
         onupdate=func.now()
     )
+
+# COST CENTER
+class CostCenter(Base):
+    __tablename__ = "cost_centers"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    cost_center_code = Column(
+        String(50),
+        unique=True,
+        nullable=False,
+        index=True
+    )
+
+    cost_center_name = Column(
+        String(255),
+        nullable=False
+    )
+
+    created_at = Column(
+        DateTime,
+        default=func.now()
+    )
+
+    updated_at = Column(
+        DateTime,
+        default=func.now(),
+        onupdate=func.now()
+    )
+
+# CASH OPNAME
+class CashOpname(Base):
+    __tablename__ = "cash_opnames"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    dari_tanggal = Column(
+        Date,
+        nullable=False
+    )
+
+    sampai_tanggal = Column(
+        Date,
+        nullable=False
+    )
+
+    jam = Column(
+        String(20),
+        nullable=False
+    )
+
+    saldo_awal = Column(
+        Float,
+        nullable=False
+    )
+
+    dibuat_oleh_1 = Column(
+        String(100),
+        nullable=False
+    )
+
+    dibuat_oleh_2 = Column(
+        String(100),
+        nullable=False
+    )
+
+    mengetahui = Column(
+        String(100),
+        nullable=False
+    )
+
+    total_a = Column(
+        Float,
+        nullable=False,
+        default=0.0
+    )
+
+    total_b = Column(
+        Float,
+        nullable=False,
+        default=0.0
+    )
+
+    total_ab = Column(
+        Float,
+        nullable=False,
+        default=0.0
+    )
+
+    saldo_akhir = Column(
+        Float,
+        nullable=False,
+        default=0.0
+    )
+
+    aksi = Column(
+        String(20),
+        nullable=False,
+        default="Simpan"
+    )
+
+    settlement_rows_json = Column(
+        Text,
+        nullable=True
+    )
+
+    advance_rows_json = Column(
+        Text,
+        nullable=True
+    )
+
+    created_at = Column(
+        DateTime,
+        server_default=func.now()
+    )

@@ -33,12 +33,12 @@ class PPCCreate(BaseModel):
     amount: float
     due_date: Optional[date] = None
 
-# class PPCUpdate(BaseModel):
-#     employee_name: Optional[str] = None
-#     cost_center: Optional[str] = None
-#     purpose: Optional[str] = None
-#     amount: Optional[float] = None
-#     due_date: Optional[date] = None
+class PPCUpdate(BaseModel):
+    employee_name: Optional[str] = None
+    cost_center: Optional[str] = None
+    purpose: Optional[str] = None
+    amount: Optional[float] = None
+    due_date: Optional[date] = None
 
 # SETTLEMENT SCHEMA
 class SettlementCreate(BaseModel):
@@ -365,7 +365,20 @@ def create_ppc(
             status_code=404,
             detail="Employee tidak ditemukan."
         )
+    # Amount harus lebih dari 0
+    if data.amount <= 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Amount harus lebih dari Rp0."
+        )
 
+    # Maksimal amount Rp1.000.000 saat membuat Advance baru
+    if data.amount > 1_000_000:
+        raise HTTPException(
+            status_code=400,
+            detail="Amount tidak boleh melebihi Rp1.000.000."
+        )
+    
     # Due Date otomatis +2 hari apabila kosong
     due_date = data.due_date
 
@@ -406,98 +419,111 @@ def create_ppc(
         "data": serialize_ppc(ppc, db)
     }
 
-# # UPDATE PPC
-# @router.put("/ppc/{ppc_id}")
-# def update_ppc(
-#     ppc_id: int,
-#     data: PPCUpdate,
-#     db: Session = Depends(get_db)
-# ):
+# UPDATE PPC
+@router.put("/ppc/{ppc_id}")
+def update_ppc(
+    ppc_id: int,
+    data: PPCUpdate,
+    db: Session = Depends(get_db)
+):
 
-#     ppc = (
-#         db.query(AdvanceRequest)
-#         .filter(
-#             AdvanceRequest.id == ppc_id
-#         )
-#         .first()
-#     )
+    ppc = (
+        db.query(AdvanceRequest)
+        .filter(
+            AdvanceRequest.id == ppc_id
+        )
+        .first()
+    )
 
-#     if not ppc:
-#         raise HTTPException(
-#             status_code=404,
-#             detail="PPC tidak ditemukan."
-#         )
+    if not ppc:
+        raise HTTPException(
+            status_code=404,
+            detail="PPC tidak ditemukan."
+        )
 
-#     # Update status terlebih dahulu
-#     update_ppc_status(ppc, db)
+    # Update status terlebih dahulu
+    update_ppc_status(ppc)
 
-#     # Tidak boleh edit apabila sudah settled
-#     if ppc.status == AdvanceStatus.SETTLED:
-#         raise HTTPException(
-#             status_code=400,
-#             detail="PPC yang sudah settled tidak dapat diubah."
-#         )
-    
-#     if ppc.status == AdvanceStatus.CANCEL:
-#         raise HTTPException(
-#             status_code=400,
-#             detail="PPC yang sudah dicancel tidak dapat diubah."
-#         )
+    # Tidak boleh edit apabila sudah settled
+    if ppc.status == AdvanceStatus.SETTLED:
+        raise HTTPException(
+            status_code=400,
+            detail="PPC yang sudah settled tidak dapat diubah."
+        )
 
-#     # Validasi employee apabila diubah
-#     if data.employee_name is not None:
+    if ppc.status == AdvanceStatus.CANCEL:
+        raise HTTPException(
+            status_code=400,
+            detail="PPC yang sudah dicancel tidak dapat diubah."
+        )
 
-#         employee_name = data.employee_name.strip()
+    # Validasi employee apabila diubah
+    if data.employee_name is not None:
 
-#         employee = (
-#             db.query(Employee)
-#             .filter(
-#                 Employee.employee_name.ilike(
-#                     employee_name
-#                 )
-#             )
-#             .first()
-#         )
+        employee_name = data.employee_name.strip()
 
-#         if not employee:
-#             raise HTTPException(
-#                 status_code=404,
-#                 detail="Employee tidak ditemukan."
-#             )
+        employee = (
+            db.query(Employee)
+            .filter(
+                Employee.employee_name.ilike(
+                    employee_name
+                )
+            )
+            .first()
+        )
 
-#         ppc.employee_name = employee.employee_name
+        if not employee:
+            raise HTTPException(
+                status_code=404,
+                detail="Employee tidak ditemukan."
+            )
 
-#     # Update field lainnya
-#     if data.cost_center is not None:
-#         ppc.cost_center = data.cost_center
+        ppc.employee_name = employee.employee_name
 
-#     if data.purpose is not None:
-#         ppc.purpose = data.purpose
+    # Update field lainnya
+    if data.cost_center is not None:
+        ppc.cost_center = data.cost_center
 
-#     if data.amount is not None:
-#         ppc.amount = data.amount
+    if data.purpose is not None:
+        ppc.purpose = data.purpose
 
-#     if data.due_date is not None:
+    if data.amount is not None:
+        # Amount harus lebih dari 0
+        if data.amount <= 0:
+            raise HTTPException(
+                status_code=400,
+                detail="Amount harus lebih dari Rp0."
+            )
 
-#         # Due date tidak boleh lebih kecil dari request date
-#         if data.due_date < ppc.request_date:
-#             raise HTTPException(
-#                 status_code=400,
-#                 detail="Due date tidak valid."
-#             )
+        # Maksimal amount Rp1.000.000 saat mengubah Advance
+        if data.amount > 1_000_000:
+            raise HTTPException(
+                status_code=400,
+                detail="Amount tidak boleh melebihi Rp1.000.000."
+            )
+        ppc.amount = data.amount
 
-#         ppc.due_date = data.due_date
+    if data.due_date is not None:
 
-#     # Update status kembali
-#     update_ppc_status(ppc, db)
+        # Due date tidak boleh lebih kecil dari request date
+        if data.due_date < ppc.request_date:
+            raise HTTPException(
+                status_code=400,
+                detail="Due date tidak valid."
+            )
 
-#     db.commit()
-#     db.refresh(ppc)
+        ppc.due_date = data.due_date
 
-#     return serialize_ppc(
-#         ppc,
-#         db
-#     )
+    # Update status kembali
+    update_ppc_status(ppc)
+
+    db.commit()
+    db.refresh(ppc)
+
+    return serialize_ppc(
+        ppc,
+        db
+    )
 
 # CANCEL PPC
 @router.put("/ppc/{ppc_id}/cancel")

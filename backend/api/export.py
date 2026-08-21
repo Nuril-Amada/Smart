@@ -3,6 +3,9 @@ from io import BytesIO
 from datetime import date, datetime, timedelta
 from typing import Optional
 import pandas as pd
+from openpyxl.styles import Alignment, Font
+from openpyxl.utils import get_column_letter
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -20,6 +23,7 @@ from database.models import (
     Settlement,
     AdvanceRequest,
     PrintedCheck,
+    Vendor,
 )
 from reportlab.platypus import (
     SimpleDocTemplate,
@@ -32,7 +36,7 @@ from reportlab.platypus import (
 
 from api.advance import update_ppc_status
 from reportlab.lib import colors
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.lib.pagesizes import A4
 
@@ -46,10 +50,7 @@ router = APIRouter(
     tags=["Export"]
 )
 
-# ==========================================================
 # HELPER
-# ==========================================================
-
 def apply_date_filter(
         query,
         model,
@@ -68,6 +69,12 @@ def apply_date_filter(
 
 def rupiah(value):
     return f"Rp {float(value or 0):,.0f}"
+
+def rupiah_parts(value):
+
+    val = float(value or 0)
+    angka = f"{val:,.0f}".replace(",", ".")
+    return "Rp.", angka
 
 def format_period(start_date, end_date):
     if not start_date and not end_date:
@@ -128,15 +135,14 @@ def determine_trend_group(start_date, end_date):
     return "month"
 
 
-def create_table(data, widths=None):
-
+def create_table(data, widths=None, extra_style=None):
     table = Table(
         data,
         colWidths=widths
     )
-
     table.setStyle(TABLE_STYLE)
-
+    if extra_style:
+        table.setStyle(TableStyle(extra_style))
     return table
 
 # Advance Helper
@@ -158,33 +164,116 @@ def apply_advance_date_filter(
 
     return query
 
+# EXCEL FORMAT HELPER
+EXCEL_DATE_FORMAT = "dd/mm/yyyy"
+EXCEL_CURRENCY_FORMAT = '#,##0'
+
+def format_excel_worksheet(
+    worksheet,
+    date_columns=None,
+    currency_columns=None
+):
+    date_columns = date_columns or []
+    currency_columns = currency_columns or []
+
+    # Header
+    for cell in worksheet[1]:
+        cell.font = Font(bold=True)
+        cell.alignment = Alignment(
+            horizontal="center",
+            vertical="center"
+        )
+
+    # Mapping nama header -> nomor kolom
+    header_map = {}
+
+    for cell in worksheet[1]:
+        if cell.value:
+            header_map[str(cell.value)] = cell.column
+
+    # Format cells (number formats and alignments)
+    for header_name, column_index in header_map.items():
+        is_currency = header_name in currency_columns
+        is_date = header_name in date_columns
+
+        for row in range(2, worksheet.max_row + 1):
+            cell = worksheet.cell(
+                row=row,
+                column=column_index
+            )
+
+            if is_currency:
+                if cell.value is not None:
+                    cell.number_format = EXCEL_CURRENCY_FORMAT
+                cell.alignment = Alignment(
+                    horizontal="right"
+                )
+            else:
+                if is_date and cell.value is not None:
+                    cell.number_format = EXCEL_DATE_FORMAT
+                cell.alignment = Alignment(
+                    horizontal="left"
+                )
+
+    # Auto width
+    for column_cells in worksheet.columns:
+        max_length = 0
+        for cell in column_cells:
+            if cell.value is not None:
+                value = str(cell.value)
+                max_length = max(
+                    max_length,
+                    len(value)
+                )
+
+        column_letter = get_column_letter(
+            column_cells[0].column
+        )
+
+        worksheet.column_dimensions[
+            column_letter
+        ].width = max(
+            max_length + 3,
+            15
+        )
+
 TABLE_STYLE = TableStyle([
 
     # Header
     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#1F4E78")),
     ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
     ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-    ("FONTSIZE", (0, 0), (-1, 0), 10),
+    ("FONTSIZE", (0, 0), (-1, 0), 9),
+    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
 
     # Isi tabel
     ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
-    ("FONTSIZE", (0, 1), (-1, -1), 9),
+    ("FONTSIZE", (0, 1), (-1, -1), 8),
 
-    # Grid
-    ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+    # Kolom pertama selalu rata kiri
+    ("ALIGN", (0, 0), (0, -1), "LEFT"),
+    # Kolom kedua dst rata kiri kecuali kolom angka/persen
+    ("ALIGN", (1, 1), (1, -1), "LEFT"),
+    # Kolom dari kolom ke-3 rata kanan (angka/persen)
+    ("ALIGN", (2, 1), (-1, -1), "RIGHT"),
 
-    # Alignment
-    ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-    ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
     ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
 
-    # Padding
-    ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
-    ("TOPPADDING", (0, 0), (-1, -1), 6),
-    ("BOTTOMPADDING", (0, 1), (-1, -1), 5),
+    # Grid
+    ("GRID", (0, 0), (-1, -1), 0.4, colors.grey),
 
-    # Warna isi
+    # Padding
+    ("TOPPADDING", (0, 0), (-1, -1), 5),
+    ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+    ("LEFTPADDING", (0, 0), (-1, -1), 6),
+    ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+
+    # Warna baris ganjil/genap
     ("BACKGROUND", (0, 1), (-1, -1), colors.whitesmoke),
+    ("ROWBACKGROUNDS", (0, 1), (-1, -1), [
+        colors.white,
+        colors.HexColor("#F0F4FA")
+    ]),
 
 ])
 
@@ -307,26 +396,17 @@ def export_excel(
                 index=False
             )
 
-            worksheet = writer.sheets[
-                "Transactions"
-            ]
+            worksheet = writer.sheets["Transactions"]
 
-            # Auto Width Column
-            for column in worksheet.columns:
-
-                max_length = max(
-
-                    len(str(cell.value))
-                    if cell.value is not None
-                    else 0
-
-                    for cell in column
-
-                )
-
-                worksheet.column_dimensions[
-                    column[0].column_letter
-                ].width = max_length + 3
+            format_excel_worksheet(
+                worksheet,
+                date_columns=[
+                    "Posting Date"
+                ],
+                currency_columns=[
+                    "Amount"
+                ]
+            )
 
         output.seek(0)
 
@@ -368,6 +448,7 @@ def export_dashboard_pdf(
     source: DashboardSource = DashboardSource.rungkut,
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
+    trend_group: str = Query("month"),
     db: Session = Depends(get_db)
 
 ):
@@ -406,35 +487,25 @@ def export_dashboard_pdf(
         total_gl = summary[2] or 0
         total_cc = summary[3] or 0
 
-        if start_date and end_date:
-            total_days = count_workdays(
-                start_date,
-                end_date
-            )
+        # Hitung average daily expense dari rentang actual data yang ter-query
+        actual_range = summary_query.with_entities(
+            func.min(TransactionModel.posting_date),
+            func.max(TransactionModel.posting_date)
+        ).first()
+
+        actual_first = actual_range[0] if actual_range else None
+        actual_last  = actual_range[1] if actual_range else None
+
+        if actual_first and actual_last:
+            total_days = count_workdays(actual_first, actual_last)
         else:
-            first_date = db.query(
-                func.min(TransactionModel.posting_date)
-            ).scalar()
+            total_days = 1
 
-            last_date = db.query(
-                func.max(TransactionModel.posting_date)
-            ).scalar()
-
-            if first_date and last_date:
-
-                total_days = count_workdays(
-                    first_date,
-                    last_date
-                )
-
-            else:
-
-                total_days = 1
         average_daily_expense = (
             total_expense / total_days
             if total_days > 0
             else 0
-)
+        )
 
         # TOP GL ACCOUNT
         gl_query = (
@@ -553,11 +624,10 @@ def export_dashboard_pdf(
                 .all()
             )
 
-        # TREND
-        trend_group = determine_trend_group(
-            start_date,
-            end_date
-        )
+        # TREND — ikuti trend_group dari parameter request
+        # Validasi nilai trend_group
+        if trend_group not in ("day", "month", "year"):
+            trend_group = "month"
 
         if trend_group == "day":
             trend_query = db.query(
@@ -627,7 +697,7 @@ def export_dashboard_pdf(
         # HEADER
         story.append(
             Paragraph(
-                "<b>Navicash Dashboard Report</b>",
+                f"<b>Report Petty Cash {source.value.title()}</b>",
                 styles["Title"]
             )
         )
@@ -656,18 +726,25 @@ def export_dashboard_pdf(
             )
         )
 
+        te_label, te_value = rupiah_parts(total_expense)
+        ade_label, ade_value = rupiah_parts(average_daily_expense)
         summary_table = [
-            ["Metric", "Value"],
-            ["Total Expense", rupiah(total_expense)],
-            ["Total Transaction", f"{total_transaction:,}"],
-            ["Total Cost Center", f"{total_cc:,}"],
-            ["Average Daily Expense", rupiah(average_daily_expense)]
+            ["Metric", "Value", ""],
+            ["Total Expense", te_label, te_value],
+            ["Total Transaction", "", f"{total_transaction:,}"],
+            ["Total Cost Center", "", f"{total_cc:,}"],
+            ["Average Daily Expense", ade_label, ade_value],
         ]
-
         story.append(
             create_table(
                 summary_table,
-                widths=[9 * cm, 7 * cm]
+                widths=[10 * cm, 1.0 * cm, 7 * cm],
+                extra_style=[
+                    ("SPAN", (1, 0), (2, 0)),               # header "Value" jadi satu
+                    ("ALIGN", (1, 1), (1, -1), "LEFT"),     # "Rp." rata kiri
+                    ("ALIGN", (2, 1), (2, -1), "RIGHT"),    # angka rata kanan
+                    ("LINEAFTER", (1, 0), (1, -1), 0, colors.white),  # sembunyikan garis internal
+                ]
             )
         )
 
@@ -687,30 +764,38 @@ def export_dashboard_pdf(
             "GL Account",
             "GL Name",
             "Amount",
+            "",
             "%"
         ]]
-
         for row in gl:
-
             percentage = calculate_percentage(
                 row.total_amount,
                 total_expense
             )
-
+            rp_label, rp_value = rupiah_parts(row.total_amount)
             gl_table.append([
                 row.gl_account,
                 row.nama_gl_account or "-",
-                rupiah(row.total_amount),
+                rp_label,
+                rp_value,
                 f"{percentage:.2f}%"
             ])
         story.append(
             create_table(
                 gl_table,
                 widths=[
-                    3*cm,
-                    7*cm,
-                    4*cm,
-                    2*cm
+                    3.0 * cm,   # GL Account
+                    9.0 * cm,   # GL Name
+                    0.8 * cm,   # "Rp."
+                    3.2 * cm,   # Angka Amount
+                    2.0 * cm,   # %
+                ],
+                extra_style=[
+                    ("SPAN", (2, 0), (3, 0)),               # header "Amount" jadi satu
+                    ("ALIGN", (2, 1), (2, -1), "LEFT"),     # "Rp." rata kiri
+                    ("ALIGN", (3, 1), (3, -1), "RIGHT"),    # angka rata kanan
+                    ("ALIGN", (4, 1), (4, -1), "CENTER"),   # % tidak rata kanan
+                    ("LINEAFTER", (2, 0), (2, -1), 0, colors.white),
                 ]
             )
         )
@@ -734,28 +819,36 @@ def export_dashboard_pdf(
         cc_table = [[
             "Cost Center",
             "Amount",
+            "",
             "%"
         ]]
-
         for row in cc:
             percentage = calculate_percentage(
                 row.total_amount,
                 total_expense
             )
-
+            rp_label, rp_value = rupiah_parts(row.total_amount)
             cc_table.append([
                 row.cost_center,
-                rupiah(row.total_amount),
+                rp_label,
+                rp_value,
                 f"{percentage:.2f}%"
             ])
-
         story.append(
             create_table(
                 cc_table,
                 widths=[
-                    6*cm,
-                    7*cm,
-                    3*cm
+                    10.0 * cm,  # Cost Center
+                    0.8 * cm,   # "Rp."
+                    4.2 * cm,   # Angka Amount
+                    3.0 * cm,   # %
+                ],
+                extra_style=[
+                    ("SPAN", (1, 0), (2, 0)),
+                    ("ALIGN", (1, 1), (1, -1), "LEFT"),
+                    ("ALIGN", (2, 1), (2, -1), "RIGHT"),
+                    ("ALIGN", (3, 1), (3, -1), "CENTER"),
+                    ("LINEAFTER", (1, 0), (1, -1), 0, colors.white),
                 ]
             )
         )
@@ -786,29 +879,38 @@ def export_dashboard_pdf(
                 "GL Account",
                 "GL Name",
                 "Amount",
+                "",
                 "%"
             ]]
-
             for row in detail:
                 percentage = calculate_percentage(
                     row.total_amount,
                     top_cc.total_amount
                 )
+                rp_label, rp_value = rupiah_parts(row.total_amount)
                 detail_table.append([
                     row.gl_account,
                     row.nama_gl_account or "-",
-                    rupiah(row.total_amount),
+                    rp_label,
+                    rp_value,
                     f"{percentage:.2f}%"
                 ])
-
             story.append(
                 create_table(
                     detail_table,
                     widths=[
-                        3*cm,
-                        7*cm,
-                        4*cm,
-                        2*cm
+                        3.0 * cm,   # GL Account
+                        9.0 * cm,   # GL Name
+                        0.8 * cm,   # "Rp."
+                        3.2 * cm,   # Angka Amount
+                        2.0 * cm,   # %
+                    ],
+                    extra_style=[
+                        ("SPAN", (2, 0), (3, 0)),
+                        ("ALIGN", (2, 1), (2, -1), "LEFT"),
+                        ("ALIGN", (3, 1), (3, -1), "RIGHT"),
+                        ("ALIGN", (4, 1), (4, -1), "CENTER"),
+                        ("LINEAFTER", (2, 0), (2, -1), 0, colors.white),
                     ]
                 )
             )
@@ -840,9 +942,9 @@ def export_dashboard_pdf(
         trend_table = [[
             "Period",
             "Amount",
+            "",
             "Growth (%)"
         ]]
-
         previous_amount = None
         for row in trend:
             if trend_group == "day":
@@ -853,20 +955,29 @@ def export_dashboard_pdf(
                 float(row.total_amount),
                 previous_amount
             )
+            rp_label, rp_value = rupiah_parts(row.total_amount)
             trend_table.append([
                 period,
-                rupiah(row.total_amount),
+                rp_label,
+                rp_value,
                 "-" if growth is None else f"{growth:.2f}%"
             ])
             previous_amount = float(row.total_amount)
-
         story.append(
             create_table(
                 trend_table,
                 widths=[
-                    5*cm,
-                    7*cm,
-                    4*cm
+                    5.0 * cm,   # Period
+                    0.8 * cm,   # "Rp."
+                    8.2 * cm,   # Angka Amount
+                    4.0 * cm,   # Growth
+                ],
+                extra_style=[
+                    ("SPAN", (1, 0), (2, 0)),
+                    ("ALIGN", (1, 1), (1, -1), "LEFT"),
+                    ("ALIGN", (2, 1), (2, -1), "RIGHT"),
+                    ("ALIGN", (3, 1), (3, -1), "CENTER"),
+                    ("LINEAFTER", (1, 0), (1, -1), 0, colors.white),
                 ]
             )
         )
@@ -887,7 +998,7 @@ def export_dashboard_pdf(
         doc.build(story)
         buffer.seek(0)
         filename = (
-            f"Export Dashboard_{source.value.title()}.pdf"
+            f"Report Petty Cash{source.value.title()}.pdf"
         )
         return StreamingResponse(
             buffer,
@@ -908,10 +1019,15 @@ def export_dashboard_pdf(
 def export_settlement(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    employee_name: Optional[str] = Query(None),
+    cost_center: Optional[str] = Query(None),
+    source: Optional[str] = Query(None),
     db: Session = Depends(get_db)
 ):
     try:
-        query = db.query(Settlement)
+        query = db.query(Settlement).filter(
+            Settlement.is_deleted == False
+        )
 
         # Filter Tanggal
         if start_date:
@@ -922,6 +1038,25 @@ def export_settlement(
         if end_date:
             query = query.filter(
                 Settlement.settlement_date <= end_date
+            )
+
+        # Filter Nama User
+        if employee_name:
+            query = query.filter(
+                Settlement.employee_name.ilike(f"%{employee_name}%")
+            )
+
+        # Filter Cost Center
+        if cost_center:
+            query = query.filter(
+                Settlement.cost_center.ilike(f"%{cost_center}%")
+            )
+
+        # Filter Source
+        if source and source != "All Source":
+            db_source = "ADVANCE" if source == "Settlement" else "REIMBURSEMENT"
+            query = query.filter(
+                Settlement.source == db_source
             )
 
         settlements = (
@@ -941,12 +1076,13 @@ def export_settlement(
         rows = []
         for item in settlements:
             rows.append({
-                "PPC No": item.ppc_no,
                 "Settlement Date": item.settlement_date,
+                "PPC No": item.ppc_no,
                 "Employee Name": item.employee_name,
                 "Cost Center": item.cost_center,
                 "Description": item.description or "",
                 "Settlement Amount": item.settlement_amount,
+                "Currency": "IDR",
                 "Source": item.source.value if hasattr(item.source, "value") else str(item.source),
                 "Checked": "Yes" if item.is_checked else "No",
             })
@@ -967,15 +1103,15 @@ def export_settlement(
 
             # Auto fit column width
             worksheet = writer.sheets["Settlement"]
-            for column_cells in worksheet.columns:
-                length = max(
-                    len(str(cell.value))
-                    if cell.value is not None else 0
-                    for cell in column_cells
-                )
-                worksheet.column_dimensions[
-                    column_cells[0].column_letter
-                ].width = max(length + 3, 15)
+            format_excel_worksheet(
+                worksheet,
+                date_columns=[
+                    "Settlement Date"
+                ],
+                currency_columns=[
+                    "Settlement Amount"
+                ]
+            )
 
         output.seek(0)
         
@@ -1006,6 +1142,9 @@ def export_settlement(
 def export_ppc(
     start_date: Optional[date] = Query(None),
     end_date: Optional[date] = Query(None),
+    employee_name: Optional[str] = Query(None),
+    cost_center: Optional[str] = Query(None),
+    status: Optional[str] = Query(None),
     db: Session = Depends(get_db),
 ):
 
@@ -1017,6 +1156,32 @@ def export_ppc(
         start_date=start_date,
         end_date=end_date,
     )
+
+    # Filter Nama User
+    if employee_name:
+        query = query.filter(
+            AdvanceRequest.employee_name.ilike(f"%{employee_name}%")
+        )
+
+    # Filter Cost Center
+    if cost_center:
+        query = query.filter(
+            AdvanceRequest.cost_center.ilike(f"%{cost_center}%")
+        )
+
+    # Filter Status
+    if status and status != "All Status":
+        status_map = {
+            "Active": "ACTIVE",
+            "Settled": "SETTLED",
+            "Overdue": "OVERDUE",
+            "Canceled": "CANCEL"
+        }
+        db_status = status_map.get(status)
+        if db_status:
+            query = query.filter(
+                AdvanceRequest.status == db_status
+            )
 
     ppc_list = (
         query
@@ -1050,6 +1215,7 @@ def export_ppc(
                 "Cost Center": ppc.cost_center,
                 "Purpose": ppc.purpose,
                 "Amount": ppc.amount,
+                "Currency": "IDR",
                 "Due Date": ppc.due_date,
                 "Status": status,
             }
@@ -1076,17 +1242,16 @@ def export_ppc(
         # Auto fit column width
         worksheet = writer.sheets["Advance"]
 
-        for column_cells in worksheet.columns:
-
-            length = max(
-                len(str(cell.value))
-                if cell.value is not None else 0
-                for cell in column_cells
-            )
-
-            worksheet.column_dimensions[
-                column_cells[0].column_letter
-            ].width = max(length + 3, 15)
+        format_excel_worksheet(
+            worksheet,
+            date_columns=[
+                "Request Date",
+                "Due Date"
+            ],
+            currency_columns=[
+                "Amount"
+            ]
+        )
 
     output.seek(0)
 
@@ -1165,6 +1330,7 @@ def export_check(
             "Bank": f"Bank {item.bank_type.value}" if item.bank_type else "",
             "Nomor Cek": item.check_number,
             "Nominal": item.amount,
+            "Currency": "IDR",
             "Vendor": item.vendor_name,
             "Nomor Rekening": item.vendor_account_number or "-",
             "Status": item.transaction_type.value if item.transaction_type else "",
@@ -1184,23 +1350,18 @@ def export_check(
             index=False
         )
 
-        worksheet = writer.sheets[
-            "History Cek"
-        ]
-        for column_cells in worksheet.columns:
-            length = max(
-                len(str(cell.value))
-                if cell.value is not None
-                else 0
-                for cell in column_cells
-            )
+        worksheet = writer.sheets["History Cek"]
 
-            worksheet.column_dimensions[
-                column_cells[0].column_letter
-            ].width = max(
-                length + 3,
-                15
-            )
+        format_excel_worksheet(
+            worksheet,
+            date_columns=[
+                "Tanggal"
+            ],
+            currency_columns=[
+                "Nominal"
+            ]
+        )
+        
     output.seek(0)
     filename = "export_historycek.xlsx"
 
@@ -1216,3 +1377,67 @@ def export_check(
             f'attachment; filename="{filename}"'
         }
     )
+
+# EXPORT VENDOR
+@router.get("/vendor")
+def export_vendor(
+    db: Session = Depends(get_db)
+):
+    try:
+        vendors = db.query(Vendor).order_by(Vendor.vendor_name.asc()).all()
+
+        if not vendors:
+            raise HTTPException(
+                status_code=404,
+                detail="Tidak ada data Vendor."
+            )
+
+        rows = []
+        for item in vendors:
+            rows.append({
+                "Nama Vendor": item.vendor_name,
+                "Nama Bank": item.bank_name,
+                "Nama Akun Bank": item.bank_account_name,
+                "No Rekening": item.bank_account_no,
+            })
+
+        df = pd.DataFrame(rows)
+        output = BytesIO()
+
+        with pd.ExcelWriter(
+            output,
+            engine="openpyxl"
+        ) as writer:
+            df.to_excel(
+                writer,
+                sheet_name="Vendor",
+                index=False
+            )
+
+            worksheet = writer.sheets["Vendor"]
+            format_excel_worksheet(
+                worksheet
+            )
+
+        output.seek(0)
+        filename = f"vendor {datetime.now().strftime('%d%m%Y_%H%M%S')}.xlsx"
+
+        return StreamingResponse(
+            output,
+            media_type=(
+                "application/"
+                "vnd.openxmlformats-officedocument."
+                "spreadsheetml.sheet"
+            ),
+            headers={
+                "Content-Disposition":
+                f'attachment; filename="{filename}"'
+            }
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )

@@ -1,7 +1,6 @@
 from datetime import date, timedelta
 from typing import Optional
 from enum import Enum
-import calendar
 from fastapi import (
     APIRouter,
     Depends
@@ -105,53 +104,20 @@ def dashboard_summary(
 
         return days
 
-    # Jika user melakukan filter tanggal
-    if start_date and end_date:
+    # Selalu ambil rentang tanggal dari data yang sudah ter-filter
+    # agar total_expense dan total_days selalu konsisten
+    actual_range = query.with_entities(
+        func.min(TransactionModel.posting_date),
+        func.max(TransactionModel.posting_date)
+    ).first()
 
-        total_days = count_workdays(
-            start_date,
-            end_date
-        )
+    actual_first = actual_range[0] if actual_range else None
+    actual_last  = actual_range[1] if actual_range else None
 
-    # Jika tidak ada filter
+    if actual_first and actual_last:
+        total_days = count_workdays(actual_first, actual_last)
     else:
-
-        # Ambil tanggal transaksi terakhir
-        latest_date = db.query(
-            func.max(
-                TransactionModel.posting_date
-            )
-        ).scalar()
-
-        if latest_date:
-
-            # Awal bulan
-            first_date = date(
-                latest_date.year,
-                latest_date.month,
-                1
-            )
-
-            # Akhir bulan
-            last_day = calendar.monthrange(
-                latest_date.year,
-                latest_date.month
-            )[1]
-
-            last_date = date(
-                latest_date.year,
-                latest_date.month,
-                last_day
-            )
-
-            total_days = count_workdays(
-                first_date,
-                last_date
-            )
-
-        else:
-
-            total_days = 1
+        total_days = 1
 
     average_daily_expense = (
         total_expense / total_days
