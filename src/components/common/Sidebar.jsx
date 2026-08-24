@@ -37,7 +37,7 @@ const menu = [
     title: "",
     items: [
       {
-        name: "Settlement",
+        name: "Reimbursement & Settlement",
         icon: <FaWallet />,
         path: "/Settlement",
       },
@@ -126,17 +126,17 @@ export default function Sidebar() {
                 key={item.name}
                 to={item.path}
                 className={({ isActive }) =>
-                  `mx-4 my-3 flex items-center h-[45px] rounded-lg px-4 transition-all duration-300 
+                  `mx-4 my-3 flex items-center min-h-[45px] h-auto rounded-lg px-3 py-2 transition-all duration-300 
                   ${isActive
                     ? "bg-[#59616F] text-white shadow"
                     : "text-gray-200 hover:bg-[#59616F]"
                   }`
-                } style={{ marginTop: "5px", marginBottom: "5px" }}
+                } style={{ marginBottom: "5px", marginTop: "5px" }}
               >
 
                 {/* ICON */}
 
-                <div className="w-8 flex justify-center text-[18px]">
+                <div className="w-8 flex-shrink-0 flex justify-center text-[20px]">
 
                   {item.icon}
 
@@ -144,7 +144,7 @@ export default function Sidebar() {
 
                 {/* TEXT */}
 
-                <span className="ml-3 text-[15px] font-medium">
+                <span className="ml-3 text-[14px] font-medium leading-snug break-words">
 
                   {item.name}
 
