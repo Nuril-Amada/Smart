@@ -105,11 +105,11 @@ export default function SummaryCard({ data = {} }) {
 
                             {/* Text */}
                             <div>
-                                <p className="text-sm font-semibold text-gray-700">
+                                <p className="text-[12.5px] font-semibold text-gray-700">
                                     {item.title}
                                 </p>
 
-                                <h2 className="text-xl font-bold text-gray-800 leading-tight mt-1">
+                                <h2 className="text-[18px] font-bold text-gray-800 leading-tight mt-1">
                                     {displayValue}
                                 </h2>
 
