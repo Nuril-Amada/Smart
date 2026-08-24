@@ -37,7 +37,7 @@ export default function KPICard({ data = {} }) {
 
           <div
             key={item.key}
-            className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-lg transition overflow-hidden"
+            className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg transition overflow-hidden"
           >
 
             {/* Garis Atas */}
