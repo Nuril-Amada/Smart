@@ -11,7 +11,7 @@ import { formatRupiah } from "../../utils/formatCurrency";
 // Backend/API cukup kirim value per "key" ini, style tetap diatur di frontend.
 const cards = [
     {
-        title: "Total Settlement",
+        title: "Total Reimbursement & Settlement",
         key: "total",
         altKey: "total_settlement",
         border: "border-gray-300",
@@ -22,7 +22,7 @@ const cards = [
         currency: false,
     },
     {
-        title: "Advance Settlement",
+        title: "Settlement",
         key: "advance",
         altKey: "total_advance",
         border: "border-gray-300",
@@ -33,7 +33,7 @@ const cards = [
         currency: false,
     },
     {
-        title: "Reimbursement Settlement",
+        title: "Reimbursement",
         key: "reimbursement",
         altKey: "total_reimbursement",
         border: "border-gray-300",
@@ -44,7 +44,7 @@ const cards = [
         currency: false,
     },
     {
-        title: "Total Amount Settlement",
+        title: "Total Amount Reimbursement & Settlement",
         key: "total_amount",
         altKey: "total_settlement_amount",
         border: "border-gray-300",
@@ -71,27 +71,29 @@ export default function SummaryCard({ data = {} }) {
                             : value
                         : "-";
 
-
                 return (
                     <div
                         key={item.key}
-                        className={`bg-white rounded-xl border ${item.border} shadow-sm p-6 hover:shadow-md transition-all duration-300`}
+                        className={`bg-white rounded-xl border ${item.border} shadow-sm p-6 hover:shadow-md transition-all duration-300 flex flex-col h-full`}
                     >
-                        <div className="flex items-center gap-2" style={{ marginLeft: "10px", marginTop: "10px", marginBottom: "10px" }}>
+                        {/* wrapper ini yang bikin konten (icon + text) selalu
+                            center secara vertikal di dalam card, terlepas dari
+                            tinggi card (yang mengikuti card terpanjang di grid row) */}
+                        <div className="flex items-center gap-3 flex-1" style={{ marginLeft: "10px", marginTop: "10px", marginBottom: "10px" }}>
                             {/* Icon */}
                             <div
-                                className={`w-12 h-12 rounded-full flex items-center justify-center text-xl ${item.iconBg} ${item.iconColor}`}
+                                className={`w-12 h-12 rounded-full flex items-center justify-center text-lg shrink-0 ${item.iconBg} ${item.iconColor}`}
                             >
                                 {item.icon}
                             </div>
 
                             {/* Text */}
-                            <div>
-                                <p className="text-sm font-semibold text-gray-700">
+                            <div className="flex flex-col">
+                                <p className="text-[12.5px] font-semibold text-gray-700">
                                     {item.title}
                                 </p>
 
-                                <h2 className="text-xl font-bold text-gray-800 leading-tight mt-1">
+                                <h2 className="text-[18px] font-bold text-gray-800 leading-tight mt-1">
                                     {displayValue}
                                 </h2>
 
