@@ -28,7 +28,12 @@ export default function FilterDashboard({
   onDeletePeriod,
 }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [successMessage, setSuccessMessage] = useState("");
+  const [toast, setToast] = useState(null); // { type: "success" | "error", message: string }
+
+  const showToast = (message, type = "success") => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   // const handleFilter = () => {
   //   if (onFilter) {
@@ -43,25 +48,59 @@ export default function FilterDashboard({
     if (onReset) {
       onReset();
     }
-    setSuccessMessage("Filter berhasil di-reset.");
-    setTimeout(() => setSuccessMessage(""), 3000);
+    showToast("Filter berhasil di-reset.", "success");
   };
 
   const handleOpenDelete = () => {
     setShowDeleteModal(true);
   };
 
-  const handleConfirmDelete = () => {
-    if (onDeletePeriod) {
-      onDeletePeriod({
-        tanggalAwal,
-        tanggalAkhir,
-        source,
-      });
+  const handleConfirmDelete = async () => {
+    try {
+      let message = "Data periode berhasil dihapus.";
+      if (onDeletePeriod) {
+        const result = await onDeletePeriod({
+          tanggalAwal,
+          tanggalAkhir,
+          source,
+        });
+        if (typeof result === "string" && result) message = result;
+      }
+      setShowDeleteModal(false);
+      showToast(message, "success");
+    } catch (err) {
+      setShowDeleteModal(false);
+      console.error("Gagal menghapus data periode:", err);
+      showToast(err?.message || "Gagal menghapus data periode.", "error");
     }
-    setShowDeleteModal(false);
-    setSuccessMessage("Data periode berhasil dihapus.");
-    setTimeout(() => setSuccessMessage(""), 3000);
+  };
+
+  const handleImportFile = async (file) => {
+    if (!onImport) return;
+    try {
+      const result = await onImport(file);
+      showToast(
+        typeof result === "string" && result ? result : "File berhasil diimport.",
+        "success"
+      );
+    } catch (err) {
+      console.error("Gagal mengimport file:", err);
+      showToast(err?.message || "Gagal mengimport file.", "error");
+    }
+  };
+
+  const handleExport = async (exportFn, fallbackLabel) => {
+    if (!exportFn) return;
+    try {
+      const result = await exportFn();
+      showToast(
+        typeof result === "string" && result ? result : `${fallbackLabel} berhasil.`,
+        "success"
+      );
+    } catch (err) {
+      console.error(`Gagal ${fallbackLabel}:`, err);
+      showToast(err?.message || `Gagal ${fallbackLabel}.`, "error");
+    }
   };
 
   const isPeriodSelected = Boolean(tanggalAwal && tanggalAkhir);
@@ -78,8 +117,8 @@ export default function FilterDashboard({
         }
       `}</style>
 
-      {/* ── Toast Notifikasi Sukses (Sama seperti di Master Data) ── */}
-      {successMessage && (
+      {/* ── Toast Notifikasi (hijau = sukses, merah = error) ── */}
+      {toast && (
         <div
           style={{
             position: "fixed",
@@ -87,18 +126,23 @@ export default function FilterDashboard({
             left: "50%",
             transform: "translate(-50%, 0)",
             zIndex: 100,
-            background: "#ecfdf5",
-            border: "1.5px solid #6ee7b7",
-            color: "#047857",
+            background: toast.type === "error" ? "#fef2f2" : "#ecfdf5",
+            border: toast.type === "error" ? "1.5px solid #fca5a5" : "1.5px solid #6ee7b7",
+            color: toast.type === "error" ? "#b91c1c" : "#047857",
             borderRadius: "10px",
             padding: "10px 18px",
             fontSize: "13px",
             fontWeight: 600,
-            boxShadow: "0 8px 24px rgba(16,185,129,0.25)",
+            boxShadow:
+              toast.type === "error"
+                ? "0 8px 24px rgba(239,68,68,0.25)"
+                : "0 8px 24px rgba(16,185,129,0.25)",
             animation: "toastIn 0.25s ease",
+            maxWidth: "90vw",
+            textAlign: "center",
           }}
         >
-          {successMessage}
+          {toast.message}
         </div>
       )}
 
@@ -195,8 +239,9 @@ export default function FilterDashboard({
                 accept=".xlsx,.xls"
                 className="hidden"
                 onChange={(e) => {
-                  if (e.target.files.length > 0 && onImport) {
-                    onImport(e.target.files[0]);
+                  if (e.target.files.length > 0) {
+                    handleImportFile(e.target.files[0]);
+                    e.target.value = ""; // reset biar bisa import file yang sama lagi
                   }
                 }}
               />
@@ -237,7 +282,7 @@ export default function FilterDashboard({
                 >
                   <button
                     type="button"
-                    onClick={onExportExcel}
+                    onClick={() => handleExport(onExportExcel, "Export Excel")}
                     className="w-full text-left px-6 py-4 text-gray-600 hover:bg-gray-100 cursor-pointer"
                     style={{ padding: "2px 10px" }}
                   >
@@ -245,7 +290,7 @@ export default function FilterDashboard({
                   </button>
                   <button
                     type="button"
-                    onClick={onExportPDF}
+                    onClick={() => handleExport(onExportPDF, "Export PDF")}
                     className="w-full text-left px-6 py-4 text-gray-600 hover:bg-gray-100 cursor-pointer"
                     style={{ padding: "2px 10px" }}
                   >
