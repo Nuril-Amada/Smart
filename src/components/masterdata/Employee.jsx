@@ -441,7 +441,7 @@ export default function Employee() {
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                background: "#b91c1c",
+                                background: "#363D48",
                                 color: "#fff",
                                 border: "none",
                                 borderRadius: "10px",
