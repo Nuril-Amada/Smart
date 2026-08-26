@@ -1005,7 +1005,7 @@ export default function Table({
                             <button
                                 type="button"
                                 onClick={handleEnterDeleteMode}
-                                className="flex items-center gap-2 bg-red-700 hover:bg-red-800 text-white text-sm font-medium rounded-lg transition-colors"
+                                className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors"
                                 style={{ padding: "8px 10px" }}
                                 title="Pilih data untuk dihapus"
                             >
