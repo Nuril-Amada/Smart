@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { FaTrash } from "react-icons/fa";
-
 function formatDateDisplay(dateStr) {
   if (!dateStr) return "-";
   try {
@@ -61,7 +60,6 @@ export default function FilterDashboard({
   };
 
   const isPeriodSelected = Boolean(tanggalAwal && tanggalAkhir);
-
   return (
     <>
       <div
@@ -78,6 +76,7 @@ export default function FilterDashboard({
           style={{ padding: "15px" }}
         >
           <div className="flex flex-nowrap justify-between items-end gap-2">
+
 
             {/* Left Side: Filter */}
             <div className="flex flex-nowrap items-end gap-2">
@@ -119,7 +118,7 @@ export default function FilterDashboard({
               >
                 Reset
               </button>
-            </div>
+            </div >
 
             {/* Right Side: Toggle Lokasi + Actions + Trash Icon */}
             <div className="flex flex-nowrap items-end gap-2">
@@ -161,6 +160,7 @@ export default function FilterDashboard({
                   }
                 }}
               />
+
               <button
                 type="button"
                 onClick={() => document.getElementById("importExcel").click()}
@@ -179,7 +179,6 @@ export default function FilterDashboard({
                 >
                   Export Report
                 </button>
-
                 <div
                   className="
                     absolute
@@ -204,7 +203,6 @@ export default function FilterDashboard({
                   >
                     Export Excel
                   </button>
-
                   <button
                     type="button"
                     onClick={onExportPDF}
@@ -221,7 +219,7 @@ export default function FilterDashboard({
                 type="button"
                 onClick={handleOpenDelete}
                 title="Hapus data berdasarkan periode"
-                className="flex items-center gap-2 bg-gray-700 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+                className="flex items-center gap-2 bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors cursor-pointer"
                 style={{ padding: "8px 10px" }}
               >
                 <FaTrash className="text-xs" />
@@ -230,9 +228,10 @@ export default function FilterDashboard({
             </div>
 
           </div>
-        </div>
-      </div>
 
+        </div>
+
+      </div>
       {/* MODAL KONFIRMASI HAPUS DATA PERIODE - Gaya & Margin/Padding sama persis dengan Master Data */}
       {showDeleteModal && (
         <div
