@@ -28,6 +28,7 @@ export default function FilterDashboard({
   onDeletePeriod,
 }) {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // const handleFilter = () => {
   //   if (onFilter) {
@@ -42,6 +43,8 @@ export default function FilterDashboard({
     if (onReset) {
       onReset();
     }
+    setSuccessMessage("Filter berhasil di-reset.");
+    setTimeout(() => setSuccessMessage(""), 3000);
   };
 
   const handleOpenDelete = () => {
@@ -57,11 +60,48 @@ export default function FilterDashboard({
       });
     }
     setShowDeleteModal(false);
+    setSuccessMessage("Data periode berhasil dihapus.");
+    setTimeout(() => setSuccessMessage(""), 3000);
   };
 
   const isPeriodSelected = Boolean(tanggalAwal && tanggalAkhir);
   return (
     <>
+      <style>{`
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-12px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes toastIn {
+          from { opacity: 0; transform: translate(-50%, -12px); }
+          to   { opacity: 1; transform: translate(-50%, 0); }
+        }
+      `}</style>
+
+      {/* ── Toast Notifikasi Sukses (Sama seperti di Master Data) ── */}
+      {successMessage && (
+        <div
+          style={{
+            position: "fixed",
+            top: "20px",
+            left: "50%",
+            transform: "translate(-50%, 0)",
+            zIndex: 100,
+            background: "#ecfdf5",
+            border: "1.5px solid #6ee7b7",
+            color: "#047857",
+            borderRadius: "10px",
+            padding: "10px 18px",
+            fontSize: "13px",
+            fontWeight: 600,
+            boxShadow: "0 8px 24px rgba(16,185,129,0.25)",
+            animation: "toastIn 0.25s ease",
+          }}
+        >
+          {successMessage}
+        </div>
+      )}
+
       <div
         className="w-full flex"
         style={{
