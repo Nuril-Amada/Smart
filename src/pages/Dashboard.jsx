@@ -15,6 +15,7 @@ export default function Dashboard() {
 
   const [tanggalAwal, setTanggalAwal] = useState("");
   const [tanggalAkhir, setTanggalAkhir] = useState("");
+  const [source, setSource] = useState("rungkut");
 
   // State untuk data dashboard
   const [dashboardData, setDashboardData] = useState({
@@ -58,6 +59,8 @@ export default function Dashboard() {
     <div className="space-y-8">
 
       <FilterDashboard
+        source={source}
+        setSource={setSource}
         tanggalAwal={tanggalAwal}
         setTanggalAwal={setTanggalAwal}
         tanggalAkhir={tanggalAkhir}
