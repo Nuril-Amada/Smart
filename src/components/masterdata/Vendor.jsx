@@ -336,7 +336,7 @@ export default function Vendor() {
                             onClick={handleEnterDeleteMode}
                             style={{
                                 display: "flex", alignItems: "center", justifyContent: "center",
-                                background: "#b91c1c", color: "#fff", border: "none", borderRadius: "10px",
+                                background: "#363D48", color: "#fff", border: "none", borderRadius: "10px",
                                 padding: "9px 12px", fontSize: "13px", fontWeight: 600, cursor: "pointer",
                             }}
                             title="Pilih data untuk dihapus"
