@@ -667,7 +667,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
             type="button"
             onClick={handleDeleteBatchClick}
             disabled={checkedRows.length === 0}
-            className="flex items-center gap-2 bg-red-700 hover:bg-red-800 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
+            className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
             style={{ padding: "8px 10px" }}
             title={checkedRows.length === 0 ? "Pilih data terlebih dahulu" : `Hapus ${checkedRows.length} data terpilih`}
           >
