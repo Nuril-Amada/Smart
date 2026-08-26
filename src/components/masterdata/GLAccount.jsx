@@ -144,7 +144,7 @@ export default function GLAccount() {
                 await getAllGLAccount(term);
             setRows(data);
         }
-        catch (error) {console.log(error);}
+        catch (error) { console.log(error); }
     };
 
     useEffect(() => {
@@ -152,7 +152,7 @@ export default function GLAccount() {
     }, []);
 
     useEffect(() => {
-        const timeout = setTimeout(() => {loadData(searchTerm);}, 300);
+        const timeout = setTimeout(() => { loadData(searchTerm); }, 300);
         return () => clearTimeout(timeout);
     }, [searchTerm]);
 
@@ -345,7 +345,7 @@ export default function GLAccount() {
                             onClick={handleEnterDeleteMode}
                             style={{
                                 display: "flex", alignItems: "center", justifyContent: "center",
-                                background: "#b91c1c", color: "#fff", border: "none", borderRadius: "10px",
+                                background: "#363D48", color: "#fff", border: "none", borderRadius: "10px",
                                 padding: "9px 12px", fontSize: "13px", fontWeight: 600, cursor: "pointer",
                             }}
                             title="Pilih data untuk dihapus"
