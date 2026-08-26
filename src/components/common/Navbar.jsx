@@ -13,7 +13,7 @@ export default function Navbar() {
     "/CetakCek": "Cetak Cek",
     "/Settlement": "Dashboard Settlement",
     "/Advance": "Dashboard Advance",
-    "/CashOpname": "Cash Opname", 
+    "/CashOpname": "Cash Opname",
     "/MasterData": "Master Data",
   };
 
@@ -34,7 +34,7 @@ export default function Navbar() {
       <div className="flex items-center gap-6" style={{ marginRight: "30px" }}>
 
         {/* User Profile */}
-        <div className="flex items-center gap-3">
+        {/* <div className="flex items-center gap-3">
           <FaUserCircle className="text-3xl text-white" />
 
           <div className="text-right">
@@ -45,7 +45,7 @@ export default function Navbar() {
               PT SMART Tbk.
             </p>
           </div>
-        </div>
+        </div> */}
 
       </div>
 
