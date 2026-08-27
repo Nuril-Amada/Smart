@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiClock, FiUser, FiFileText, FiCheckCircle, FiMail, FiTrash, FiX } from 'react-icons/fi';
-import { getReminderLogs, getGenerateEml, markReminderSent } from '../api/notification';
-import { deleteAdvanceRequest } from '../api/advance';
+// import { getReminderLogs, getGenerateEml, markReminderSent } from '../api/notification';
+// import { deleteAdvanceRequest } from '../api/advance';
 
 function Notification() {
     const [loading, setLoading] = useState(true);
