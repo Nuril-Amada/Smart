@@ -182,29 +182,7 @@ pip install -r requirements.txt
 
 ---
 
-### 4. Configure Environment
-
-Create `.env`
-
-```env
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=refcon_db
-DB_USER=refcon_user
-DB_PASSWORD=********
-
-APP_HOST=127.0.0.1
-APP_PORT=8000
-
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=
-SMTP_PASSWORD=
-```
-
----
-
-### 5. Initialize Database
+### 4. Initialize Database
 
 ```bash
 python setup_db.py
@@ -212,7 +190,7 @@ python setup_db.py
 
 ---
 
-### 6. Run Server
+### 5. Run Server
 
 ```bash
 uvicorn main:app --reload
