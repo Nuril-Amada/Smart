@@ -67,7 +67,7 @@ export default function FilterDashboard({
         if (typeof result === "string" && result) message = result;
       }
       setShowDeleteModal(false);
-      showToast(message, "success");
+      showToast(message, "delete"); // ← sukses hapus tetap merah
     } catch (err) {
       setShowDeleteModal(false);
       console.error("Gagal menghapus data periode:", err);
@@ -126,15 +126,15 @@ export default function FilterDashboard({
             left: "50%",
             transform: "translate(-50%, 0)",
             zIndex: 100,
-            background: toast.type === "error" ? "#fef2f2" : "#ecfdf5",
-            border: toast.type === "error" ? "1.5px solid #fca5a5" : "1.5px solid #6ee7b7",
-            color: toast.type === "error" ? "#b91c1c" : "#047857",
+            background: toast.type === "error" || toast.type === "delete" ? "#fef2f2" : "#ecfdf5",
+            border: toast.type === "error" || toast.type === "delete" ? "1.5px solid #fca5a5" : "1.5px solid #6ee7b7",
+            color: toast.type === "error" || toast.type === "delete" ? "#b91c1c" : "#047857",
             borderRadius: "10px",
             padding: "10px 18px",
             fontSize: "13px",
             fontWeight: 600,
             boxShadow:
-              toast.type === "error"
+              toast.type === "error" || toast.type === "delete"
                 ? "0 8px 24px rgba(239,68,68,0.25)"
                 : "0 8px 24px rgba(16,185,129,0.25)",
             animation: "toastIn 0.25s ease",
