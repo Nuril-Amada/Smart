@@ -30,14 +30,19 @@ const BANK_COMPONENTS = {
   "Bank Maybank": MaybankCheck,
 };
 
-const BANK_OPTIONS = ["Bank Mandiri", "Bank BCA", "Bank Sinarmas", "Maybank"];
+const BANK_OPTIONS = ["Bank Mandiri", "Bank BCA", "Bank Sinarmas", "Maybank Indonesia"];
 
 // Mapping nama bank frontend → nilai enum BankType backend
 const BANK_TYPE_MAP = {
   "Bank Mandiri": "Mandiri",
+  Mandiri: "Mandiri",
   "Bank BCA": "BCA",
+  BCA: "BCA",
   "Bank Sinarmas": "Sinarmas",
-  "Maybank": "Maybank",
+  Sinarmas: "Sinarmas",
+  "Maybank Indonesia": "Maybank",
+  "Bank Maybank": "Maybank",
+  Maybank: "Maybank",
 };
 
 const BANK_LAYOUTS = {
@@ -121,9 +126,9 @@ function formatRupiah(amount) {
   const decStr = dotIdx >= 0 ? str.slice(dotIdx + 1) : "";
   const intFormatted = Number(intStr).toLocaleString("id-ID");
   if (decStr.length > 0) {
-    return `Rp ${intFormatted},${decStr}`;
+    return `${intFormatted},${decStr}`;
   }
-  return `Rp ${intFormatted}`;
+  return `${intFormatted}`;
 }
 
 // Format nominal tampilan tanpa simbol Rp untuk preview cek
@@ -187,7 +192,7 @@ function exportToClientExcel(rows) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `export_historycek.xlsx`;
+  link.download = `History Cek.xlsx`;
   document.body.appendChild(link);
   link.click();
   link.remove();
@@ -243,12 +248,12 @@ export default function CetakCek() {
   const [deleteBatchOpen, setDeleteBatchOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState(null);
 
-  const showToast = (msg) => {
-    setSuccessMessage(msg);
+  const showToast = (msg, type = "success") => {
+    setSuccessMessage({ text: msg, type });
     setTimeout(() => {
-      setSuccessMessage("");
+      setSuccessMessage(null);
     }, 3000);
   };
 
@@ -316,25 +321,25 @@ export default function CetakCek() {
   // Validasi field wajib, dipakai bareng oleh Simpan & Cetak
   const validateForm = (formData = form) => {
     if (!formData.bank) {
-      showToast("Silakan pilih Bank terlebih dahulu.");
+      showToast("Silakan pilih Bank terlebih dahulu.", "error");
       return false;
     }
     if (!formData.nomorCek) {
-      showToast("Silakan isi Nomor Cek.");
+      showToast("Silakan isi Nomor Cek.", "error");
       return false;
     }
     if (!formData.vendor) {
-      showToast("Silakan isi atau pilih Nama Vendor / PT.");
+      showToast("Silakan isi atau pilih Nama Vendor / PT.", "error");
       return false;
     }
     if (formData.jenisCek === "Transfer") {
       if (!formData.bankPenerima || !formData.nomorRekening) {
-        showToast("Untuk transaksi Transfer, Nama Bank Penerima dan Nomor Rekening wajib diisi.");
+        showToast("Untuk transaksi Transfer, Nama Bank Penerima dan Nomor Rekening wajib diisi.", "error");
         return false;
       }
     }
     if (!formData.nominal || Number(formData.nominal) <= 0) {
-      showToast("Masukkan Jumlah Nominal yang valid.");
+      showToast("Masukkan Jumlah Nominal yang valid.", "error");
       return false;
     }
     return true;
@@ -362,7 +367,7 @@ export default function CetakCek() {
       return res;
     } catch (err) {
       const msg = err?.response?.data?.detail || "Gagal menyimpan data cek.";
-      showToast(msg);
+      showToast(msg, "error");
       return null;
     }
   };
@@ -394,7 +399,7 @@ export default function CetakCek() {
     if (lower.includes("mandiri")) return "Bank Mandiri";
     if (lower.includes("bca")) return "Bank BCA";
     if (lower.includes("sinarmas")) return "Bank Sinarmas";
-    if (lower.includes("maybank")) return "Maybank";
+    if (lower.includes("maybank")) return "Maybank Indonesia";
     return b;
   }
 
@@ -508,7 +513,7 @@ export default function CetakCek() {
       setDateTo("");
       setFilterBank("");
 
-      showToast("Data cek terpilih berhasil dihapus.");
+      showToast("Data cek terpilih berhasil dihapus.", "delete");
     } catch (err) {
       const msg = err?.response?.data?.detail || "Gagal menghapus data cek.";
       setDeleteError(msg);
@@ -521,7 +526,11 @@ export default function CetakCek() {
     return history.filter((item) => {
       if (dateFrom && item.tanggal < dateFrom) return false;
       if (dateTo && item.tanggal > dateTo) return false;
-      if (filterBank && item.bank !== filterBank) return false;
+      if (filterBank) {
+        const cleanFilter = filterBank.replace(/^Bank\s+/i, "").toLowerCase();
+        const cleanItemBank = (item.bank || item.bank_type || "").replace(/^Bank\s+/i, "").toLowerCase();
+        if (cleanItemBank !== cleanFilter) return false;
+      }
       return true;
     });
   }, [history, dateFrom, dateTo, filterBank]);
@@ -554,7 +563,7 @@ export default function CetakCek() {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = "export_historycek.xlsx";
+      link.download = "History Cek.xlsx";
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -562,7 +571,7 @@ export default function CetakCek() {
     } catch (err) {
       console.warn("Backend Excel export failed, using fallback client export:", err);
       if (filteredHistory.length === 0) {
-        showToast(err?.response?.data?.detail || "Tidak ada data history cek untuk di-export.");
+        showToast(err?.response?.data?.detail || "Tidak ada data history cek untuk di-export.", "error");
         return;
       }
       exportToClientExcel(filteredHistory);
@@ -595,14 +604,15 @@ export default function CetakCek() {
       htmlContent = generatePrintHtml(targetForm);
     } catch (error) {
       console.error("Gagal generate data cetak:", error);
-      showToast(`Terjadi kesalahan saat memproses cetak: ${error.message || error}`);
+      showToast(`Terjadi kesalahan saat memproses cetak: ${error.message || error}`, "error");
       return;
     }
 
     const printWin = window.open("", "_blank", "width=800,height=600");
     if (!printWin) {
       showToast(
-        "Popup diblokir oleh browser. Izinkan popup untuk halaman ini, lalu coba lagi."
+        "Popup diblokir oleh browser. Izinkan popup untuk halaman ini, lalu coba lagi.",
+        "error"
       );
       return;
     }
@@ -636,7 +646,7 @@ export default function CetakCek() {
       pdf.save(`cek-${targetForm.bank || "preview"}-${targetForm.nomorCek || Date.now()}.pdf`);
     } catch (error) {
       console.error("Gagal membuat PDF:", error);
-      showToast(`Terjadi kesalahan saat memproses PDF: ${error.message || error}`);
+      showToast(`Terjadi kesalahan saat memproses PDF: ${error.message || error}`, "error");
     }
   };
 
@@ -657,18 +667,21 @@ export default function CetakCek() {
             left: "50%",
             transform: "translate(-50%, 0)",
             zIndex: 9999,
-            background: "#ecfdf5",
-            border: "1.5px solid #6ee7b7",
-            color: "#047857",
+            background: successMessage.type === "error" || successMessage.type === "delete" ? "#fef2f2" : "#ecfdf5",
+            border: successMessage.type === "error" || successMessage.type === "delete" ? "1.5px solid #fca5a5" : "1.5px solid #6ee7b7",
+            color: successMessage.type === "error" || successMessage.type === "delete" ? "#b91c1c" : "#047857",
             borderRadius: "10px",
             padding: "10px 18px",
             fontSize: "13px",
             fontWeight: 600,
-            boxShadow: "0 8px 24px rgba(16,185,129,0.25)",
+            boxShadow:
+              successMessage.type === "error" || successMessage.type === "delete"
+                ? "0 8px 24px rgba(239,68,68,0.25)"
+                : "0 8px 24px rgba(16,185,129,0.25)",
             animation: "toastIn 0.25s ease",
           }}
         >
-          {successMessage}
+          {successMessage.text}
         </div>
       )}
 
@@ -832,7 +845,7 @@ export default function CetakCek() {
                   type="button"
                   onClick={handleEnterDeleteMode}
                   title="Pilih data untuk dihapus"
-                  className="flex items-center justify-center bg-red-700 hover:bg-red-800 text-white text-sm font-medium rounded-lg transition-colors"
+                  className="flex items-center justify-center bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors"
                   style={{ padding: "8px 10px" }}
                 >
                   <FaTrash />
@@ -862,7 +875,6 @@ export default function CetakCek() {
                   <FaTrash className="text-xs" />
                   Hapus {selectedIds.size > 0 ? `(${selectedIds.size})` : ""}
                 </button>
-
                 <button
                   type="button"
                   onClick={() => {
@@ -906,11 +918,11 @@ export default function CetakCek() {
                 <th className="p-3 font-medium border border-gray-300 text-center">Tanggal</th>
                 <th className="p-3 font-medium border border-gray-300 text-center">Bank</th>
                 <th className="p-3 font-medium border border-gray-300 text-center">Nomor Cek</th>
-                <th className="p-3 font-medium border border-gray-300 text-center">Nominal</th>
+                <th className="p-3 font-medium border border-gray-300 text-center">Nominal (IDR)</th>
                 <th className="p-3 font-medium border border-gray-300 text-center">Vendor</th>
                 <th className="p-3 font-medium border border-gray-300 text-center">No Rek</th>
-                <th className="p-3 font-medium border border-gray-300 text-center">Status</th>
-                <th className="p-3 font-medium border border-gray-300 text-center">Aksi</th>
+                <th className="p-3 font-medium border border-gray-300 text-center">Jenis Cek</th>
+                <th className="p-3 font-medium border border-gray-300 text-center">Edit</th>
                 {deleteMode && (
                   <th className="p-3 font-medium border border-gray-300 text-center"></th>
                 )}
@@ -977,7 +989,7 @@ export default function CetakCek() {
                               e.stopPropagation();
                               handleEditRow(item);
                             }}
-                            className="bg-blue-600 hover:bg-blue-700 text-white p-1.5 rounded-md"
+                            className="text-black p-1.5 rounded-md"
                             style={{ padding: "5px 5px" }}
                             title="Edit / Scroll ke Form"
                           >
