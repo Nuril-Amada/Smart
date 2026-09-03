@@ -3,7 +3,6 @@ import {
     FaCashRegister,
     FaSave,
     FaPrint,
-    FaDownload,
     FaSearch,
     FaTimes,
     FaChevronLeft,
@@ -11,7 +10,6 @@ import {
     FaTrash,
     FaTrashAlt,
     FaFileExport,
-    FaExclamationTriangle,
     FaEdit,
 } from "react-icons/fa";
 import jsPDF from "jspdf";
@@ -859,7 +857,7 @@ export default function CashOpname() {
     const [history, setHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(true);
     const [page, setPage] = useState(1);
-    const perPage = 10;
+    const perPage = 5;
 
     const [editingId, setEditingId] = useState(null); // null = mode buat baru
     const formRef = useRef(null);
@@ -1393,7 +1391,7 @@ export default function CashOpname() {
                                 style={{
                                     display: "inline-flex", alignItems: "center", justifyContent: "center",
                                     width: "32px", height: "32px",
-                                    background: "#b91c1c", color: "#fff", border: "none",
+                                    background: "#363D48", color: "#fff", border: "none",
                                     borderRadius: "8px", cursor: "pointer",
                                 }}
                             >
