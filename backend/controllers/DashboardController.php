@@ -13,11 +13,17 @@ class DashboardController {
     }
 
     private function countWorkdays(DateTime $start, DateTime $end): int {
+        if ($start > $end) {
+            return 0;
+        }
         $days = 0;
         $current = clone $start;
-        while ($current <= $end) {
+        $current->setTime(0, 0, 0);
+        $endDate = (clone $end)->setTime(0, 0, 0);
+
+        while ($current <= $endDate) {
             $dayOfWeek = (int)$current->format('N');
-            if ($dayOfWeek < 6) { // Monday = 1 ... Friday = 5
+            if ($dayOfWeek >= 1 && $dayOfWeek <= 5) { // Senin = 1 ... Jumat = 5 (5 Hari Kerja)
                 $days++;
             }
             $current->modify('+1 day');
@@ -70,15 +76,32 @@ class DashboardController {
         $minDateStr = $row['min_date'] ?? null;
         $maxDateStr = $row['max_date'] ?? null;
 
-        if ($minDateStr && $maxDateStr) {
-            $minDate = new DateTime($minDateStr);
-            $maxDate = new DateTime($maxDateStr);
-            $totalDays = $this->countWorkdays($minDate, $maxDate);
+        $startObj = null;
+        $endObj = null;
+
+        if ($startDate) {
+            $startObj = new DateTime($startDate);
+        } else if ($minDateStr) {
+            $startObj = new DateTime($minDateStr);
+        }
+
+        if ($endDate) {
+            $endObj = new DateTime($endDate);
+        } else if ($maxDateStr) {
+            $endObj = new DateTime($maxDateStr);
+        }
+
+        if ($startObj && $endObj) {
+            $totalDays = $this->countWorkdays($startObj, $endObj);
         } else {
             $totalDays = 1;
         }
 
-        $avgDaily = $totalDays > 0 ? ($totalExpense / $totalDays) : 0.0;
+        if ($totalDays <= 0) {
+            $totalDays = 1;
+        }
+
+        $avgDaily = $totalExpense / $totalDays;
 
         return [
             "total_expense" => $totalExpense,

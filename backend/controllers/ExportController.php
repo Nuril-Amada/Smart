@@ -16,10 +16,17 @@ class ExportController {
     }
 
     private function countWorkdays(DateTime $start, DateTime $end): int {
+        if ($start > $end) {
+            return 0;
+        }
         $days = 0;
         $current = clone $start;
-        while ($current <= $end) {
-            if ((int)$current->format('N') < 6) {
+        $current->setTime(0, 0, 0);
+        $endDate = (clone $end)->setTime(0, 0, 0);
+
+        while ($current <= $endDate) {
+            $dayOfWeek = (int)$current->format('N');
+            if ($dayOfWeek >= 1 && $dayOfWeek <= 5) { // Senin = 1 ... Jumat = 5 (5 Hari Kerja)
                 $days++;
             }
             $current->modify('+1 day');
@@ -67,7 +74,7 @@ class ExportController {
             FROM {$table} t
             LEFT JOIN gl_accounts g ON t.gl_account = g.gl_account
             {$whereClause}
-            ORDER BY t.posting_date DESC, t.id DESC
+            ORDER BY t.posting_date ASC, t.id ASC
         ";
 
         $stmt = $this->db->prepare($sql);
@@ -299,9 +306,23 @@ class ExportController {
             $params[':end_date'] = $endDate;
         }
         if ($bankType) {
-            $cleanBank = trim(str_ireplace(['Bank ', ' Indonesia'], '', $bankType));
-            $where[] = "LOWER(bank_type) LIKE LOWER(:bank_type)";
-            $params[':bank_type'] = '%' . $cleanBank . '%';
+            $btLower = strtolower(trim($bankType));
+            // Gunakan keyword matching eksplisit untuk menghindari str_ireplace
+            // yang secara destruktif menghapus substring 'bank' dari dalam kata 'Maybank'
+            if (strpos($btLower, 'maybank') !== false) {
+                $where[] = "LOWER(bank_type) LIKE '%maybank%'";
+            } elseif (strpos($btLower, 'mandiri') !== false) {
+                $where[] = "LOWER(bank_type) LIKE '%mandiri%'";
+            } elseif (strpos($btLower, 'bca') !== false) {
+                $where[] = "LOWER(bank_type) LIKE '%bca%'";
+            } elseif (strpos($btLower, 'sinarmas') !== false) {
+                $where[] = "LOWER(bank_type) LIKE '%sinarmas%'";
+            } else {
+                // Fallback: strip prefix 'Bank ' saja (bukan ' Indonesia') agar aman
+                $cleanBank = trim(preg_replace('/^bank\s+/i', '', trim($bankType)));
+                $where[] = "LOWER(bank_type) LIKE LOWER(:bank_type)";
+                $params[':bank_type'] = '%' . $cleanBank . '%';
+            }
         }
         if ($transType) {
             $where[] = "transaction_type = :trans_type";
@@ -324,11 +345,23 @@ class ExportController {
 
         foreach ($rows as $r) {
             $tDate = $r['transaction_date'] instanceof DateTime ? $r['transaction_date']->format('d/m/Y') : date('d/m/Y', strtotime($r['transaction_date']));
+            $bankVal = $r['bank_type'];
+            $bankLabel = "";
+            if ($bankVal) {
+                if (strcasecmp($bankVal, 'Maybank') === 0 || strcasecmp($bankVal, 'Maybank Indonesia') === 0) {
+                    $bankLabel = "Maybank Indonesia";
+                } else {
+                    $bankLabel = "Bank {$bankVal}";
+                }
+            } else {
+                $bankLabel = "-";
+            }
+
             $dataRows[] = [
                 $tDate,
                 $r['check_number'],
                 $r['transaction_type'],
-                "Bank " . $r['bank_type'],
+                $bankLabel,
                 $r['vendor_name'],
                 $r['vendor_account_number'],
                 (float)$r['amount'],
@@ -423,15 +456,32 @@ class ExportController {
         $minDateStr = $sumRow['min_date'] ?? null;
         $maxDateStr = $sumRow['max_date'] ?? null;
 
-        if ($minDateStr && $maxDateStr) {
-            $minDate = new DateTime($minDateStr);
-            $maxDate = new DateTime($maxDateStr);
-            $totalDays = $this->countWorkdays($minDate, $maxDate);
+        $startObj = null;
+        $endObj = null;
+
+        if ($startDate) {
+            $startObj = new DateTime($startDate);
+        } else if ($minDateStr) {
+            $startObj = new DateTime($minDateStr);
+        }
+
+        if ($endDate) {
+            $endObj = new DateTime($endDate);
+        } else if ($maxDateStr) {
+            $endObj = new DateTime($maxDateStr);
+        }
+
+        if ($startObj && $endObj) {
+            $totalDays = $this->countWorkdays($startObj, $endObj);
         } else {
             $totalDays = 1;
         }
 
-        $avgDaily = $totalDays > 0 ? ($totExpense / $totalDays) : 0.0;
+        if ($totalDays <= 0) {
+            $totalDays = 1;
+        }
+
+        $avgDaily = $totExpense / $totalDays;
 
         // 2. Top GL Accounts
         $glWhere = [];

@@ -149,13 +149,25 @@ class CashOpnameController {
         $dibuatOleh1 = isset($body['dibuatOleh1']) ? trim($body['dibuatOleh1']) : '';
         $dibuatOleh2 = isset($body['dibuatOleh2']) ? trim($body['dibuatOleh2']) : '';
         $mengetahui = isset($body['mengetahui']) ? trim($body['mengetahui']) : '';
-        $totalA = isset($body['totalA']) ? (float)$body['totalA'] : 0.0;
-        $totalB = isset($body['totalB']) ? (float)$body['totalB'] : 0.0;
-        $totalAB = isset($body['totalAB']) ? (float)$body['totalAB'] : 0.0;
-        $saldoAkhir = isset($body['saldoAkhir']) ? (float)$body['saldoAkhir'] : 0.0;
+        $settlementRows = isset($body['settlementRows']) && is_array($body['settlementRows']) ? $body['settlementRows'] : [];
+        $advanceRows = isset($body['advanceRows']) && is_array($body['advanceRows']) ? $body['advanceRows'] : [];
+
+        $totalA = 0.0;
+        foreach ($settlementRows as $r) {
+            $totalA += isset($r['jumlah']) ? (float)$r['jumlah'] : 0.0;
+        }
+
+        $totalB = 0.0;
+        foreach ($advanceRows as $r) {
+            $totalB += isset($r['jumlah']) ? (float)$r['jumlah'] : 0.0;
+        }
+
+        $totalAB = $totalA + $totalB;
+        $saldoAkhir = $saldoAwal - $totalAB;
+
         $aksi = isset($body['aksi']) && !empty($body['aksi']) ? $body['aksi'] : 'Simpan';
-        $settlementRowsJson = json_encode(isset($body['settlementRows']) ? $body['settlementRows'] : []);
-        $advanceRowsJson = json_encode(isset($body['advanceRows']) ? $body['advanceRows'] : []);
+        $settlementRowsJson = json_encode($settlementRows);
+        $advanceRowsJson = json_encode($advanceRows);
 
         $stmt = $this->db->prepare("
             INSERT INTO cash_opnames (dari_tanggal, sampai_tanggal, jam, saldo_awal, dibuat_oleh_1, dibuat_oleh_2, mengetahui, total_a, total_b, total_ab, saldo_akhir, aksi, settlement_rows_json, advance_rows_json, created_at) 
@@ -204,13 +216,25 @@ class CashOpnameController {
         $dibuatOleh1 = isset($body['dibuatOleh1']) ? trim($body['dibuatOleh1']) : '';
         $dibuatOleh2 = isset($body['dibuatOleh2']) ? trim($body['dibuatOleh2']) : '';
         $mengetahui = isset($body['mengetahui']) ? trim($body['mengetahui']) : '';
-        $totalA = isset($body['totalA']) ? (float)$body['totalA'] : 0.0;
-        $totalB = isset($body['totalB']) ? (float)$body['totalB'] : 0.0;
-        $totalAB = isset($body['totalAB']) ? (float)$body['totalAB'] : 0.0;
-        $saldoAkhir = isset($body['saldoAkhir']) ? (float)$body['saldoAkhir'] : 0.0;
+        $settlementRows = isset($body['settlementRows']) && is_array($body['settlementRows']) ? $body['settlementRows'] : [];
+        $advanceRows = isset($body['advanceRows']) && is_array($body['advanceRows']) ? $body['advanceRows'] : [];
+
+        $totalA = 0.0;
+        foreach ($settlementRows as $r) {
+            $totalA += isset($r['jumlah']) ? (float)$r['jumlah'] : 0.0;
+        }
+
+        $totalB = 0.0;
+        foreach ($advanceRows as $r) {
+            $totalB += isset($r['jumlah']) ? (float)$r['jumlah'] : 0.0;
+        }
+
+        $totalAB = $totalA + $totalB;
+        $saldoAkhir = $saldoAwal - $totalAB;
+
         $aksi = isset($body['aksi']) && !empty($body['aksi']) ? $body['aksi'] : 'Simpan';
-        $settlementRowsJson = json_encode(isset($body['settlementRows']) ? $body['settlementRows'] : []);
-        $advanceRowsJson = json_encode(isset($body['advanceRows']) ? $body['advanceRows'] : []);
+        $settlementRowsJson = json_encode($settlementRows);
+        $advanceRowsJson = json_encode($advanceRows);
 
         $upStmt = $this->db->prepare("
             UPDATE cash_opnames 
