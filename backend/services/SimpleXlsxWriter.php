@@ -36,7 +36,7 @@ class SimpleXlsxWriter {
 
         // Row string indices / data types
         // Style 2: String (Left Aligned)
-        // Style 3: Amount / Float Numeric (Right Aligned, numFmt #,##0.00)
+        // Style 3: Amount / Float Numeric (Right Aligned, numFmt #,##0)
         // Style 4: Integer / Code Numeric (Left Aligned, numFmt 0)
         $processedRows = [];
         foreach ($dataRows as $row) {
@@ -114,11 +114,11 @@ class SimpleXlsxWriter {
         // Index 0: Normal default
         // Index 1: Header (Bold, Blue fill, Center align)
         // Index 2: Text/String Cell (Left align)
-        // Index 3: Float Numeric / Amount Cell (Right align, numFmt #,##0.00)
+        // Index 3: Float Numeric / Amount Cell (Right align, numFmt #,##0)
         // Index 4: Integer Numeric / Code Cell (Left align, numFmt 0)
         $styles = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' . "\n" .
             '<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' .
-            '<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00"/></numFmts>' .
+            '<numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0"/></numFmts>' .
             '<fonts count="2">' .
             '<font><sz val="11"/><color theme="1"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font>' .
             '<font><b val="1"/><sz val="11"/><color rgb="00FFFFFF"/><name val="Calibri"/><family val="2"/></font>' .
