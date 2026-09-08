@@ -2,7 +2,7 @@
 require_once __DIR__ . '/../config/database.php';
 
 class PpcHelper {
-    const STARTING_PPC_SEQUENCE = 639;
+    const STARTING_PPC_SEQUENCE = 648;
     const STARTING_PPC_SEQUENCE_YEAR = 2026;
 
     public static function monthToRoman(int $month): string {
