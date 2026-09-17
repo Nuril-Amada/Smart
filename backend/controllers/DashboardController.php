@@ -54,7 +54,7 @@ class DashboardController {
         // Query sum, count, count distinct gl, count distinct cost_center for expense items (amount > 0)
         $sql = "
             SELECT 
-                SUM(amount) AS total_expense,
+                SUM(ABS(amount)) AS total_expense,
                 COUNT(id) AS total_transactions,
                 COUNT(DISTINCT gl_account) AS total_gl_accounts,
                 COUNT(DISTINCT cost_center) AS total_cost_centers,
@@ -136,12 +136,12 @@ class DashboardController {
             SELECT TOP 10
                 t.gl_account,
                 g.nama_gl_account,
-                SUM(t.amount) AS total_amount
+                SUM(ABS(t.amount)) AS total_amount
             FROM {$table} t
             LEFT JOIN gl_accounts g ON t.gl_account = g.gl_account
             {$whereClause}
             GROUP BY t.gl_account, g.nama_gl_account
-            ORDER BY SUM(t.amount) DESC
+            ORDER BY SUM(ABS(t.amount)) DESC
         ";
 
         $stmt = $this->db->prepare($sql);
@@ -183,11 +183,11 @@ class DashboardController {
         $sql = "
             SELECT TOP 10
                 cost_center,
-                SUM(amount) AS total_amount
+                SUM(ABS(amount)) AS total_amount
             FROM {$table}
             {$whereClause}
             GROUP BY cost_center
-            ORDER BY SUM(amount) DESC
+            ORDER BY SUM(ABS(amount)) DESC
         ";
 
         $stmt = $this->db->prepare($sql);
@@ -228,11 +228,11 @@ class DashboardController {
         $topSql = "
             SELECT TOP 1
                 cost_center,
-                SUM(amount) AS total_cost_center
+                SUM(ABS(amount)) AS total_cost_center
             FROM {$table}
             {$whereClause}
             GROUP BY cost_center
-            ORDER BY SUM(amount) DESC
+            ORDER BY SUM(ABS(amount)) DESC
         ";
 
         $stmt = $this->db->prepare($topSql);
@@ -269,12 +269,12 @@ class DashboardController {
             SELECT 
                 t.gl_account,
                 g.nama_gl_account,
-                SUM(t.amount) AS total_amount
+                SUM(ABS(t.amount)) AS total_amount
             FROM {$table} t
             LEFT JOIN gl_accounts g ON t.gl_account = g.gl_account
             {$detailWhereClause}
             GROUP BY t.gl_account, g.nama_gl_account
-            ORDER BY SUM(t.amount) DESC
+            ORDER BY SUM(ABS(t.amount)) DESC
         ";
 
         $detailStmt = $this->db->prepare($detailSql);
@@ -322,7 +322,7 @@ class DashboardController {
             $sql = "
                 SELECT 
                     CAST(posting_date AS DATE) AS periode,
-                    SUM(amount) AS total_amount
+                    SUM(ABS(amount)) AS total_amount
                 FROM {$table}
                 {$whereClause}
                 GROUP BY CAST(posting_date AS DATE)
@@ -346,7 +346,7 @@ class DashboardController {
             $sql = "
                 SELECT 
                     year,
-                    SUM(amount) AS total_amount
+                    SUM(ABS(amount)) AS total_amount
                 FROM {$table}
                 {$whereClause}
                 GROUP BY year
@@ -371,7 +371,7 @@ class DashboardController {
                 SELECT 
                     year,
                     month,
-                    SUM(amount) AS total_amount
+                    SUM(ABS(amount)) AS total_amount
                 FROM {$table}
                 {$whereClause}
                 GROUP BY year, month

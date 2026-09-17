@@ -1,0 +1,236 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Navicash Finance API",
+    "description": "Dokumentasi REST API Sistem Manajemen Keuangan Navicash (Petty Cash, Advance, Settlement, Cash Opname, SAP Reconciliation).",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost/navicash/api",
+      "description": "Server Apache 2.4 (Production / Native)"
+    },
+    {
+      "url": "http://localhost:8000",
+      "description": "PHP Development Server"
+    }
+  ],
+  "tags": [
+    { "name": "General", "description": "Status Sistem & Root" },
+    { "name": "Dashboard", "description": "Statistik & Summary Keuangan" },
+    { "name": "Advance (PPC)", "description": "Pengajuan & Transaksi Uang Muka" },
+    { "name": "Settlements", "description": "Pertanggungjawaban & Reimbursement" },
+    { "name": "Cash Opname", "description": "Pemeriksaan Fisik Kas Keuangan" },
+    { "name": "GL Account", "description": "Master Data General Ledger Account" },
+    { "name": "Cost Center", "description": "Master Data Cost Center" },
+    { "name": "Employees", "description": "Master Data Pegawai" },
+    { "name": "Vendor", "description": "Master Data Vendor / Supplier" },
+    { "name": "Check", "description": "Master Data & Cetak Cek Bank" },
+    { "name": "Upload & ETL", "description": "Import Excel SAP / Perak" },
+    { "name": "Reminders", "description": "Pengaturan Overdue & EML Reminder" },
+    { "name": "Export", "description": "Export Laporan Excel & PDF" }
+  ],
+  "paths": {
+    "/": {
+      "get": {
+        "tags": ["General"],
+        "summary": "Health Check / Status Backend API",
+        "responses": {
+          "200": {
+            "description": "API status OK"
+          }
+        }
+      }
+    },
+    "/dashboard/summary": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Ambil Ringkasan Indicator Keuangan",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/dashboard/gl-account": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Statistik Pengeluaran per GL Account",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/dashboard/cost-center": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Statistik Pengeluaran per Cost Center",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/dashboard/top-cost-center": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Top Cost Center dengan Pengeluaran Terbesar",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/dashboard/trend": {
+      "get": {
+        "tags": ["Dashboard"],
+        "summary": "Tren Pengeluaran Keuangan",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/advance/summary": {
+      "get": {
+        "tags": ["Advance (PPC)"],
+        "summary": "Ringkasan Total Transaksi Advance / PPC",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/advance/ppc": {
+      "get": {
+        "tags": ["Advance (PPC)"],
+        "summary": "Daftar Transaksi PPC (Petty Cash Advance)",
+        "responses": { "200": { "description": "Success" } }
+      },
+      "post": {
+        "tags": ["Advance (PPC)"],
+        "summary": "Buat Pengajuan Advance PPC Baru",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/advance/ppc/{id}": {
+      "get": {
+        "tags": ["Advance (PPC)"],
+        "summary": "Detail Transaksi PPC",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Success" } }
+      },
+      "put": {
+        "tags": ["Advance (PPC)"],
+        "summary": "Update Transaksi PPC",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Success" } }
+      },
+      "delete": {
+        "tags": ["Advance (PPC)"],
+        "summary": "Hapus Transaksi PPC",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/settlements/summary": {
+      "get": {
+        "tags": ["Settlements"],
+        "summary": "Summary Rekap Settlement",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/settlements/list": {
+      "get": {
+        "tags": ["Settlements"],
+        "summary": "Daftar Transaksi Settlement & Reimbursement",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/settlements/reimbursement": {
+      "post": {
+        "tags": ["Settlements"],
+        "summary": "Buat Reimbursement Baru",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/cash-opname/recap/settlement": {
+      "get": {
+        "tags": ["Cash Opname"],
+        "summary": "Rekap Cash Opname vs Settlement",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/cash-opname/history": {
+      "get": {
+        "tags": ["Cash Opname"],
+        "summary": "Riwayat Cash Opname",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/gl-account": {
+      "get": {
+        "tags": ["GL Account"],
+        "summary": "Daftar GL Account",
+        "responses": { "200": { "description": "Success" } }
+      },
+      "post": {
+        "tags": ["GL Account"],
+        "summary": "Tambah GL Account Baru",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/cost-center": {
+      "get": {
+        "tags": ["Cost Center"],
+        "summary": "Daftar Cost Center",
+        "responses": { "200": { "description": "Success" } }
+      },
+      "post": {
+        "tags": ["Cost Center"],
+        "summary": "Tambah Cost Center Baru",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/employees": {
+      "get": {
+        "tags": ["Employees"],
+        "summary": "Daftar Pegawai",
+        "responses": { "200": { "description": "Success" } }
+      },
+      "post": {
+        "tags": ["Employees"],
+        "summary": "Tambah Pegawai Baru",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/vendor": {
+      "get": {
+        "tags": ["Vendor"],
+        "summary": "Daftar Vendor",
+        "responses": { "200": { "description": "Success" } }
+      },
+      "post": {
+        "tags": ["Vendor"],
+        "summary": "Tambah Vendor Baru",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/check": {
+      "get": {
+        "tags": ["Check"],
+        "summary": "Daftar Cek Bank",
+        "responses": { "200": { "description": "Success" } }
+      },
+      "post": {
+        "tags": ["Check"],
+        "summary": "Tambah atau Update Cek Bank",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/reminders/overdue-list": {
+      "get": {
+        "tags": ["Reminders"],
+        "summary": "Daftar Transaksi Overdue",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/export/excel": {
+      "get": {
+        "tags": ["Export"],
+        "summary": "Download Laporan Excel",
+        "responses": { "200": { "description": "File Excel (.xlsx)" } }
+      }
+    },
+    "/export/pdf": {
+      "get": {
+        "tags": ["Export"],
+        "summary": "Download Laporan PDF",
+        "responses": { "200": { "description": "File PDF (.pdf)" } }
+      }
+    }
+  }
+}

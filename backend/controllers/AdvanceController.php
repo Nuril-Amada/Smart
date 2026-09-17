@@ -7,6 +7,29 @@ class AdvanceController {
 
     public function __construct() {
         $this->db = Database::getConnection();
+        $this->ensureColumnsExist();
+    }
+
+    private function ensureColumnsExist(): void {
+        try {
+            $cols = [
+                'settlement_ppc_no' => "NVARCHAR(50) NULL",
+                'settlement_date_snapshot' => "DATE NULL",
+                'settlement_amount_snapshot' => "REAL NULL",
+                'settlement_description_snapshot' => "NVARCHAR(255) NULL"
+            ];
+            foreach ($cols as $colName => $colDef) {
+                $check = $this->db->query("
+                    SELECT 1 FROM sys.columns 
+                    WHERE object_id = OBJECT_ID(N'[dbo].[advance_requests]') AND name = N'$colName'
+                ");
+                if (!$check || !$check->fetchColumn()) {
+                    $this->db->exec("ALTER TABLE [dbo].[advance_requests] ADD [$colName] $colDef");
+                }
+            }
+        } catch (Exception $e) {
+            error_log("ensureColumnsExist Advance error: " . $e->getMessage());
+        }
     }
 
     private function calculateDueDate(DateTime $requestDate): DateTime {
@@ -51,37 +74,35 @@ class AdvanceController {
     }
 
     private function serializePpc(array $ppc): array {
-        $stmt = $this->db->prepare("
-            SELECT settlement_date, settlement_amount 
-            FROM settlements 
-            WHERE ppc_no = :ppc_no AND source = 'ADVANCE' AND is_deleted = 0
-        ");
-        $stmt->execute([':ppc_no' => $ppc['ppc_no']]);
-        $settlement = $stmt->fetch();
-
         $reqDate = $ppc['request_date'] instanceof DateTime ? $ppc['request_date']->format('Y-m-d') : $ppc['request_date'];
         $dueDate = $ppc['due_date'] instanceof DateTime ? $ppc['due_date']->format('Y-m-d') : $ppc['due_date'];
+
+        // Baca dari kolom snapshot — tidak bergantung pada baris settlements
         $settleDate = null;
-        $settleAmt = null;
-        if ($settlement) {
-            $settleDate = $settlement['settlement_date'] instanceof DateTime ? $settlement['settlement_date']->format('Y-m-d') : $settlement['settlement_date'];
-            $settleAmt = (float)$settlement['settlement_amount'];
+        $settleAmt  = null;
+        if (!empty($ppc['settlement_date_snapshot'])) {
+            $settleDate = $ppc['settlement_date_snapshot'] instanceof DateTime
+                ? $ppc['settlement_date_snapshot']->format('Y-m-d')
+                : $ppc['settlement_date_snapshot'];
+        }
+        if (!empty($ppc['settlement_amount_snapshot'])) {
+            $settleAmt = (float)$ppc['settlement_amount_snapshot'];
         }
 
         return [
-            "id" => (int)$ppc['id'],
-            "request_date" => $reqDate,
-            "ppc_no" => $ppc['ppc_no'],
-            "employee_name" => $ppc['employee_name'],
-            "cost_center" => $ppc['cost_center'],
-            "purpose" => $ppc['purpose'],
-            "amount" => (float)$ppc['amount'],
-            "due_date" => $dueDate,
-            "settlement_date" => $settleDate,
-            "settlement_amount" => $settleAmt,
-            "status" => $ppc['status'],
-            "created_at" => $ppc['created_at'],
-            "updated_at" => $ppc['updated_at']
+            "id"                 => (int)$ppc['id'],
+            "request_date"       => $reqDate,
+            "ppc_no"             => $ppc['ppc_no'],
+            "employee_name"      => $ppc['employee_name'],
+            "cost_center"        => $ppc['cost_center'],
+            "purpose"            => $ppc['purpose'],
+            "amount"             => (float)$ppc['amount'],
+            "due_date"           => $dueDate,
+            "settlement_date"    => $settleDate,
+            "settlement_amount"  => $settleAmt,
+            "status"             => $ppc['status'],
+            "created_at"         => $ppc['created_at'],
+            "updated_at"         => $ppc['updated_at']
         ];
     }
 
@@ -453,8 +474,23 @@ class AdvanceController {
             ':settle_amount' => $settleAmount
         ]);
 
-        $updatePpc = $this->db->prepare("UPDATE advance_requests SET status = 'SETTLED', updated_at = GETDATE() WHERE id = :id");
-        $updatePpc->execute([':id' => $ppcId]);
+        $updatePpc = $this->db->prepare("
+            UPDATE advance_requests 
+            SET status = 'SETTLED',
+                settlement_ppc_no = :ppc_no,
+                settlement_date_snapshot = :settle_date,
+                settlement_amount_snapshot = :settle_amount,
+                settlement_description_snapshot = :description,
+                updated_at = GETDATE()
+            WHERE id = :id
+        ");
+        $updatePpc->execute([
+            ':ppc_no'       => $ppc['ppc_no'],
+            ':settle_date'  => $settleDate,
+            ':settle_amount' => $settleAmount,
+            ':description'  => $description,
+            ':id'           => $ppcId
+        ]);
 
         return [
             "message" => "Settlement berhasil dibuat.",
@@ -472,25 +508,49 @@ class AdvanceController {
             return ["detail" => "PPC tidak ditemukan."];
         }
 
-        $settleStmt = $this->db->prepare("SELECT * FROM settlements WHERE ppc_no = :ppc_no AND source = 'ADVANCE' AND is_deleted = 0");
-        $settleStmt->execute([':ppc_no' => $ppc['ppc_no']]);
-        $settlement = $settleStmt->fetch();
-
-        if (!$settlement) {
-            http_response_code(404);
-            return ["detail" => "Settlement belum tersedia."];
+        if (strtoupper($ppc['status']) !== 'SETTLED') {
+            http_response_code(400);
+            return ["detail" => "Pengajuan Advance ini belum di-settle (Status: " . $ppc['status'] . ")."];
         }
 
-        $settleDate = $settlement['settlement_date'] instanceof DateTime ? $settlement['settlement_date']->format('Y-m-d') : $settlement['settlement_date'];
+        // 1. Ambil dari snapshot advance_requests jika ada
+        $ppcNo = !empty($ppc['settlement_ppc_no']) ? $ppc['settlement_ppc_no'] : $ppc['ppc_no'];
+        $settleDate = !empty($ppc['settlement_date_snapshot']) ? $ppc['settlement_date_snapshot'] : null;
+        $settleAmount = !empty($ppc['settlement_amount_snapshot']) ? (float)$ppc['settlement_amount_snapshot'] : (float)$ppc['amount'];
+        $description = !empty($ppc['settlement_description_snapshot']) ? $ppc['settlement_description_snapshot'] : $ppc['purpose'];
+
+        // 2. Jika snapshot tanggal kosong, coba cari di tabel settlements
+        if (empty($settleDate)) {
+            try {
+                $stStmt = $this->db->prepare("SELECT * FROM settlements WHERE ppc_no = :ppc_no AND is_deleted = 0");
+                $stStmt->execute([':ppc_no' => $ppc['ppc_no']]);
+                $stRow = $stStmt->fetch();
+                if ($stRow) {
+                    $settleDate = $stRow['settlement_date'];
+                    $settleAmount = (float)$stRow['settlement_amount'];
+                    if (!empty($stRow['description'])) {
+                        $description = $stRow['description'];
+                    }
+                } else {
+                    $settleDate = !empty($ppc['updated_at']) ? substr((string)$ppc['updated_at'], 0, 10) : $ppc['request_date'];
+                }
+            } catch (Exception $e) {
+                $settleDate = !empty($ppc['updated_at']) ? substr((string)$ppc['updated_at'], 0, 10) : $ppc['request_date'];
+            }
+        }
+
+        if ($settleDate instanceof DateTime) {
+            $settleDate = $settleDate->format('Y-m-d');
+        }
 
         return [
-            "ppc_no" => $settlement['ppc_no'],
-            "employee_name" => $settlement['employee_name'],
-            "cost_center" => $settlement['cost_center'],
-            "settlement_date" => $settleDate,
-            "settlement_amount" => (float)$settlement['settlement_amount'],
-            "description" => $settlement['description'],
-            "created_at" => $settlement['created_at']
+            "ppc_no"            => $ppcNo,
+            "employee_name"     => $ppc['employee_name'],
+            "cost_center"       => $ppc['cost_center'],
+            "settlement_date"   => $settleDate,
+            "settlement_amount" => $settleAmount,
+            "description"       => $description,
+            "created_at"        => $ppc['created_at']
         ];
     }
 

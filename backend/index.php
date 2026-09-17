@@ -38,6 +38,7 @@ require_once __DIR__ . '/controllers/CashOpnameController.php';
 require_once __DIR__ . '/controllers/UploadController.php';
 require_once __DIR__ . '/controllers/ReminderController.php';
 require_once __DIR__ . '/controllers/ExportController.php';
+require_once __DIR__ . '/controllers/AuthController.php';
 
 // Parse Request URI
 $requestUri = $_SERVER['REQUEST_URI'];
@@ -94,9 +95,52 @@ $isCustomOutput = false;
 
 try {
     // -------------------------------------------------------------
+    // SWAGGER UI DOCS
+    // -------------------------------------------------------------
+    if ($path === '/docs' || $path === '/docs/' || $path === '/docs/index.html') {
+        header("Content-Type: text/html; charset=utf-8");
+        readfile(__DIR__ . '/docs/index.html');
+        exit;
+    } else if ($path === '/docs/openapi.json') {
+        header("Content-Type: application/json; charset=utf-8");
+        readfile(__DIR__ . '/docs/openapi.json');
+        exit;
+
+    // -------------------------------------------------------------
+    // AUTHENTICATION & USER MANAGEMENT
+    // -------------------------------------------------------------
+    } else if (($path === '/auth/login' || $path === '/auth/login/') && $method === 'POST') {
+        $controller = new AuthController();
+        $response = $controller->login($inputBody);
+    } else if (($path === '/auth/register' || $path === '/auth/register/') && $method === 'POST') {
+        $controller = new AuthController();
+        $response = $controller->register($inputBody);
+    } else if (($path === '/auth/logout' || $path === '/auth/logout/') && $method === 'POST') {
+        $controller = new AuthController();
+        $response = $controller->logout();
+    } else if (($path === '/auth/me' || $path === '/auth/me/') && $method === 'GET') {
+        $controller = new AuthController();
+        $response = $controller->me();
+    } else if (($path === '/auth/change-password' || $path === '/auth/change-password/') && $method === 'POST') {
+        $controller = new AuthController();
+        $response = $controller->changePassword($inputBody);
+    } else if (($path === '/auth/users' || $path === '/auth/users/') && $method === 'GET') {
+        $controller = new AuthController();
+        $response = $controller->getAllUsers();
+    } else if (($path === '/auth/users' || $path === '/auth/users/') && $method === 'POST') {
+        $controller = new AuthController();
+        $response = $controller->createUser($inputBody);
+    } else if (matchRoute('/auth/users/{id}', $path, $m) && $method === 'PUT') {
+        $controller = new AuthController();
+        $response = $controller->updateUser((int)$m[1], $inputBody);
+    } else if (matchRoute('/auth/users/{id}', $path, $m) && $method === 'DELETE') {
+        $controller = new AuthController();
+        $response = $controller->deleteUser((int)$m[1]);
+
+    // -------------------------------------------------------------
     // GL ACCOUNT
     // -------------------------------------------------------------
-    if (($path === '/gl-account' || $path === '/gl-account/') && $method === 'GET') {
+    } else if (($path === '/gl-account' || $path === '/gl-account/') && $method === 'GET') {
         $controller = new GlAccountController();
         $response = $controller->getAll($_GET);
     } else if (($path === '/gl-account' || $path === '/gl-account/') && $method === 'POST') {

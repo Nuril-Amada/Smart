@@ -58,6 +58,7 @@ class ExportController {
 
         $sql = "
             SELECT 
+                t.document_date,
                 t.posting_date,
                 t.document_no,
                 t.amount,
@@ -82,7 +83,7 @@ class ExportController {
         $rows = $stmt->fetchAll();
 
         $headers = [
-            "Posting Date", "Document No", "Amount", "Currency",
+            "Document Date", "Posting Date", "Document No", "Amount", "Currency",
             "GL Account", "Cost Center", "Reference", "Transaction Type",
             "Description"
         ];
@@ -93,10 +94,18 @@ class ExportController {
                 ? $r['posting_date']->format('d/m/Y') 
                 : date('d/m/Y', strtotime($r['posting_date']));
 
+            $dDate = '';
+            if (!empty($r['document_date'])) {
+                $dDate = $r['document_date'] instanceof DateTime
+                    ? $r['document_date']->format('d/m/Y')
+                    : date('d/m/Y', strtotime($r['document_date']));
+            }
+
             $docNo = is_numeric($r['document_no']) ? (int)$r['document_no'] : (string)$r['document_no'];
             $glAcc = is_numeric($r['gl_account']) ? (int)$r['gl_account'] : (string)$r['gl_account'];
 
             $dataRows[] = [
+                $dDate,
                 $pDate,
                 $docNo,
                 (float)$r['amount'],
@@ -113,9 +122,7 @@ class ExportController {
         SimpleXlsxWriter::createXlsx($headers, $dataRows, $filename);
     }
 
-    // =========================================================
     // EXPORT SETTLEMENT EXCEL (.xlsx)
-    // =========================================================
     public function exportSettlement($queryParams) {
         $isAll = function(?string $val): bool {
             if ($val === null || trim($val) === '') return true;
@@ -203,9 +210,7 @@ class ExportController {
         SimpleXlsxWriter::createXlsx($headers, $dataRows, $filename);
     }
 
-    // =========================================================
     // EXPORT ADVANCE EXCEL (.xlsx)
-    // =========================================================
     public function exportAdvance($queryParams) {
         $isAll = function(?string $val): bool {
             if ($val === null || trim($val) === '') return true;
@@ -278,9 +283,7 @@ class ExportController {
         SimpleXlsxWriter::createXlsx($headers, $dataRows, $filename);
     }
 
-    // =========================================================
     // EXPORT CHECK EXCEL (.xlsx)
-    // =========================================================
     public function exportCheck($queryParams) {
         $isAll = function(?string $val): bool {
             if ($val === null || trim($val) === '') return true;
@@ -307,8 +310,6 @@ class ExportController {
         }
         if ($bankType) {
             $btLower = strtolower(trim($bankType));
-            // Gunakan keyword matching eksplisit untuk menghindari str_ireplace
-            // yang secara destruktif menghapus substring 'bank' dari dalam kata 'Maybank'
             if (strpos($btLower, 'maybank') !== false) {
                 $where[] = "LOWER(bank_type) LIKE '%maybank%'";
             } elseif (strpos($btLower, 'mandiri') !== false) {
@@ -373,9 +374,7 @@ class ExportController {
         SimpleXlsxWriter::createXlsx($headers, $dataRows, $filename);
     }
 
-    // =========================================================
     // EXPORT VENDOR EXCEL (.xlsx)
-    // =========================================================
     public function exportVendor($queryParams) {
         $search = isset($queryParams['search']) ? trim($queryParams['search']) : '';
         $whereClause = "";
@@ -408,10 +407,7 @@ class ExportController {
         SimpleXlsxWriter::createXlsx($headers, $dataRows, $filename);
     }
 
-    // =========================================================
     // EXPORT DASHBOARD PDF (Binary PDF - %PDF-1.4)
-    // Features vertical table borders & Rp. left-aligned / amount right-aligned
-    // =========================================================
     public function exportPdf($queryParams) {
         $source = isset($queryParams['source']) ? $queryParams['source'] : 'rungkut';
         $startDate = isset($queryParams['start_date']) && !empty($queryParams['start_date']) ? $queryParams['start_date'] : null;
@@ -436,7 +432,7 @@ class ExportController {
         // 1. Summary
         $sumSql = "
             SELECT 
-                SUM(amount) AS total_expense,
+                SUM(ABS(amount)) AS total_expense,
                 COUNT(id) AS total_transactions,
                 COUNT(DISTINCT gl_account) AS total_gl_accounts,
                 COUNT(DISTINCT cost_center) AS total_cost_centers,
@@ -491,12 +487,12 @@ class ExportController {
         $glWhereClause = count($glWhere) > 0 ? " WHERE " . implode(" AND ", $glWhere) : "";
 
         $glSql = "
-            SELECT TOP 10 t.gl_account, g.nama_gl_account, SUM(t.amount) AS total_amount
+            SELECT TOP 10 t.gl_account, g.nama_gl_account, SUM(ABS(t.amount)) AS total_amount
             FROM {$table} t
             LEFT JOIN gl_accounts g ON t.gl_account = g.gl_account
             {$glWhereClause}
             GROUP BY t.gl_account, g.nama_gl_account
-            ORDER BY SUM(t.amount) DESC
+            ORDER BY SUM(ABS(t.amount)) DESC
         ";
         $glStmt = $this->db->prepare($glSql);
         $glStmt->execute($glParams);
@@ -504,11 +500,11 @@ class ExportController {
 
         // 3. Top Cost Centers
         $ccSql = "
-            SELECT TOP 10 cost_center, SUM(amount) AS total_amount
+            SELECT TOP 10 cost_center, SUM(ABS(amount)) AS total_amount
             FROM {$table}
             {$whereClause}
             GROUP BY cost_center
-            ORDER BY SUM(amount) DESC
+            ORDER BY SUM(ABS(amount)) DESC
         ";
         $ccStmt = $this->db->prepare($ccSql);
         $ccStmt->execute($params);
@@ -527,12 +523,12 @@ class ExportController {
             $detailWhereClause = count($detailWhere) > 0 ? " WHERE " . implode(" AND ", $detailWhere) : "";
 
             $detailSql = "
-                SELECT t.gl_account, g.nama_gl_account, SUM(t.amount) AS total_amount
+                SELECT t.gl_account, g.nama_gl_account, SUM(ABS(t.amount)) AS total_amount
                 FROM {$table} t
                 LEFT JOIN gl_accounts g ON t.gl_account = g.gl_account
                 {$detailWhereClause}
                 GROUP BY t.gl_account, g.nama_gl_account
-                ORDER BY SUM(t.amount) DESC
+                ORDER BY SUM(ABS(t.amount)) DESC
             ";
             $detailStmt = $this->db->prepare($detailSql);
             $detailStmt->execute($detailParams);
@@ -542,14 +538,14 @@ class ExportController {
         // 5. Trend
         if ($trendGroup === 'day') {
             $trendSql = "
-                SELECT CAST(posting_date AS DATE) AS period, SUM(amount) AS total_amount
+                SELECT CAST(posting_date AS DATE) AS period, SUM(ABS(amount)) AS total_amount
                 FROM {$table} {$whereClause}
                 GROUP BY CAST(posting_date AS DATE)
                 ORDER BY CAST(posting_date AS DATE) ASC
             ";
         } else {
             $trendSql = "
-                SELECT year, month, SUM(amount) AS total_amount
+                SELECT year, month, SUM(ABS(amount)) AS total_amount
                 FROM {$table} {$whereClause}
                 GROUP BY year, month
                 ORDER BY year ASC, month ASC
