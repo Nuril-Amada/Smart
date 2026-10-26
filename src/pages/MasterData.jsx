@@ -1,39 +1,58 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Employee, { meta as employeeMeta } from "../components/masterdata/Employee";
 import GLAccount, { meta as glAccountMeta } from "../components/masterdata/GLAccount";
 import CostCenter, { meta as costCenterMeta } from "../components/masterdata/CostCenter";
 import Vendor, { meta as vendorMeta } from "../components/masterdata/Vendor";
+import UserManagement, { meta as userManagementMeta } from "../components/masterdata/UserManagement";
+import CheckFormatSetting, { meta as checkFormatMeta } from "../components/masterdata/CheckFormatSetting";
 
-const TABS = [
+const ALL_TABS = [
     { ...employeeMeta, Component: Employee },
     { ...glAccountMeta, Component: GLAccount },
     { ...costCenterMeta, Component: CostCenter },
     { ...vendorMeta, Component: Vendor },
+    { ...checkFormatMeta, Component: CheckFormatSetting },
+    { ...userManagementMeta, Component: UserManagement, adminOnly: true },
 ];
 
 export default function MasterData() {
     const [activeTab, setActiveTab] = useState("employee");
 
-    const activeConfig = TABS.find((t) => t.id === activeTab);
+    // Ambil data user dari localStorage untuk cek role
+    const currentUser = useMemo(() => {
+        try {
+            const raw = localStorage.getItem("navicash_user");
+            return raw ? JSON.parse(raw) : null;
+        } catch (e) {
+            return null;
+        }
+    }, []);
+
+    const isAdmin = currentUser?.role?.toLowerCase() === "admin";
+
+    // Filter tab berdasarkan role: Admin melihat 5 tab, User biasa melihat 4 tab
+    const visibleTabs = useMemo(() => {
+        return ALL_TABS.filter((t) => !t.adminOnly || isAdmin);
+    }, [isAdmin]);
+
+    const activeConfig = visibleTabs.find((t) => t.id === activeTab) || visibleTabs[0];
     const ActiveComponent = activeConfig?.Component;
 
     return (
-        <div style={{ padding: "20px 20px 20px", minHeight: "100vh" }}>
+        <div style={{ padding: "20px 20px 20px 20px" }}>
             <div
                 style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gridTemplateColumns: `repeat(${visibleTabs.length}, 1fr)`,
                     gap: "12px",
-                    marginBottom: "8px",
                     position: "sticky",
                     top: 0,
                     zIndex: 20,
-                    paddingTop: "8px",
-                    paddingBottom: "8px",
+                    marginBottom: "20px",
                 }}
             >
-                {TABS.map((tab) => {
-                    const isActive = activeTab === tab.id;
+                {visibleTabs.map((tab) => {
+                    const isActive = activeConfig?.id === tab.id;
                     const Icon = tab.icon;
                     return (
                         <button
@@ -56,8 +75,8 @@ export default function MasterData() {
                                 cursor: "pointer",
                                 transform: isActive ? "translateY(-5px)" : "translateY(0)",
                                 boxShadow: isActive
-                                    ? `0 10px 28px ${tab.color}28, 0 4px 10px ${tab.color}18`
-                                    : "0 2px 6px rgba(0,0,0,0.06)",
+                                    ? (tab.id === "user_management" ? "none" : `0 10px 28px ${tab.color}28, 0 4px 10px ${tab.color}18`)
+                                    : (tab.id === "user_management" ? "none" : "0 2px 6px rgba(0,0,0,0.06)"),
                                 transition: "transform 0.25s cubic-bezier(.34,1.56,.64,1), box-shadow 0.25s ease, border-color 0.2s, background 0.2s",
                                 outline: "none",
                                 zIndex: isActive ? 2 : 1,
@@ -68,14 +87,16 @@ export default function MasterData() {
                             onMouseEnter={(e) => {
                                 if (!isActive) {
                                     e.currentTarget.style.transform = "translateY(-2px)";
-                                    e.currentTarget.style.boxShadow = `0 6px 16px ${tab.color}18`;
+                                    if (tab.id !== "user_management") {
+                                        e.currentTarget.style.boxShadow = `0 6px 16px ${tab.color}18`;
+                                    }
                                     e.currentTarget.style.borderColor = `${tab.color}50`;
                                 }
                             }}
                             onMouseLeave={(e) => {
                                 if (!isActive) {
                                     e.currentTarget.style.transform = "translateY(0)";
-                                    e.currentTarget.style.boxShadow = "0 2px 6px rgba(0,0,0,0.06)";
+                                    e.currentTarget.style.boxShadow = tab.id === "user_management" ? "none" : "0 2px 6px rgba(0,0,0,0.06)";
                                     e.currentTarget.style.borderColor = "#e5e7eb";
                                 }
                             }}
@@ -132,20 +153,19 @@ export default function MasterData() {
                 })}
             </div>
 
-            {activeConfig && (
+            {activeConfig && ActiveComponent && (
                 <div
-                    key={activeTab}
+                    key={activeConfig.id}
                     style={{
-                        marginTop: "20px",
                         background: "#fff",
                         borderRadius: "20px",
                         border: `1.5px solid ${activeConfig.color}30`,
-                        boxShadow: `0 8px 32px ${activeConfig.color}12`,
+                        boxShadow: activeConfig.id === "user_management" ? "none" : `0 8px 32px ${activeConfig.color}12`,
                         padding: "24px",
                         animation: "slideDown 0.3s cubic-bezier(.34,1.56,.64,1)",
                     }}
                 >
-                    <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "20px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
                         <div
                             style={{
                                 width: "36px",

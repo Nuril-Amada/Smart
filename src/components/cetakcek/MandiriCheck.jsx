@@ -15,15 +15,15 @@ const MARGIN_RIGHT_CM = 0.5;
 // LINE_TANGGAL_TOP_CM = posisi GARIS (underline) itu sendiri, diukur dari
 // tepi atas cek. Box-nya (tempat teks tanggal duduk) tingginya 0.5cm, jadi
 // posisi CSS "top" dari box = LINE_TANGGAL_TOP_CM - LINE_TANGGAL_BOX_HEIGHT_CM.
-const LINE_TANGGAL_TOP_CM = 1.3;
+const LINE_TANGGAL_TOP_CM = 1.55;
 const LINE_TANGGAL_BOX_HEIGHT_CM = 0.5;
 const LINE_TANGGAL_WIDTH_CM = 5.8;
 
 // ===== Jarak antar garis (semuanya seragam 0.7cm) =====
 const LINE_GAP_CM = 0.7;
-const LINE2_TOP_CM = LINE_TANGGAL_TOP_CM + LINE_GAP_CM; // 2.0
-const LINE3_TOP_CM = LINE2_TOP_CM + LINE_GAP_CM; // 2.7
-const LINE4_TOP_CM = LINE3_TOP_CM + LINE_GAP_CM; // 3.4
+const LINE2_TOP_CM = LINE_TANGGAL_TOP_CM + LINE_GAP_CM; // 1.55 + 0.7 = 2.25 cm
+const LINE3_TOP_CM = LINE2_TOP_CM + LINE_GAP_CM; // 2.25 + 0.7 = 2.95 cm
+const LINE4_TOP_CM = LINE3_TOP_CM + LINE_GAP_CM; // 2.95 + 0.7 = 3.65 cm
 
 // "Tinggi bacaan": jarak label (di atas garis) ke garisnya
 const LABEL_GAP_ABOVE_LINE_CM = 0.4;
@@ -36,9 +36,9 @@ const LINE4_WIDTH_CM = 10.2; // garis keempat
 const KOTAK_NOMINAL_WIDTH_CM = 5.3;
 const KOTAK_NOMINAL_HEIGHT_CM = 0.5;
 const KOTAK_NOMINAL_GAP_CM = 0.6; // jarak dari ujung garis 4 ke kotak nominal
-const KOTAK_NOMINAL_LEFT_CM = MARGIN_LEFT_CM + LINE4_WIDTH_CM + KOTAK_NOMINAL_GAP_CM; // 11.7
+const KOTAK_NOMINAL_LEFT_CM = MARGIN_LEFT_CM + LINE4_WIDTH_CM + KOTAK_NOMINAL_GAP_CM; // 0.9 + 10.2 + 0.6 = 11.7 cm
 const KOTAK_NOMINAL_GAP_FROM_LINE3_CM = 0.2; // jarak garis ketiga -> ujung atas kotak
-const KOTAK_NOMINAL_TOP_CM = LINE3_TOP_CM + KOTAK_NOMINAL_GAP_FROM_LINE3_CM; // 2.9
+const KOTAK_NOMINAL_TOP_CM = LINE3_TOP_CM + KOTAK_NOMINAL_GAP_FROM_LINE3_CM; // 2.95 + 0.2 = 3.15 cm
 
 // Padding horizontal di dalam kotak nominal. Sisi kiri dibikin lebih lebar
 // supaya angka nominal nggak nempel/nabrak garis kiri kotak pas di-print.
@@ -64,7 +64,7 @@ const SUBLABEL_SUM_OF_WIDTH_CM = 2; // di bawah garis ketiga, kiri
 // ===== Area teks isi (content) di dalam tiap garis =====
 // Line 2: div pembungkus selebar LINE23_WIDTH_CM. Teks harus berhenti
 // sebelum label "atau pembawa *" di sisi kanan.
-const LINE2_STOP_BEFORE_LABEL_CM = 2.5;
+const LINE2_STOP_BEFORE_LABEL_CM = 1.8;
 const LINE2_TRANSFER_LEFT_CM = 4.2;
 const LINE2_TRANSFER_WIDTH_CM =
     LINE23_WIDTH_CM - LINE2_TRANSFER_LEFT_CM - LINE2_STOP_BEFORE_LABEL_CM; // 9.5
@@ -281,7 +281,7 @@ export default function MandiriCheck({ form }) {
             <div
                 className="absolute border-b border-gray-400 flex items-end justify-center"
                 style={{
-                    top: `${LINE_TANGGAL_TOP_CM}cm`,
+                    top: `${LINE_TANGGAL_TOP_CM - LINE_TANGGAL_BOX_HEIGHT_CM}cm`,
                     right: `${MARGIN_RIGHT_CM}cm`,
                     width: `${LINE_TANGGAL_WIDTH_CM}cm`,
                     height: `${LINE_TANGGAL_BOX_HEIGHT_CM}cm`,

@@ -98,7 +98,7 @@ export default function SummaryCard({ data = {} }) {
                         <div className="flex items-center gap-2" style={{ marginLeft: "10px", marginTop: "10px", marginBottom: "10px" }}>
                             {/* Icon */}
                             <div
-                                className={`w-12 h-12 rounded-full flex items-center justify-center text-xl ${item.iconBg} ${item.iconColor}`}
+                                className={`w-12 h-12 rounded-full flex items-center justify-center text-lg ${item.iconBg} ${item.iconColor}`}
                             >
                                 {item.icon}
                             </div>

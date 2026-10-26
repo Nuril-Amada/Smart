@@ -14,7 +14,7 @@ const MARGIN_RIGHT_CM = 0.7;
 // ===== Posisi vertikal tiap garis =====
 // LINE_TANGGAL_TOP_CM = posisi GARIS (underline) tanggal itu sendiri,
 // diukur dari tepi atas cek. Box-nya tinggi 0.5cm.
-const LINE_TANGGAL_TOP_CM = 1.5;
+const LINE_TANGGAL_TOP_CM = 1.7;
 const LINE_TANGGAL_BOX_HEIGHT_CM = 0.5;
 const LINE_TANGGAL_WIDTH_CM = 5.5;
 
@@ -66,7 +66,7 @@ const SUBLABEL_SUM_OF_WIDTH_CM = 2.9; // di bawah garis ketiga, kiri
 // ===== Area teks isi (content) di dalam tiap garis =====
 // Garis 2: mulai setelah label "Atas penyerahan..." & berhenti sebelum label "ATAU PEMBAWA *)"
 const LINE2_CONTENT_LEFT_CM = LABEL_ATAS_PENYERAHAN_WIDTH_CM + 0.2; // 4.7
-const LINE2_CONTENT_STOP_BEFORE_LABEL_CM = LABEL_ATAU_PEMBAWA_WIDTH_CM + 0.7; // 2.6
+const LINE2_CONTENT_STOP_BEFORE_LABEL_CM = LABEL_ATAU_PEMBAWA_WIDTH_CM + 0.4; // 2.6
 const LINE2_CONTENT_WIDTH_CM =
     LINE23_WIDTH_CM - LINE2_CONTENT_LEFT_CM - LINE2_CONTENT_STOP_BEFORE_LABEL_CM; // 8.9
 
@@ -279,7 +279,7 @@ export default function MaybankCheck({ form }) {
             <div
                 className="absolute border-b border-gray-400 flex items-end justify-center"
                 style={{
-                    top: `${LINE_TANGGAL_TOP_CM}cm`,
+                    top: `${LINE_TANGGAL_TOP_CM - LINE_TANGGAL_BOX_HEIGHT_CM}cm`,
                     right: `${MARGIN_RIGHT_CM}cm`,
                     width: `${LINE_TANGGAL_WIDTH_CM}cm`,
                     height: `${LINE_TANGGAL_BOX_HEIGHT_CM}cm`,

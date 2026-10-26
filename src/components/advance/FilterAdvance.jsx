@@ -3,7 +3,9 @@ export default function FilterAdvance({
     setTanggalAwal,
     tanggalAkhir,
     setTanggalAkhir,
+    onExport,
 }) {
+
     const handleReset = () => {
         setTanggalAwal("");
         setTanggalAkhir("");
@@ -45,19 +47,22 @@ export default function FilterAdvance({
 
                         {/* Reset */}
                         <button
+                            type="button"
                             onClick={handleReset}
                             className="border border-gray-400 rounded-lg hover:bg-gray-100 transition whitespace-nowrap text-sm"
-                            style={{ padding: "6px 12px" }}
+                            style={{ padding: "1px 12px" }}
                         >
                             Reset
                         </button>
                     </div>
 
-                    {/* Right Side: Toggle Lokasi + Actions (Import File and Export Report) */}
+                    {/* Right Side: Actions (Export Report) */}
                     <div className="flex flex-nowrap items-end gap-2">
                         <button
+                            onClick={onExport}
                             className="bg-gray-600 hover:bg-gray-500 text-white font-medium rounded-lg transition whitespace-nowrap text-sm"
                             style={{ padding: "6px 12px" }}
+                            type="button"
                         >
                             Export Report
                         </button>

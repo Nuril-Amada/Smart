@@ -1,5 +1,10 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { FaPlus, FaTimes, FaTrash, FaSitemap, FaSearch, FaChevronLeft, FaChevronRight } from "react-icons/fa";
+import {
+    getCostCenters,
+    createCostCenter,
+    deleteCostCenter,
+} from "../../api/cost_center";
 
 export const meta = {
     id: "cost_center",
@@ -19,7 +24,7 @@ const columns = [
 ];
 const searchKey = "cost_center_code";
 
-function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder }) {
+function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder, wrapperStyle, inputStyle }) {
     const [open, setOpen] = useState(false);
     const [highlight, setHighlight] = useState(-1);
     const containerRef = useRef(null);
@@ -65,7 +70,7 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
     };
 
     return (
-        <div className="relative" ref={containerRef}>
+        <div className="relative" ref={containerRef} style={wrapperStyle}>
             <div className="relative">
                 <input
                     type="text"
@@ -76,6 +81,7 @@ function AutocompleteInput({ value, onChange, onSelect, suggestions, placeholder
                     placeholder={placeholder}
                     autoComplete="off"
                     className="border border-gray-300 rounded-lg text-sm pl-3 pr-8 py-2 text-gray-700 w-64 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:border-gray-400"
+                    style={inputStyle}
                 />
                 {value ? (
                     <button
@@ -121,7 +127,13 @@ export default function CostCenter() {
     const [form, setForm] = useState(initialForm);
     const [submitError, setSubmitError] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
-    const [successMessage, setSuccessMessage] = useState("");
+    // NOTIFIKASI TOAST (sukses, delete, error)
+    const [successMessage, setSuccessMessage] = useState(null);
+
+    const showToast = (msg, type = "success") => {
+        setSuccessMessage({ text: msg, type });
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
     const [page, setPage] = useState(1);
     const perPage = 10;
 
@@ -132,8 +144,14 @@ export default function CostCenter() {
     const [deleting, setDeleting] = useState(false);
     const [deleteError, setDeleteError] = useState("");
 
-    const loadData = async (term) => {
-        // hubungkan ke API Cost Center di sini
+    const loadData = async (term = "") => {
+        try {
+            const data = await getCostCenters(term);
+            setRows(Array.isArray(data) ? data : []);
+        } catch (error) {
+            console.error(error);
+            setRows([]);
+        }
     };
 
     useEffect(() => {
@@ -184,19 +202,26 @@ export default function CostCenter() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const isEmpty = fields.some((field) => field.required !== false && !form[field.name]?.trim());
+        const isEmpty = fields.some(
+            (field) =>
+                field.required !== false &&
+                !form[field.name]?.trim()
+        );
         if (isEmpty) {
             setSubmitError("Semua field wajib diisi.");
             return;
         }
         try {
-            const newRow = { id: Date.now(), ...form };
-            setRows((prev) => [...prev, newRow]);
+            await createCostCenter(form);
+            await loadData(searchTerm);
             handleClose();
-            setSuccessMessage("Data baru berhasil disimpan");
-            setTimeout(() => setSuccessMessage(""), 3000);
+            showToast("Cost Center berhasil disimpan.", "success");
         } catch (err) {
-            setSubmitError(err?.response?.data?.detail || "Gagal menyimpan data.");
+            console.error(err);
+            setSubmitError(
+                err?.response?.data?.detail ||
+                "Gagal menyimpan Cost Center."
+            );
         }
     };
 
@@ -227,12 +252,12 @@ export default function CostCenter() {
         try {
             setDeleting(true);
             setDeleteError("");
-            setRows((prev) => prev.filter((r) => !selectedIds.has(r.id)));
+            await Promise.all([...selectedIds].map((id) => deleteCostCenter(id)));
             setDeleteBatchOpen(false);
             setDeleteMode(false);
             setSelectedIds(new Set());
-            setSuccessMessage("Data terpilih berhasil dihapus.");
-            setTimeout(() => setSuccessMessage(""), 3000);
+            await loadData(searchTerm);
+            showToast("Cost Center terpilih berhasil dihapus.", "delete");
         } catch (err) {
             setDeleteError(err?.response?.data?.detail || "Gagal menghapus data.");
         } finally {
@@ -257,23 +282,27 @@ export default function CostCenter() {
                 <div
                     style={{
                         position: "fixed", top: "20px", left: "50%", transform: "translate(-50%, 0)", zIndex: 100,
-                        background: "#ecfdf5", border: "1.5px solid #6ee7b7", color: "#047857", borderRadius: "10px",
-                        padding: "10px 18px", fontSize: "13px", fontWeight: 600, boxShadow: "0 8px 24px rgba(16,185,129,0.25)", animation: "toastIn 0.25s ease",
+                        background: successMessage.type === "error" || successMessage.type === "delete" ? "#fef2f2" : "#ecfdf5",
+                        border: successMessage.type === "error" || successMessage.type === "delete" ? "1.5px solid #fca5a5" : "1.5px solid #6ee7b7",
+                        color: successMessage.type === "error" || successMessage.type === "delete" ? "#b91c1c" : "#047857",
+                        borderRadius: "10px", padding: "10px 18px", fontSize: "13px", fontWeight: 600,
+                        boxShadow: successMessage.type === "error" || successMessage.type === "delete" ? "0 8px 24px rgba(239,68,68,0.25)" : "0 8px 24px rgba(16,185,129,0.25)",
+                        animation: "toastIn 0.25s ease",
                     }}
                 >
-                    {successMessage}
+                    {typeof successMessage === "object" ? successMessage.text : successMessage}
                 </div>
             )}
 
-            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "16px", paddingLeft: "10px", paddingRight: "10px", flexWrap: "wrap", gap: "12px" }}>
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "8px", paddingLeft: "10px", paddingRight: "10px", flexWrap: "wrap", gap: "12px" }}>
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500">Kode Cost Center</label>
                     <AutocompleteInput
                         value={searchTerm}
                         onChange={setSearchTerm}
                         onSelect={setSearchTerm}
                         suggestions={suggestions}
                         placeholder="Cari Kode Cost Center..."
+                        inputStyle={{ padding: "1px 5px" }}
                     />
                 </div>
 
@@ -360,9 +389,6 @@ export default function CostCenter() {
                             {columns.map((col) => (
                                 <th key={col.key} className="p-3 font-medium border border-gray-300 text-center">{col.label}</th>
                             ))}
-                            {deleteMode && (
-                                <th className="p-3 font-medium border border-gray-300 text-center">Pilih</th>
-                            )}
                         </tr>
                     </thead>
 
@@ -383,7 +409,7 @@ export default function CostCenter() {
                                     key={row.id}
                                     className={`hover:bg-gray-50 ${deleteMode && selectedIds.has(row.id) ? "bg-red-50" : ""}`}
                                 >
-                                    <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
+                                    <td className="p-3 text-gray-700 border border-gray-300 text-center">
                                         {startEntry + idx}
                                     </td>
                                     {columns.map((col) => (
@@ -410,7 +436,7 @@ export default function CostCenter() {
             </div>
 
             {filteredRows.length > 0 && (
-                <div className="flex items-center justify-between mt-4 text-sm text-gray-500" style={{ marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}>
+                <div className="flex items-center justify-between mt-4 text-sm text-gray-500" style={{ marginLeft: "10px", marginRight: "10px", marginTop: "8px", marginBottom: "0px" }}>
                     <span>Showing {startEntry} to {endEntry} of {total} entries</span>
 
                     <div className="flex items-center gap-1">

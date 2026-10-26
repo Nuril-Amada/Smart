@@ -109,6 +109,7 @@ export default function CheckForm({
     vendorSuggestions = [],
     bankPenerimaSuggestions = [],
     nomorRekeningSuggestions = [],
+    bankOptions = ["Bank Mandiri", "Bank BCA", "Bank Sinarmas", "Maybank Indonesia"],
 }) {
     const setField = (name, value) => onChange({ target: { name, value } });
 
@@ -144,10 +145,15 @@ export default function CheckForm({
                             className="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-gray-400 text-xs font-medium bg-white text-gray-600" style={{ padding: "2px 5px" }}
                         >
                             <option value="">Pilih Bank Terlebih Dahulu</option>
-                            <option value="Bank Mandiri">Bank Mandiri</option>
-                            <option value="Bank BCA">Bank BCA</option>
-                            <option value="Bank Sinarmas">Bank Sinarmas</option>
-                            <option value="Maybank">Maybank Indonesia</option>
+                            {bankOptions.map((bankItem) => {
+                                const val = typeof bankItem === "string" ? bankItem : bankItem.id || bankItem.bankName;
+                                const lbl = typeof bankItem === "string" ? bankItem : bankItem.label || bankItem.bankName;
+                                return (
+                                    <option key={val} value={val}>
+                                        {lbl}
+                                    </option>
+                                );
+                            })}
                         </select>
                     </div>
 

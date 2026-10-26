@@ -4,34 +4,19 @@ import { pdfLayout as bcaPdfLayout } from "../components/cetakcek/BCACheck";
 import { pdfLayout as sinarmasPdfLayout } from "../components/cetakcek/SinarmasCheck";
 import { pdfLayout as maybankPdfLayout } from "../components/cetakcek/MaybankCheck";
 
-// =====================================================================
-// GENERATE PDF CEK — TEKS ASLI (bukan screenshot/gambar)
-// =====================================================================
-// File ini menggambar semua isi (vendor/terbilang/nominal/tanggal)
-// langsung pakai fungsi jsPDF (pdf.text), berdasarkan koordinat (cm) yang
-// DIIMPOR LANGSUNG dari tiap komponen React bank (`pdfLayout` di
-// MandiriCheck.jsx, BCACheck.jsx, SinarmasCheck.jsx, MaybankCheck.jsx).
-//
-// Jadi tidak ada lagi duplikasi angka layout di file ini — kalau posisi
-// garis/label di komponen bank diubah, PDF otomatis ikut menyesuaikan
-// tanpa perlu update dua tempat.
-//
-// CATATAN FONT: jsPDF hanya punya font bawaan helvetica/times/courier —
-// tidak ada "Arial Narrow" seperti di preview HTML. Bentuk huruf jadi
-// sedikit berbeda dari preview, tapi tetap teks asli (bisa di-select,
-// tajam saat print). Kalau nanti mau font identik, perlu embed file
-// .ttf Arial Narrow ke jsPDF secara terpisah.
-// =====================================================================
-
 // ================= HELPER UMUM =================
-
 export function formatNominalDisplay(val) {
   if (val === undefined || val === null || val === "") return "";
-  const str = String(val).trim();
-  const parts = str.split(".");
-  const intFormatted = Number(parts[0]).toLocaleString("id-ID");
-  if (parts.length > 1 && parts[1] !== undefined) {
-    return `${intFormatted},${parts[1]}`;
+  // Normalisasi: ganti koma desimal ke titik jika user input "25000000,75"
+  const str = String(val).trim().replace(/,/g, ".");
+  // Pisahkan bagian integer dan desimal berdasarkan titik pertama
+  const dotIdx = str.indexOf(".");
+  const intStr = dotIdx >= 0 ? str.slice(0, dotIdx) : str;
+  const decStr = dotIdx >= 0 ? str.slice(dotIdx + 1) : "";
+  const intFormatted = Number(intStr).toLocaleString("id-ID");
+  // Tampilkan desimal hanya jika ada digit desimal yang tidak kosong
+  if (decStr.length > 0) {
+    return `${intFormatted},${decStr}`;
   }
   return intFormatted;
 }
@@ -45,9 +30,21 @@ function formatTanggalNumeric(tanggal) {
   return `${dd}/${mm}/${d.getFullYear()}`;
 }
 
-// Scale-down otomatis (mirip FitText di React): kalau teks lebih lebar
-// dari maxWidthCm, font-size diperkecil proporsional supaya pas & tidak
-// pernah overflow ke elemen sebelah kanannya.
+// export function formatNominalDisplay(val) {
+//   if (val === undefined || val === null || val === "") return "";
+//   const str = String(val).trim();
+//   const num = Number(str);
+//   if (isNaN(num)) return str;
+
+//   const parts = str.split(".");
+//   const intFormatted = Number(parts[0]).toLocaleString("id-ID");
+//   if (parts.length > 1 && parts[1]) {
+//     return `${intFormatted},${parts[1]}`;
+//   }
+//   return intFormatted;
+// }
+
+
 function fitFontSize(pdf, text, maxWidthCm, baseSizePt, minSizePt = 5) {
   if (!text) return baseSizePt;
   pdf.setFontSize(baseSizePt);
@@ -123,6 +120,151 @@ const LAYOUTS = {
   "Bank Maybank": maybankPdfLayout,
 };
 
+export function resolveLayout(bankName) {
+  try {
+    const rawOffsets = typeof localStorage !== "undefined" ? localStorage.getItem("navicash_check_layout_offsets") : null;
+    if (rawOffsets) {
+      const data = JSON.parse(rawOffsets) || {};
+      const targetKey = Object.keys(data).find(
+        (k) => k.toLowerCase() === (bankName || "").toLowerCase()
+      );
+      const saved = targetKey ? data[targetKey] : null;
+      if (saved && Number(saved.tanggalX) > 0) {
+        const widthCm = Number(saved.widthCm || saved.width_cm) || (LAYOUTS[bankName]?.widthCm || 17.8);
+        const heightCm = Number(saved.heightCm || saved.height_cm) || (LAYOUTS[bankName]?.heightCm || 7.0);
+
+        const tX = Number(saved.tanggalX);
+        const tY = Number(saved.tanggalY);
+        const vX = Number(saved.vendorX);
+        const vY = Number(saved.vendorY);
+        const tb1X = Number(saved.terbilang1X);
+        const tb1Y = Number(saved.terbilang1Y);
+        const tb2X = Number(saved.terbilang2X);
+        const tb2Y = Number(saved.terbilang2Y);
+        const nX = Number(saved.nominalX);
+        const nY = Number(saved.nominalY);
+
+        const isBca = (bankName || "").toLowerCase().includes("bca");
+
+        if (isBca) {
+          return {
+            widthCm,
+            heightCm,
+            tanggal: { top: tY, right: Math.max(0, widthCm - tX - 6.0), width: 6.0 },
+            line2: { top: vY, left: 0 },
+            vendorTransfer: { left: vX, width: Math.max(5, widthCm - vX - 1) },
+            vendorTunai: { left: vX, width: Math.max(5, widthCm - vX - 1) },
+            line3: { top: tb1Y, left: 0 },
+            terbilang1: { left: tb1X, width: Math.max(5, widthCm - tb1X - 1) },
+            line4: { top: tb2Y, left: 0 },
+            terbilang2: { left: tb2X, width: Math.max(5, widthCm - tb2X - 1) },
+            nominalLine: { top: nY, left: nX, padLeft: 0 },
+          };
+        }
+
+        return {
+          widthCm,
+          heightCm,
+          tanggal: { top: tY, right: Math.max(0, widthCm - tX - 5.5), width: 5.5 },
+          line2: { top: vY, left: 0 },
+          vendorTransfer: { left: vX, width: Math.max(5, widthCm - vX - 1) },
+          vendorTunai: { left: vX, width: Math.max(5, widthCm - vX - 1) },
+          line3: { top: tb1Y, left: 0 },
+          terbilang1: { left: tb1X, width: Math.max(5, widthCm - tb1X - 1) },
+          line4: { top: tb2Y, left: 0 },
+          terbilang2: { left: tb2X, width: Math.max(5, widthCm - tb2X - 1) },
+          nominal: { top: nY, left: nX, padLeft: 0, height: 0.5 },
+        };
+      }
+    }
+  } catch (e) {
+    console.error("Error resolving saved layout for bank:", bankName, e);
+  }
+
+  if (LAYOUTS[bankName]) return LAYOUTS[bankName];
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem("navicash_custom_bank_layouts") : null;
+    if (raw) {
+      const customBanks = JSON.parse(raw) || [];
+      const found = customBanks.find((b) => (b.bankName || "").toLowerCase() === (bankName || "").toLowerCase());
+      if (found) {
+        const tX = Number(found.tanggalX || 0);
+        const tY = Number(found.tanggalY || 0);
+        const vX = Number(found.vendorX || 0);
+        const vY = Number(found.vendorY || 0);
+        const tb1X = Number(found.terbilang1X || 0);
+        const tb1Y = Number(found.terbilang1Y || 0);
+        const tb2X = Number(found.terbilang2X || 0);
+        const tb2Y = Number(found.terbilang2Y || 0);
+        const nX = Number(found.nominalX || 0);
+        const nY = Number(found.nominalY || 0);
+
+        const widthCm = Number(found.widthCm || found.width_cm || 17.8);
+        const heightCm = Number(found.heightCm || found.height_cm || 7.0);
+
+        return {
+          widthCm,
+          heightCm,
+          tanggal: { top: tY, right: Math.max(0, widthCm - tX - 3.5), width: 3.5 },
+          line2: { top: vY, left: 0 },
+          vendorTunai: { left: vX, width: Math.max(5, widthCm - vX - 1) },
+          vendorTransfer: { left: vX, width: Math.max(5, widthCm - vX - 1) },
+          line3: { top: tb1Y, left: 0 },
+          terbilang1: { left: tb1X, width: Math.max(5, widthCm - tb1X - 1) },
+          line4: { top: tb2Y, left: 0 },
+          terbilang2: { left: tb2X, width: Math.max(5, widthCm - tb2X - 1) },
+          nominal: { top: nY, left: nX, padLeft: 0, height: 0.8 },
+        };
+      }
+    }
+  } catch (e) {
+    console.error("Error resolving layout for bank:", bankName, e);
+  }
+  return null;
+}
+
+export function getCheckOffsets(bankName) {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem("navicash_check_layout_offsets") : null;
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (data) {
+        const targetKey = Object.keys(data).find(
+          (k) => k.toLowerCase() === (bankName || "").toLowerCase()
+        ) || bankName;
+        if (data[targetKey]) {
+          return {
+            tanggalX: Number(data[targetKey].tanggalX || 0),
+            tanggalY: Number(data[targetKey].tanggalY || 0),
+            vendorX: Number(data[targetKey].vendorX || 0),
+            vendorY: Number(data[targetKey].vendorY || 0),
+            terbilang1X: Number(data[targetKey].terbilang1X || 0),
+            terbilang1Y: Number(data[targetKey].terbilang1Y || 0),
+            terbilang2X: Number(data[targetKey].terbilang2X || 0),
+            terbilang2Y: Number(data[targetKey].terbilang2Y || 0),
+            nominalX: Number(data[targetKey].nominalX || 0),
+            nominalY: Number(data[targetKey].nominalY || 0),
+          };
+        }
+      }
+    }
+  } catch (e) {
+    console.error("Error loading check offsets:", e);
+  }
+  return {
+    tanggalX: 0,
+    tanggalY: 0,
+    vendorX: 0,
+    vendorY: 0,
+    terbilang1X: 0,
+    terbilang1Y: 0,
+    terbilang2X: 0,
+    terbilang2Y: 0,
+    nominalX: 0,
+    nominalY: 0,
+  };
+}
+
 // ================= FUNGSI UTAMA =================
 
 /**
@@ -138,7 +280,7 @@ const LAYOUTS = {
  * @returns {jsPDF}
  */
 export function generateCheckPdf(form) {
-  const layout = LAYOUTS[form.bank];
+  const layout = resolveLayout(form.bank);
   if (!layout) {
     throw new Error(`Layout untuk bank "${form.bank}" belum tersedia.`);
   }
@@ -249,7 +391,7 @@ export function downloadCheckPdf(form) {
  * Hitung font-size (pt) agar teks pas dalam maxWidthCm menggunakan
  * canvas (browser) untuk pengukuran — mirip fitFontSize versi HTML.
  */
-function fitFontSizeHtml(text, maxWidthCm, baseSizePt, fontFamily = '"Arial Narrow", Arial, sans-serif') {
+function fitFontSizeHtml(text, maxWidthCm, baseSizePt = 10, fontFamily = "'Calibri', Arial, sans-serif") {
   if (!text) return baseSizePt;
   const PX_PER_CM = 37.795275591;
   const maxWidthPx = maxWidthCm * PX_PER_CM;
@@ -273,13 +415,13 @@ function fitFontSizeHtml(text, maxWidthCm, baseSizePt, fontFamily = '"Arial Narr
  * Pecah terbilang jadi max 2 baris menggunakan canvas untuk pengukuran.
  * Mengembalikan { line1, line2, sizePt } sama seperti splitTerbilangPdf.
  */
-function splitTerbilangHtml(text, line3WidthCm, line4WidthCm, baseSizePt = 9) {
+function splitTerbilangHtml(text, line3WidthCm, line4WidthCm, baseSizePt = 10) {
   const clean = (text || "").trim().toUpperCase();
   if (!clean) return { line1: "", line2: "", sizePt: baseSizePt };
 
   const PX_PER_CM = 37.795275591;
   const basePx = baseSizePt * (96 / 72);
-  const fontFamily = '"Arial Narrow", Arial, sans-serif';
+  const fontFamily = "'Calibri', Arial, sans-serif";
 
   const canvas = typeof document !== "undefined"
     ? document.createElement("canvas")
@@ -337,30 +479,31 @@ function splitTerbilangHtml(text, line3WidthCm, line4WidthCm, baseSizePt = 9) {
  * @returns {string} HTML string lengkap (<!DOCTYPE html> … </html>)
  */
 export function generatePrintHtml(form) {
-  const layout = LAYOUTS[form.bank];
+  const layout = resolveLayout(form.bank);
   if (!layout) {
     throw new Error(`Layout untuk bank "${form.bank}" belum tersedia.`);
   }
 
-  const BASE_PT = 9; // font-size dasar (pt) sebelum di-scale
+  const BASE_PT = 10; // font-size dasar (10pt)
   const els = [];   // kumpulan elemen HTML yang akan dirender
 
-  // ── 1. Tanggal ──────────────────────────────────────────────────────
+  // ── 1. Tanggal (Calibri 10pt) ──────────────────────────────────────
   const tglText = formatTanggalNumeric(form.tanggal);
   if (tglText) {
     const tgl = layout.tanggal;
     // Posisi left dari kiri halaman (tgl diukur dari kanan)
     const leftCm = layout.widthCm - tgl.right - tgl.width;
-    // Posisi top: garis tanggal ada di tgl.top → teks duduk sedikit di atasnya
-    const topCm = tgl.top - 0.45;
+    // Posisi top: garis tanggal ada di tgl.top → teks duduk pas di atas garis
+    const topCm = tgl.top - 0.35;
     els.push(
       `<div style="position:absolute;top:${topCm}cm;left:${leftCm}cm;` +
-      `width:${tgl.width}cm;font-size:${BASE_PT}pt;font-weight:bold;` +
-      `text-align:center;white-space:nowrap;overflow:hidden;">${tglText}</div>`
+      `width:${tgl.width}cm;font-size:${BASE_PT}pt;font-weight:600;line-height:1;` +
+      `font-family:'Calibri', Arial, sans-serif;font-synthesis:none;-webkit-font-synthesis:none;` +
+      `color:#000000;text-align:center;white-space:nowrap;overflow:hidden;">${tglText}</div>`
     );
   }
 
-  // ── 2. Vendor / Transfer ─────────────────────────────────────────────
+  // ── 2. Vendor / Transfer (Calibri 10pt) ─────────────────────────────
   const vendorCfg =
     form.jenisCek === "Transfer" ? layout.vendorTransfer : layout.vendorTunai;
   const vendorText =
@@ -370,16 +513,17 @@ export function generatePrintHtml(form) {
 
   if (vendorText.trim()) {
     const l2 = layout.line2;
-    const vendorSizePt = fitFontSizeHtml(vendorText, vendorCfg.width, BASE_PT);
-    const topCm = l2.top - 0.45;
+    const vendorSizePt = fitFontSizeHtml(vendorText, vendorCfg.width, BASE_PT, "'Calibri', Arial, sans-serif");
+    const topCm = l2.top - 0.35;
     els.push(
       `<div style="position:absolute;top:${topCm}cm;left:${l2.left + vendorCfg.left}cm;` +
-      `width:${vendorCfg.width}cm;font-size:${vendorSizePt}pt;font-weight:bold;` +
-      `white-space:nowrap;overflow:hidden;">${vendorText}</div>`
+      `width:${vendorCfg.width}cm;font-size:${vendorSizePt}pt;font-weight:600;line-height:1;` +
+      `font-family:'Calibri', Arial, sans-serif;font-synthesis:none;-webkit-font-synthesis:none;` +
+      `color:#000000;white-space:nowrap;overflow:hidden;">${vendorText}</div>`
     );
   }
 
-  // ── 3. Terbilang (bisa 1 atau 2 baris) ───────────────────────────────
+  // ── 3. Terbilang (Calibri 10pt, bisa 1 atau 2 baris) ─────────────────
   const { line1, line2, sizePt: terbSizePt } = splitTerbilangHtml(
     form.terbilang,
     layout.terbilang1.width,
@@ -390,21 +534,23 @@ export function generatePrintHtml(form) {
   if (line1) {
     const l3 = layout.line3;
     els.push(
-      `<div style="position:absolute;top:${l3.top - 0.45}cm;left:${l3.left + layout.terbilang1.left}cm;` +
-      `width:${layout.terbilang1.width}cm;font-size:${terbSizePt}pt;font-weight:bold;` +
-      `text-transform:uppercase;white-space:nowrap;overflow:hidden;">${line1}</div>`
+      `<div style="position:absolute;top:${l3.top - 0.35}cm;left:${l3.left + layout.terbilang1.left}cm;` +
+      `width:${layout.terbilang1.width}cm;font-size:${terbSizePt}pt;font-weight:600;line-height:1;` +
+      `font-family:'Calibri', Arial, sans-serif;font-synthesis:none;-webkit-font-synthesis:none;` +
+      `color:#000000;text-transform:uppercase;white-space:nowrap;overflow:hidden;">${line1}</div>`
     );
   }
   if (line2) {
     const l4 = layout.line4;
     els.push(
-      `<div style="position:absolute;top:${l4.top - 0.45}cm;left:${l4.left + layout.terbilang2.left}cm;` +
-      `width:${layout.terbilang2.width}cm;font-size:${terbSizePt}pt;font-weight:bold;` +
-      `text-transform:uppercase;white-space:nowrap;overflow:hidden;">${line2}</div>`
+      `<div style="position:absolute;top:${l4.top - 0.35}cm;left:${l4.left + layout.terbilang2.left}cm;` +
+      `width:${layout.terbilang2.width}cm;font-size:${terbSizePt}pt;font-weight:600;line-height:1;` +
+      `font-family:'Calibri', Arial, sans-serif;font-synthesis:none;-webkit-font-synthesis:none;` +
+      `color:#000000;text-transform:uppercase;white-space:nowrap;overflow:hidden;">${line2}</div>`
     );
   }
 
-  // ── 4. Nominal ────────────────────────────────────────────────────────
+  // ── 4. Nominal (Calibri 10pt) ────────────────────────────────────────
   const nominalText = formatNominalDisplay(form.nominal);
 
   if (nominalText) {
@@ -412,17 +558,17 @@ export function generatePrintHtml(form) {
       // Bank dengan KOTAK nominal (Mandiri, Sinarmas, Maybank)
       const n = layout.nominal;
       els.push(
-        `<div style="position:absolute;top:${n.top + 0.05}cm;left:${n.left + n.padLeft}cm;` +
-        `font-size:${BASE_PT}pt;font-weight:bold;font-family:'Courier New',monospace;` +
-        `white-space:nowrap;">${nominalText}</div>`
+        `<div style="position:absolute;top:${n.top + 0.1}cm;left:${n.left + n.padLeft}cm;` +
+        `font-size:${BASE_PT}pt;font-weight:600;line-height:1;font-family:'Calibri', Arial, sans-serif;` +
+        `font-synthesis:none;-webkit-font-synthesis:none;color:#000000;white-space:nowrap;">${nominalText}</div>`
       );
     } else if (layout.nominalLine) {
       // Bank dengan GARIS nominal (BCA)
       const n = layout.nominalLine;
       els.push(
-        `<div style="position:absolute;top:${n.top - 0.45}cm;left:${n.left + n.padLeft}cm;` +
-        `font-size:${BASE_PT}pt;font-weight:bold;font-family:'Courier New',monospace;` +
-        `white-space:nowrap;">${nominalText}</div>`
+        `<div style="position:absolute;top:${n.top - 0.35}cm;left:${n.left + n.padLeft}cm;` +
+        `font-size:${BASE_PT}pt;font-weight:600;line-height:1;font-family:'Calibri', Arial, sans-serif;` +
+        `font-synthesis:none;-webkit-font-synthesis:none;color:#000000;white-space:nowrap;">${nominalText}</div>`
       );
     }
   }
@@ -444,18 +590,33 @@ export function generatePrintHtml(form) {
       padding: 0;
       width: ${layout.widthCm}cm;
       height: ${layout.heightCm}cm;
-      background: transparent;
+      background: #ffffff;
       /* Pastikan warna & teks dicetak tajam, tidak di-blur/downscale browser */
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     * {
-      font-family: "Arial Narrow", Arial, sans-serif;
       box-sizing: border-box;
-      color: #000;
-      /* Rendering font tajam saat dicetak */
-      text-rendering: geometricPrecision;
+      color: #000000 !important;
+      text-shadow: none !important;
+      filter: none !important;
+      font-synthesis: none !important;
+      -webkit-font-synthesis: none !important;
+      text-rendering: optimizeLegibility;
       -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+    @media print {
+      * {
+        color: #000000 !important;
+        text-shadow: none !important;
+        filter: none !important;
+        font-synthesis: none !important;
+        -webkit-font-synthesis: none !important;
+        -webkit-font-smoothing: none !important;
+        font-smooth: never !important;
+        text-rendering: optimizeSpeed !important;
+      }
     }
   </style>
 </head>
@@ -472,15 +633,6 @@ export function generatePrintHtml(form) {
 </html>`;
 }
 
-// =====================================================================
-// GENERATE BODY HTML CETAK — Hanya konten div (tanpa full document)
-// =====================================================================
-// Sama dengan generatePrintHtml tetapi mengembalikan:
-//   { bodyHtml: string, widthCm: number, heightCm: number }
-// Dipakai oleh handleCetak() untuk inject langsung ke DOM halaman yang
-// sama via @media print — lebih reliable daripada window.open().
-// =====================================================================
-
 /**
  * Generate HANYA elemen-elemen div teks (tanpa <html>/<head>/<body>)
  * beserta dimensi layout, siap di-inject ke DOM via dangerouslySetInnerHTML
@@ -490,29 +642,29 @@ export function generatePrintHtml(form) {
  * @returns {{ bodyHtml: string, widthCm: number, heightCm: number }}
  */
 export function generatePrintBodyHtml(form) {
-  const layout = LAYOUTS[form.bank];
+  const layout = resolveLayout(form.bank);
   if (!layout) {
     throw new Error(`Layout untuk bank "${form.bank}" belum tersedia.`);
   }
 
-  const BASE_PT = 9;
+  const BASE_PT = 10;
   const els = [];
 
-  // ── 1. Tanggal ──────────────────────────────────────────────────────
+  // ── 1. Tanggal (Calibri 10pt) ──────────────────────────────────────
   const tglText = formatTanggalNumeric(form.tanggal);
   if (tglText) {
     const tgl = layout.tanggal;
     const leftCm = layout.widthCm - tgl.right - tgl.width;
-    const topCm = tgl.top - 0.45;
+    const topCm = tgl.top - 0.1;
     els.push(
       `<div style="position:absolute;top:${topCm}cm;left:${leftCm}cm;` +
-      `width:${tgl.width}cm;font-size:${BASE_PT}pt;font-weight:bold;` +
-      `font-family:'Arial Narrow',Arial,sans-serif;` +
-      `text-align:center;white-space:nowrap;overflow:hidden;">${tglText}</div>`
+      `width:${tgl.width}cm;font-size:${BASE_PT}pt;font-weight:600;line-height:1;` +
+      `font-family:'Calibri', Arial, sans-serif;font-synthesis:none;-webkit-font-synthesis:none;` +
+      `color:#000000;text-align:center;white-space:nowrap;overflow:hidden;">${tglText}</div>`
     );
   }
 
-  // ── 2. Vendor / Transfer ─────────────────────────────────────────────
+  // ── 2. Vendor / Transfer (Calibri 10pt) ─────────────────────────────
   const vendorCfg =
     form.jenisCek === "Transfer" ? layout.vendorTransfer : layout.vendorTunai;
   const vendorText =
@@ -522,17 +674,17 @@ export function generatePrintBodyHtml(form) {
 
   if (vendorText.trim()) {
     const l2 = layout.line2;
-    const vendorSizePt = fitFontSizeHtml(vendorText, vendorCfg.width, BASE_PT);
-    const topCm = l2.top - 0.45;
+    const vendorSizePt = fitFontSizeHtml(vendorText, vendorCfg.width, BASE_PT, "'Calibri', Arial, sans-serif");
+    const topCm = l2.top - 0.1;
     els.push(
       `<div style="position:absolute;top:${topCm}cm;left:${l2.left + vendorCfg.left}cm;` +
-      `width:${vendorCfg.width}cm;font-size:${vendorSizePt}pt;font-weight:bold;` +
-      `font-family:'Arial Narrow',Arial,sans-serif;` +
-      `white-space:nowrap;overflow:hidden;">${vendorText}</div>`
+      `width:${vendorCfg.width}cm;font-size:${vendorSizePt}pt;font-weight:600;line-height:1;` +
+      `font-family:'Calibri', Arial, sans-serif;font-synthesis:none;-webkit-font-synthesis:none;` +
+      `color:#000000;white-space:nowrap;overflow:hidden;">${vendorText}</div>`
     );
   }
 
-  // ── 3. Terbilang (bisa 1 atau 2 baris) ───────────────────────────────
+  // ── 3. Terbilang (Calibri 10pt, bisa 1 atau 2 baris) ─────────────────
   const { line1, line2, sizePt: terbSizePt } = splitTerbilangHtml(
     form.terbilang,
     layout.terbilang1.width,
@@ -543,39 +695,39 @@ export function generatePrintBodyHtml(form) {
   if (line1) {
     const l3 = layout.line3;
     els.push(
-      `<div style="position:absolute;top:${l3.top - 0.45}cm;left:${l3.left + layout.terbilang1.left}cm;` +
-      `width:${layout.terbilang1.width}cm;font-size:${terbSizePt}pt;font-weight:bold;` +
-      `font-family:'Arial Narrow',Arial,sans-serif;` +
-      `text-transform:uppercase;white-space:nowrap;overflow:hidden;">${line1}</div>`
+      `<div style="position:absolute;top:${l3.top - 0.1}cm;left:${l3.left + layout.terbilang1.left}cm;` +
+      `width:${layout.terbilang1.width}cm;font-size:${terbSizePt}pt;font-weight:600;line-height:1;` +
+      `font-family:'Calibri', Arial, sans-serif;font-synthesis:none;-webkit-font-synthesis:none;` +
+      `color:#000000;text-transform:uppercase;white-space:nowrap;overflow:hidden;">${line1}</div>`
     );
   }
   if (line2) {
     const l4 = layout.line4;
     els.push(
-      `<div style="position:absolute;top:${l4.top - 0.45}cm;left:${l4.left + layout.terbilang2.left}cm;` +
-      `width:${layout.terbilang2.width}cm;font-size:${terbSizePt}pt;font-weight:bold;` +
-      `font-family:'Arial Narrow',Arial,sans-serif;` +
-      `text-transform:uppercase;white-space:nowrap;overflow:hidden;">${line2}</div>`
+      `<div style="position:absolute;top:${l4.top - 0.1}cm;left:${l4.left + layout.terbilang2.left}cm;` +
+      `width:${layout.terbilang2.width}cm;font-size:${terbSizePt}pt;font-weight:600;line-height:1;` +
+      `font-family:'Calibri', Arial, sans-serif;font-synthesis:none;-webkit-font-synthesis:none;` +
+      `color:#000000;text-transform:uppercase;white-space:nowrap;overflow:hidden;">${line2}</div>`
     );
   }
 
-  // ── 4. Nominal ────────────────────────────────────────────────────────
+  // ── 4. Nominal (Calibri 10pt) ────────────────────────────────────────
   const nominalText = formatNominalDisplay(form.nominal);
 
   if (nominalText) {
     if (layout.nominal) {
       const n = layout.nominal;
       els.push(
-        `<div style="position:absolute;top:${n.top + 0.05}cm;left:${n.left + n.padLeft}cm;` +
-        `font-size:${BASE_PT}pt;font-weight:bold;font-family:'Courier New',monospace;` +
-        `white-space:nowrap;">${nominalText}</div>`
+        `<div style="position:absolute;top:${n.top + 0.1}cm;left:${n.left + n.padLeft}cm;` +
+        `font-size:${BASE_PT}pt;font-weight:600;line-height:1;font-family:'Calibri', Arial, sans-serif;` +
+        `font-synthesis:none;-webkit-font-synthesis:none;color:#000000;white-space:nowrap;">${nominalText}</div>`
       );
     } else if (layout.nominalLine) {
       const n = layout.nominalLine;
       els.push(
-        `<div style="position:absolute;top:${n.top - 0.45}cm;left:${n.left + n.padLeft}cm;` +
-        `font-size:${BASE_PT}pt;font-weight:bold;font-family:'Courier New',monospace;` +
-        `white-space:nowrap;">${nominalText}</div>`
+        `<div style="position:absolute;top:${n.top - 0.1}cm;left:${n.left + n.padLeft}cm;` +
+        `font-size:${BASE_PT}pt;font-weight:600;line-height:1;font-family:'Calibri', Arial, sans-serif;` +
+        `font-synthesis:none;-webkit-font-synthesis:none;color:#000000;white-space:nowrap;">${nominalText}</div>`
       );
     }
   }

@@ -12,13 +12,13 @@ const MARGIN_LEFT_CM = 0.7;
 const MARGIN_RIGHT_CM = 0.4;
 
 // ===== Posisi vertikal tiap garis =====
-const LINE_TANGGAL_TOP_CM = 1.3;
+const LINE_TANGGAL_TOP_CM = 1.5;
 const LINE_TANGGAL_BOX_HEIGHT_CM = 0.6;
 const LINE_TANGGAL_WIDTH_CM = 6;
 
-const LINE2_TOP_CM = LINE_TANGGAL_TOP_CM + 0.8; // 2.1
-const LINE3_TOP_CM = LINE2_TOP_CM + 0.7; // 2.8
-const LINE4_TOP_CM = LINE3_TOP_CM + 0.7; // 3.5
+const LINE2_TOP_CM = 2.2;
+const LINE3_TOP_CM = 3.0;
+const LINE4_TOP_CM = 3.8;
 
 // Jarak label (di atas garis) ke garisnya
 const LABEL_GAP_ABOVE_LINE_CM = 0.4;
@@ -35,7 +35,7 @@ const GARIS_NOMINAL_LEFT_CM = MARGIN_LEFT_CM + LINE4_WIDTH_CM + GARIS_NOMINAL_GA
 // Padding horizontal di dalam kotak nominal. Sisi kiri dibikin lebih lebar
 // supaya angka nominal nggak nempel/nabrak garis kiri kotak pas di-print
 // (padding lama 0.15cm kelihatan mepet banget di hasil cetak).
-const KOTAK_NOMINAL_PADDING_LEFT_CM = 1;
+const KOTAK_NOMINAL_PADDING_LEFT_CM = 1.5;
 const KOTAK_NOMINAL_PADDING_RIGHT_CM = 0.15;
 
 // ===== Lebar label italic =====
@@ -45,18 +45,18 @@ const LABEL_UANG_SEJUMLAH_WIDTH_CM = 4;
 
 // ===== Area teks isi (content) di dalam tiap garis =====
 // Garis 2: mulai setelah label "Atas penyerahan..." & berhenti sebelum label "atau pembawa *"
-const LINE2_CONTENT_LEFT_CM = 4.7;
-const LINE2_CONTENT_STOP_BEFORE_LABEL_CM = 2.6;
+const LINE2_CONTENT_LEFT_CM = 5.7;
+const LINE2_CONTENT_STOP_BEFORE_LABEL_CM = 2.1;
 const LINE2_CONTENT_WIDTH_CM =
     LINE23_WIDTH_CM - LINE2_CONTENT_LEFT_CM - LINE2_CONTENT_STOP_BEFORE_LABEL_CM; // 10.3
 
 // Garis 3 (terbilang baris 1): mulai setelah label "uang sejumlah..."
-const LINE3_SPAN_LEFT_CM = 4.2;
+const LINE3_SPAN_LEFT_CM = 5.4;
 const LINE3_SPAN_RIGHT_CM = 0.5;
 const LINE3_CONTENT_WIDTH_CM = LINE23_WIDTH_CM - LINE3_SPAN_LEFT_CM - LINE3_SPAN_RIGHT_CM; // 12.0
 
 // Garis 4 (terbilang baris 2, lanjutan)
-const LINE4_SPAN_LEFT_CM = 0.5;
+const LINE4_SPAN_LEFT_CM = 1;
 const LINE4_SPAN_RIGHT_CM = 0.6;
 const LINE4_CONTENT_WIDTH_CM = LINE4_WIDTH_CM - LINE4_SPAN_LEFT_CM - LINE4_SPAN_RIGHT_CM; // 7.4
 

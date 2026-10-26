@@ -3,6 +3,7 @@ import {
     FaCashRegister,
     FaSave,
     FaPrint,
+    FaDownload,
     FaSearch,
     FaTimes,
     FaChevronLeft,
@@ -10,22 +11,22 @@ import {
     FaTrash,
     FaTrashAlt,
     FaFileExport,
+    FaExclamationTriangle,
     FaEdit,
 } from "react-icons/fa";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 import ExcelJS from "exceljs";
 
-// import {
-//     getCashOpnameHistory,
-//     saveCashOpname,
-//     updateCashOpname,
-//     deleteCashOpname,
-//     getSettlementRecap,
-//     getAdvanceRecap,
-//     downloadCashOpnamePdf,
-// } from "../api/cash_opname";
-// import { getEmployees } from "../api/employee";
+import {
+    getCashOpnameHistory,
+    saveCashOpname,
+    updateCashOpname,
+    deleteCashOpname,
+    getSettlementRecap,
+    getAdvanceRecap,
+} from "../api/cash_opname";
+import { getEmployees } from "../api/employee";
 export const meta = {
     id: "cash_opname",
     label: "Cash Opname",
@@ -220,7 +221,7 @@ const REPORT_STYLES = `
 }
 .cop-report .header-title {
     text-align: center;
-    margin-bottom: 25px;
+    margin-bottom: 18px;
 }
 .cop-report .header-title h1 {
     font-size: 16px;
@@ -231,7 +232,7 @@ const REPORT_STYLES = `
 .cop-report .header-title h2 {
     font-size: 14px;
     font-weight: bold;
-    margin: 0 0 10px 0;
+    margin: 0 0 8px 0;
 }
 .cop-report .header-title .period {
     font-size: 12px;
@@ -264,7 +265,7 @@ const REPORT_STYLES = `
     break-inside: avoid;
 }
 .cop-report .signature-section {
-    margin-top: 35px;
+    margin-top: 1.5cm;
     display: flex;
     justify-content: space-between;
     page-break-inside: avoid;
@@ -279,7 +280,7 @@ const REPORT_STYLES = `
 }
 .cop-report .sign-header {
     font-weight: bold;
-    margin-bottom: 65px;
+    margin-bottom: 45px;
 }
 .cop-report .sign-names-left {
     display: flex;
@@ -292,16 +293,20 @@ const REPORT_STYLES = `
 }
 `;
 
-// ===== Bangun isi (inner content) laporan, dipakai bersama oleh cetak & unduh PDF =====
-// printedAt: string timestamp "dd/mm/yyyy HH:MM:SS WIB" yang di-generate saat user menekan cetak/unduh
+
 function buildReportContentHtml(record, printedAt) {
+    const _totalA = Math.round((record.settlementRows || []).reduce((sum, r) => sum + Math.round((Number(r.jumlah || 0) + Number.EPSILON) * 100) / 100, 0) * 100) / 100;
+    const _totalB = Math.round((record.advanceRows || []).reduce((sum, r) => sum + Math.round((Number(r.jumlah || 0) + Number.EPSILON) * 100) / 100, 0) * 100) / 100;
+    const _totalAB = Math.round((_totalA + _totalB + Number.EPSILON) * 100) / 100;
+    const _saldoAkhir = Math.round((Number(record.saldoAwal || 0) - _totalAB + Number.EPSILON) * 100) / 100;
+
     const rowsA = (record.settlementRows || [])
         .map((r) => {
             const info = getRowInfo(r);
             return `
         <tr>
-            <td style="text-align:center; border:1px solid #000;">${info.tanggal}</td>
-            <td style="text-align:center; border:1px solid #000;">${info.kode}</td>
+            <td style="text-align:left; border:1px solid #000;">${info.tanggal}</td>
+            <td style="text-align:left; border:1px solid #000;">${info.kode}</td>
             <td style="border:1px solid #000;">${info.namaUser}</td>
             <td style="border:1px solid #000;">${info.keterangan}</td>
             <td style="border:1px solid #000; padding: 4px 8px;">
@@ -320,8 +325,8 @@ function buildReportContentHtml(record, printedAt) {
             const info = getRowInfo(r);
             return `
         <tr>
-            <td style="text-align:center; border:1px solid #000;">${info.tanggal}</td>
-            <td style="text-align:center; border:1px solid #000;">${info.kode}</td>
+            <td style="text-align:left; border:1px solid #000;">${info.tanggal}</td>
+            <td style="text-align:left; border:1px solid #000;">${info.kode}</td>
             <td style="border:1px solid #000;">${info.namaUser}</td>
             <td style="border:1px solid #000;">${info.keterangan}</td>
             <td style="border:1px solid #000; padding: 4px 8px;">
@@ -362,7 +367,7 @@ function buildReportContentHtml(record, printedAt) {
                     </td>
                 </tr>
                 <tr>
-                    <td colSpan="6" style="font-weight:bold; padding:10px 0 4px 0; border:none;">A. PENGELUARAN YANG SUDAH SELESAI</td>
+                    <td colSpan="6" style="font-weight:bold; padding:10px 0 4px 0; border:none;">A. REIMBURSEMENT DAN SETTLEMENT</td>
                 </tr>
                 <tr>
                     <th style="text-align:center; border:1px solid #000;">Tanggal</th>
@@ -378,13 +383,13 @@ function buildReportContentHtml(record, printedAt) {
                     <td style="font-weight:bold; font-style:italic; border:1px solid #000; border-top:1.5px solid #000; border-bottom:1.5px solid #000; padding: 4px 8px;">
                         <div style="display: flex; justify-content: space-between; width: 100%;">
                             <span>Rp.</span>
-                            <span>${formatNumberID(record.totalA)}</span>
+                            <span>${formatNumberID(_totalA)}</span>
                         </div>
                     </td>
                     <td style="border:none;"></td>
                 </tr>
                 <tr>
-                    <td colSpan="6" style="font-weight:bold; padding:14px 0 4px 0; border:none;">B. UANG MUKA</td>
+                    <td colSpan="6" style="font-weight:bold; padding:10px 0 4px 0; border:none;">B. ADVANCE</td>
                 </tr>
                 <tr>
                     <th style="text-align:center; border:1px solid #000;">Tanggal</th>
@@ -400,12 +405,12 @@ function buildReportContentHtml(record, printedAt) {
                     <td style="font-weight:bold; font-style:italic; border:1px solid #000; border-top:1.5px solid #000; border-bottom:1.5px solid #000; padding: 4px 8px;">
                         <div style="display: flex; justify-content: space-between; width: 100%;">
                             <span>Rp.</span>
-                            <span>${formatNumberID(record.totalB)}</span>
+                            <span>${formatNumberID(_totalB)}</span>
                         </div>
                     </td>
                     <td style="border:none;"></td>
                 </tr>
-                <tr style="height:20px;">
+                <tr style="height:10px;">
                     <td style="border:none;"></td><td style="border:none;"></td><td style="border:none;"></td><td style="border:none;"></td><td style="border:none;"></td><td style="border:none;"></td>
                 </tr>
                 <tr>
@@ -414,7 +419,7 @@ function buildReportContentHtml(record, printedAt) {
                     <td style="font-weight:bold; border:none; padding:5px 8px; border-bottom:1.5px solid #000;">
                         <div style="display: flex; justify-content: space-between; width: 100%;">
                             <span>Rp.</span>
-                            <span>${formatNumberID(record.totalAB)}</span>
+                            <span>${formatNumberID(_totalAB)}</span>
                         </div>
                     </td>
                 </tr>
@@ -424,7 +429,7 @@ function buildReportContentHtml(record, printedAt) {
                     <td style="font-weight:bold; border:none; padding:5px 8px; border-bottom:3px double #000;">
                         <div style="display: flex; justify-content: space-between; width: 100%;">
                             <span>Rp.</span>
-                            <span>${formatNumberID(record.saldoAkhir)}</span>
+                            <span>${formatNumberID(_saldoAkhir)}</span>
                         </div>
                     </td>
                 </tr>
@@ -447,10 +452,10 @@ function buildReportContentHtml(record, printedAt) {
             </div>
         </div>
 
-        ${printedAt ? `<div style="margin-top:30px; font-size:9px; color:#666; text-align:left;">Dicetak pada: ${printedAt}</div>` : ""}`;
+        ${printedAt ? `<div style="margin-top:8px; font-size:9px; color:#666; text-align:left;">Dicetak pada: ${printedAt}</div>` : ""}`;
 }
 
-// HTML lengkap untuk jendela cetak (window.print) — A4, margin 2,54cm (margin atas hal 1: 1,2cm)
+// HTML lengkap untuk jendela cetak (window.print) — A4, margin 1.2cm - 1.5cm
 function buildPrintHtml(record, printedAt) {
     return `
     <!DOCTYPE html>
@@ -461,13 +466,8 @@ function buildPrintHtml(record, printedAt) {
         <style>
             @page {
                 size: A4 portrait;
-                margin-top: ${PDF_MARGIN_CM}cm;
-                margin-bottom: ${PDF_MARGIN_CM}cm;
-                margin-left: ${PDF_MARGIN_SIDE_CM}cm;
-                margin-right: ${PDF_MARGIN_SIDE_CM}cm;
-            }
-            @page :first {
                 margin-top: ${PDF_MARGIN_TOP_PAGE1_CM}cm;
+                margin-bottom: 1.2cm;
                 margin-left: ${PDF_MARGIN_SIDE_CM}cm;
                 margin-right: ${PDF_MARGIN_SIDE_CM}cm;
             }
@@ -674,7 +674,7 @@ async function downloadRecordAsExcel(record) {
 
     // ===== Bagian A: Pengeluaran yang sudah selesai =====
     ws.mergeCells(`A${r}:F${r}`);
-    ws.getCell(`A${r}`).value = "A. PENGELUARAN YANG SUDAH SELESAI";
+    ws.getCell(`A${r}`).value = "A. REIMBURSEMENT DAN SETTLEMENT";
     ws.getCell(`A${r}`).font = boldFont;
     r++;
 
@@ -707,7 +707,7 @@ async function downloadRecordAsExcel(record) {
                     cell.numFmt = '"Rp. "* #,##0';
                     cell.alignment = { horizontal: "right" };
                 } else {
-                    cell.alignment = { horizontal: i <= 1 ? "center" : "left" };
+                    cell.alignment = { horizontal: "left" };
                 }
             });
             r++;
@@ -726,7 +726,7 @@ async function downloadRecordAsExcel(record) {
 
     // ===== Bagian B: Uang Muka =====
     ws.mergeCells(`A${r}:F${r}`);
-    ws.getCell(`A${r}`).value = "B. UANG MUKA";
+    ws.getCell(`A${r}`).value = "B. ADVANCE";
     ws.getCell(`A${r}`).font = boldFont;
     r++;
 
@@ -759,7 +759,7 @@ async function downloadRecordAsExcel(record) {
                     cell.numFmt = '"Rp. "* #,##0';
                     cell.alignment = { horizontal: "right" };
                 } else {
-                    cell.alignment = { horizontal: i <= 1 ? "center" : "left" };
+                    cell.alignment = { horizontal: "left" };
                 }
             });
             r++;
@@ -852,7 +852,13 @@ export default function CashOpname() {
     const [employeeOptions, setEmployeeOptions] = useState([]);
 
     const [formError, setFormError] = useState("");
-    const [successMessage, setSuccessMessage] = useState("");
+    // Notifikasi Toast
+    const [successMessage, setSuccessMessage] = useState(null);
+
+    const showToast = (msg, type = "success") => {
+        setSuccessMessage({ text: msg, type });
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
 
     const [history, setHistory] = useState([]);
     const [historyLoading, setHistoryLoading] = useState(true);
@@ -1153,8 +1159,7 @@ export default function CashOpname() {
             setDeleteBatchOpen(false);
             setDeleteMode(false);
             setSelectedIds(new Set());
-            setSuccessMessage("Data Cash Opname terpilih berhasil dihapus.");
-            setTimeout(() => setSuccessMessage(""), 3000);
+            showToast("Data Cash Opname terpilih berhasil dihapus.", "delete");
         } catch (err) {
             console.error("Gagal menghapus Cash Opname:", err);
             setDeleteError("Gagal menghapus data di server. Silakan coba lagi.");
@@ -1196,11 +1201,15 @@ export default function CashOpname() {
                 <div
                     style={{
                         position: "fixed", top: "20px", left: "50%", transform: "translate(-50%, 0)", zIndex: 100,
-                        background: "#ecfdf5", border: "1.5px solid #6ee7b7", color: "#047857", borderRadius: "10px",
-                        padding: "10px 18px", fontSize: "13px", fontWeight: 600, boxShadow: "0 8px 24px rgba(16,185,129,0.25)", animation: "toastIn 0.25s ease",
+                        background: successMessage.type === "error" || successMessage.type === "delete" ? "#fef2f2" : "#ecfdf5",
+                        border: successMessage.type === "error" || successMessage.type === "delete" ? "1.5px solid #fca5a5" : "1.5px solid #6ee7b7",
+                        color: successMessage.type === "error" || successMessage.type === "delete" ? "#b91c1c" : "#047857",
+                        borderRadius: "10px", padding: "10px 18px", fontSize: "13px", fontWeight: 600,
+                        boxShadow: successMessage.type === "error" || successMessage.type === "delete" ? "0 8px 24px rgba(239,68,68,0.25)" : "0 8px 24px rgba(16,185,129,0.25)",
+                        animation: "toastIn 0.25s ease",
                     }}
                 >
-                    {successMessage}
+                    {typeof successMessage === "object" ? successMessage.text : successMessage}
                 </div>
             )}
 
@@ -1442,6 +1451,7 @@ export default function CashOpname() {
                                 <th className="p-3 font-medium border border-gray-300">Jam</th>
                                 <th className="p-3 font-medium border border-gray-300">Dibuat Oleh</th>
                                 <th className="p-3 font-medium border border-gray-300">Mengetahui</th>
+                                <th className="p-3 font-medium border border-gray-300">Saldo Awal (IDR)</th>
                                 <th className="p-3 font-medium border border-gray-300">Total Pengeluaran (IDR)</th>
                                 <th className="p-3 font-medium border border-gray-300">Saldo Akhir (IDR)</th>
                                 <th className="p-3 font-medium border border-gray-300">Cetak</th>
@@ -1454,7 +1464,7 @@ export default function CashOpname() {
                         {historyLoading && (
                             <tbody>
                                 <tr>
-                                    <td colSpan={deleteMode ? 9 : 8} className="p-8 text-center text-gray-400 border border-gray-300">
+                                    <td colSpan={deleteMode ? 10 : 9} className="p-8 text-center text-gray-400 border border-gray-300">
                                         Memuat history Cash Opname...
                                     </td>
                                 </tr>
@@ -1464,7 +1474,7 @@ export default function CashOpname() {
                         {!historyLoading && history.length === 0 && (
                             <tbody>
                                 <tr>
-                                    <td colSpan={8} className="p-8 text-center text-gray-400 border border-gray-300">
+                                    <td colSpan={9} className="p-8 text-center text-gray-400 border border-gray-300">
                                         Belum ada history Cash Opname.
                                     </td>
                                 </tr>
@@ -1476,6 +1486,11 @@ export default function CashOpname() {
                                 {currentRows.map((row, idx) => {
                                     const isEditing = editingId === row.id;
                                     const isSelected = deleteMode && selectedIds.has(row.id);
+                                    // Hitung ulang dari baris transaksi agar konsisten dengan PDF & Excel
+                                    const _totalA = Math.round((row.settlementRows || []).reduce((sum, r) => sum + Math.round((Number(r.jumlah || 0) + Number.EPSILON) * 100) / 100, 0) * 100) / 100;
+                                    const _totalB = Math.round((row.advanceRows || []).reduce((sum, r) => sum + Math.round((Number(r.jumlah || 0) + Number.EPSILON) * 100) / 100, 0) * 100) / 100;
+                                    const _totalAB = Math.round((_totalA + _totalB + Number.EPSILON) * 100) / 100;
+                                    const _saldoAkhir = Math.round((Number(row.saldoAwal || 0) - _totalAB + Number.EPSILON) * 100) / 100;
                                     return (
                                         <tr
                                             key={row.id}
@@ -1503,11 +1518,12 @@ export default function CashOpname() {
                                             <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
                                                 {formatDateID(row.dariTanggal)} s/d {formatDateID(row.sampaiTanggal)}
                                             </td>
-                                            <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.jam}</td>
+                                            <td className="py-3 px-5 text-gray-700 border border-gray-300 text-center">{row.jam}</td>
                                             <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.dibuatOleh1} & {row.dibuatOleh2}</td>
                                             <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.mengetahui}</td>
-                                            <td className="py-3 px-5 text-gray-700 border border-gray-300 text-right" style={{ paddingRight: "10px" }}>{formatCurrency(row.totalAB)}</td>
-                                            <td className="py-3 px-5 text-gray-700 border border-gray-300 text-right" style={{ paddingRight: "10px" }}>{formatCurrency(row.saldoAkhir)}</td>
+                                            <td className="py-3 px-5 text-gray-700 border border-gray-300 text-right" style={{ paddingRight: "10px" }}>{formatCurrency(row.saldoAwal)}</td>
+                                            <td className="py-3 px-5 text-gray-700 border border-gray-300 text-right" style={{ paddingRight: "10px" }}>{formatCurrency(_totalAB)}</td>
+                                            <td className="py-3 px-5 text-gray-700 border border-gray-300 text-right" style={{ paddingRight: "10px" }}>{formatCurrency(_saldoAkhir)}</td>
                                             <td className="py-3 px-5 border border-gray-300" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex items-center justify-center gap-2">
                                                     <button

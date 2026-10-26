@@ -7,16 +7,16 @@ import {
     FaTrash,
 } from "react-icons/fa";
 
-// import {
-//     getAdvancePpc,
-//     createAdvanceRequest,
-//     deleteAdvanceRequest,
-//     cancelAdvanceRequest,
-//     generatePPCNumber,
-//     submitSettlement,
-//     getSettlementReceipt,
-//     updateAdvanceRequest,
-// } from "../../api/advance";
+import {
+    getAdvancePpc,
+    createAdvanceRequest,
+    deleteAdvanceRequest,
+    cancelAdvanceRequest,
+    generatePPCNumber,
+    submitSettlement,
+    getSettlementReceipt,
+    updateAdvanceRequest,
+} from "../../api/advance";
 
 const STATUS_STYLE = {
     Active: "bg-blue-100 text-blue-700",
@@ -27,7 +27,7 @@ const STATUS_STYLE = {
 
 function formatRupiah(value) {
     return new Intl.NumberFormat("id-ID", {
-        style: "currency",
+        style: "decimal",
         currency: "IDR",
         minimumFractionDigits: 0,
     }).format(Number(value || 0));
@@ -40,6 +40,14 @@ function formatDate(isoDate) {
         month: "short",
         year: "numeric",
     }).format(new Date(isoDate));
+}
+
+function getTodayDateString() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
 }
 
 function TableSkeleton({ cols = 8 }) {
@@ -231,7 +239,7 @@ function SettlementFormModal({
             <div className="bg-white shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
                 <div
                     className="px-8 py-7"
-                    style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "15px" }}
+                    style={{ paddingLeft: "20px", paddingRight: "20px", marginTop: "8px", marginBottom: "5px" }}
                 >
                     <Info label="PPC No" value={row.ppc_no} />
                     <Info label="Employee" value={row.nama_user} />
@@ -243,7 +251,7 @@ function SettlementFormModal({
 
                     <form onSubmit={onSubmit} className="flex flex-col gap-4">
                         <div>
-                            <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
+                            <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                                 Settlement Date
                             </label>
                             <input
@@ -253,12 +261,12 @@ function SettlementFormModal({
                                 onChange={onChange}
                                 required
                                 className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
-                                style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                                style={{ padding: "5px 12px", borderWidth: "1.5px" }}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
+                            <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                                 Settlement Amount
                             </label>
                             <input
@@ -270,23 +278,23 @@ function SettlementFormModal({
                                 min="0"
                                 required
                                 className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none"
-                                style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                                style={{ padding: "5px 12px", borderWidth: "1.5px" }}
                             />
                         </div>
 
                         <div>
-                            <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>
+                            <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                                 Description
                             </label>
                             <textarea
                                 name="description"
                                 value={form.description}
                                 onChange={onChange}
-                                rows={3}
+                                rows={2}
                                 placeholder="Contoh: Biaya transport dan akomodasi"
                                 required
                                 className="w-full border border-gray-200 rounded-[10px] text-[13px] focus:ring-2 focus:ring-blue-600 outline-none resize-none"
-                                style={{ padding: "9px 12px", borderWidth: "1.5px" }}
+                                style={{ padding: "5px 12px", borderWidth: "1.5px" }}
                             />
                         </div>
 
@@ -296,7 +304,7 @@ function SettlementFormModal({
                             </div>
                         )}
 
-                        <div className="flex justify-end gap-2 mt-2 pt-4 border-t border-gray-100" style={{ padding: "10px 24px 24px", gap: "10px" }}>
+                        <div className="flex justify-end gap-2 mt-2 pt-4 border-t border-gray-100" style={{ padding: "5px 0 0", gap: "5px" }}>
                             <button
                                 type="button"
                                 onClick={onClose}
@@ -352,8 +360,15 @@ export default function Table({
     const [requestSubmitting, setRequestSubmitting] = useState(false);
     const [requestError, setRequestError] = useState("");
 
-    // NOTIFIKASI SUKSES (toast) — sama seperti pada Employee.jsx
-    const [successMessage, setSuccessMessage] = useState("");
+    // NOTIFIKASI TOAST (sukses, delete, error)
+    const [successMessage, setSuccessMessage] = useState(null);
+
+    const showToast = (msg, type = "success") => {
+        setSuccessMessage({ text: msg, type });
+        setTimeout(() => {
+            setSuccessMessage(null);
+        }, 3500);
+    };
 
     // DELETE — mode seleksi batch
     const [deleteMode, setDeleteMode] = useState(false);
@@ -657,24 +672,38 @@ export default function Table({
         if (selectedIds.size === 0) return;
 
         try {
-
             setDeleting(true);
             setDeleteError("");
-            await Promise.all([...selectedIds].map((id) => deleteAdvanceRequest(id)));
+
+            let successCount = 0;
+            let errorMsg = "";
+
+            for (const id of selectedIds) {
+                try {
+                    await deleteAdvanceRequest(id);
+                    successCount++;
+                } catch (err) {
+                    const detail = err.response?.data?.detail || "Advance Masih Memiliki Nominal Outstanding.";
+                    errorMsg = detail;
+                }
+            }
+
+            if (errorMsg && successCount === 0) {
+                setDeleteError(errorMsg);
+                return;
+            }
+
             setDeleteBatchOpen(false);
             setDeleteMode(false);
             setSelectedIds(new Set());
 
-            // Reset filters to show remaining data
-            if (setFilterUser) setFilterUser("");
-            if (setFilterCostCenter) setFilterCostCenter("");
-            if (setFilterStatus) setFilterStatus("All Status");
-
             loadData();
-            setSuccessMessage("Data terpilih berhasil dihapus.");
-            setTimeout(() => {
-                setSuccessMessage("");
-            }, 3000);
+
+            if (errorMsg) {
+                showToast(`${successCount} Data Berhasil Dihapus. Namun, Data berstatus Active/Overdue tidak dapat dihapus.`, "delete");
+            } else {
+                showToast("Data terpilih berhasil dihapus.", "delete");
+            }
 
         } catch (err) {
             setDeleteError(
@@ -703,9 +732,9 @@ export default function Table({
         } else if (row.status === "Active" || row.status === "Overdue") {
             setRowToSettle(row);
             setSettlementForm({
-                settlement_date: "",
+                settlement_date: getTodayDateString(),
                 settlement_amount: "",
-                description: "",
+                description: row.keterangan || row.description || "",
             });
             setSettlementError("");
         }
@@ -900,18 +929,30 @@ export default function Table({
                         left: "50%",
                         transform: "translate(-50%, 0)",
                         zIndex: 100,
-                        background: "#ecfdf5",
-                        border: "1.5px solid #6ee7b7",
-                        color: "#047857",
+                        background:
+                            successMessage.type === "error" || successMessage.type === "delete"
+                                ? "#fef2f2"
+                                : "#ecfdf5",
+                        border:
+                            successMessage.type === "error" || successMessage.type === "delete"
+                                ? "1.5px solid #fca5a5"
+                                : "1.5px solid #6ee7b7",
+                        color:
+                            successMessage.type === "error" || successMessage.type === "delete"
+                                ? "#b91c1c"
+                                : "#047857",
                         borderRadius: "10px",
                         padding: "10px 18px",
                         fontSize: "13px",
                         fontWeight: 600,
-                        boxShadow: "0 8px 24px rgba(16,185,129,0.25)",
+                        boxShadow:
+                            successMessage.type === "error" || successMessage.type === "delete"
+                                ? "0 8px 24px rgba(239,68,68,0.25)"
+                                : "0 8px 24px rgba(16,185,129,0.25)",
                         animation: "toastIn 0.25s ease",
                     }}
                 >
-                    {successMessage}
+                    {typeof successMessage === "object" ? successMessage.text : successMessage}
                 </div>
             )}
 
@@ -1081,7 +1122,7 @@ export default function Table({
                                 <th className="p-3 font-medium border border-gray-300">Nama User</th>
                                 <th className="p-3 font-medium border border-gray-300">Cost Center</th>
                                 <th className="p-3 font-medium border border-gray-300">Deskripsi</th>
-                                <th className="p-3 font-medium border border-gray-300">Jumlah</th>
+                                <th className="p-3 font-medium border border-gray-300">Jumlah (IDR)</th>
                                 <th className="p-3 font-medium border border-gray-300">Tgl Penyelesaian</th>
                                 <th className="p-3 font-medium border border-gray-300">Status</th>
                                 <th className="p-3 font-medium border border-gray-300">Aksi</th>
@@ -1108,20 +1149,20 @@ export default function Table({
                                         className={`hover:bg-gray-100 cursor-pointer transition-colors ${deleteMode && selectedIds.has(row.id) ? "bg-red-50" : ""}`}
                                         onClick={(e) => deleteMode ? toggleSelectRow(row.id) : handleEditRowOpen(row, e)}
                                     >
-                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
+                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300 text-left" style={{ paddingLeft: "5px" }}>
                                             {formatDate(row.tanggal)}
                                         </td>
-                                        <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.ppc_no}</td>
-                                        <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.nama_user}</td>
-                                        <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.cost_center}</td>
-                                        <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.keterangan}</td>
-                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300 text-right" style={{ paddingRight: "10px" }}>
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "5px" }}>{row.ppc_no}</td>
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "5px" }}>{row.nama_user}</td>
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "5px" }}>{row.cost_center}</td>
+                                        <td className="py-3 px-5 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "5px" }}>{row.keterangan}</td>
+                                        <td className="py-3 px-5 text-gray-700 whitespace-nowrap border border-gray-300 text-right" style={{ paddingRight: "5px" }}>
                                             {formatRupiah(row.jumlah)}
                                         </td>
-                                        <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
+                                        <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300 text-left" style={{ paddingLeft: "5px" }}>
                                             {formatDate(row.due_date)}
                                         </td>
-                                        <td className="py-3 px-5 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
+                                        <td className="py-3 px-5 border border-gray-300 text-center">
                                             <span
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -1488,7 +1529,7 @@ export default function Table({
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
                         <div
                             className="flex items-center justify-between border-b border-gray-200"
-                            style={{ padding: "8px 24px 8px", marginRight: "20px" }}
+                            style={{ padding: "5px 24px 5px", marginRight: "20px" }}
                         >
                             <h3 className="text-lg font-semibold text-gray-700" style={{ marginLeft: "20px" }}>
                                 Edit Advance Request
@@ -1508,12 +1549,12 @@ export default function Table({
                             style={{
                                 marginRight: "20px",
                                 marginLeft: "20px",
-                                marginBottom: "10px",
-                                marginTop: "10px",
+                                marginBottom: "5px",
+                                marginTop: "5px",
                             }}
                         >
                             <div>
-                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                                     PPC Number
                                 </label>
                                 <input
@@ -1526,7 +1567,7 @@ export default function Table({
                             </div>
 
                             <div>
-                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                                     Nama User
                                 </label>
                                 <input
@@ -1541,7 +1582,7 @@ export default function Table({
                             </div>
 
                             <div>
-                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                                     Cost Center
                                 </label>
                                 <input
@@ -1556,7 +1597,7 @@ export default function Table({
                             </div>
 
                             <div>
-                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                                     Purpose / Description
                                 </label>
                                 <textarea
@@ -1571,7 +1612,7 @@ export default function Table({
                             </div>
 
                             <div>
-                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                                     Amount
                                 </label>
                                 <input
@@ -1587,7 +1628,7 @@ export default function Table({
                             </div>
 
                             <div>
-                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                                     Due Date
                                 </label>
                                 <input
@@ -1607,7 +1648,7 @@ export default function Table({
                                 </div>
                             )}
 
-                            <div className="flex justify-end gap-2 pt-4 border-t border-gray-100" style={{ padding: "5px 0 5px", gap: "10px" }}>
+                            <div className="flex justify-end gap-2 pt-4 border-t border-gray-100" style={{ padding: "5px 0 5px", gap: "5px" }}>
                                 <button
                                     type="button"
                                     onClick={handleEditClose}

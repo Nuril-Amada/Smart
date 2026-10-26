@@ -1,11 +1,11 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { FaPlus, FaTimes, FaTrash, FaEdit, FaUsers, FaSearch, FaChevronLeft, FaChevronRight } from "react-icons/fa";
-// import {
-//     getEmployees,
-//     createEmployee,
-//     updateEmployee,
-//     deleteEmployee
-// } from "../../api/employee";
+import {
+    getEmployees,
+    createEmployee,
+    updateEmployee,
+    deleteEmployee
+} from "../../api/employee";
 
 export const meta = {
     id: "employee",
@@ -18,12 +18,12 @@ const initialForm = { employee_name: "", employee_email: "", department_email: "
 const fields = [
     { name: "employee_name", label: "Nama Employee", placeholder: "Andi Pratama" },
     { name: "employee_email", label: "Email User", type: "email", placeholder: "andi.pratama@company.com", required: false },
-    { name: "department_email", label: "Email Department", type: "email", placeholder: "finance@company.com", required: false },
+    { name: "department_email", label: "Email Section/Head Department", type: "email", placeholder: "[EMAIL_ADDRESS]", required: false },
 ];
 const columns = [
-    { key: "employee_name", label: "Name" },
+    { key: "employee_name", label: "Nama User" },
     { key: "employee_email", label: "Email User" },
-    { key: "department_email", label: "Email Department" },
+    { key: "department_email", label: "Email Section/Head Department" },
 ];
 const searchKey = "employee_name";
 
@@ -131,12 +131,18 @@ export default function Employee() {
     const [modalOpen, setModalOpen] = useState(false);
     const [form, setForm] = useState(initialForm);
     const [submitError, setSubmitError] = useState("");
-    const [rowToDelete, setRowToDelete] = useState(null);
     const [editRow, setEditRow] = useState(null);
     const [editForm, setEditForm] = useState(initialForm);
+    const [editSubmitting, setEditSubmitting] = useState(false);
     const [editError, setEditError] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
-    const [successMessage, setSuccessMessage] = useState("");
+    // NOTIFIKASI TOAST (sukses, delete, error)
+    const [successMessage, setSuccessMessage] = useState(null);
+
+    const showToast = (msg, type = "success") => {
+        setSuccessMessage({ text: msg, type });
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
     const [page, setPage] = useState(1);
     const perPage = 10;
 
@@ -182,8 +188,8 @@ export default function Employee() {
     const currentRows = filteredRows.slice((page - 1) * perPage, page * perPage);
     const startEntry = total === 0 ? 0 : (page - 1) * perPage + 1;
     const endEntry = Math.min(page * perPage, total);
-
     const visiblePages = [];
+
     for (let i = 1; i <= totalPages; i++) visiblePages.push(i);
 
     const suggestions = useMemo(() => {
@@ -230,32 +236,13 @@ export default function Employee() {
             await createEmployee(form);
             await loadData(searchTerm);
             handleClose();
-            setSuccessMessage(
-                "Employee berhasil ditambahkan."
-            );
-            setTimeout(() => {
-                setSuccessMessage("");
-            }, 3000);
-        } catch (err) {
-            setSubmitError(
-                err?.response?.data?.detail || "Gagal menyimpan data."
-            );
-        }
-    };
-
-    const handleDeleteClick = (row) => setRowToDelete(row);
-    const handleDeleteCancel = () => setRowToDelete(null);
-
-    const handleDeleteConfirm = async () => {
-        if (!rowToDelete) return;
-        try {
-            await deleteEmployee(rowToDelete.id);
-            await loadData(searchTerm);
-            setRowToDelete(null);
-            setSuccessMessage("Employee berhasil dihapus.");
-            setTimeout(() => setSuccessMessage(""), 3000);
+            showToast("Employee berhasil disimpan.", "success");
         } catch (err) {
             console.error(err);
+            setSubmitError(
+                err?.response?.data?.detail ||
+                "Gagal menyimpan Employee."
+            );
         }
     };
 
@@ -287,13 +274,16 @@ export default function Employee() {
             return;
         }
         try {
+            setEditSubmitting(true);
+            setEditError("");
             await updateEmployee(editRow.id, editForm);
-            await loadData(searchTerm);
             handleEditClose();
-            setSuccessMessage("Employee berhasil diperbarui.");
-            setTimeout(() => setSuccessMessage(""), 3000);
+            await loadData(searchTerm);
+            showToast("Employee berhasil diperbarui.", "success");
         } catch (err) {
-            setEditError(err?.response?.data?.detail || "Gagal memperbarui data.");
+            setEditError(err?.response?.data?.detail || "Gagal menyimpan data.");
+        } finally {
+            setEditSubmitting(false);
         }
     };
 
@@ -329,8 +319,7 @@ export default function Employee() {
             setDeleteMode(false);
             setSelectedIds(new Set());
             await loadData(searchTerm);
-            setSuccessMessage("Data terpilih berhasil dihapus.");
-            setTimeout(() => setSuccessMessage(""), 3000);
+            showToast("Data terpilih berhasil dihapus.", "delete");
         } catch (err) {
             setDeleteError(
                 err?.response?.data?.detail || "Gagal menghapus data."
@@ -361,18 +350,18 @@ export default function Employee() {
                         left: "50%",
                         transform: "translate(-50%, 0)",
                         zIndex: 100,
-                        background: "#ecfdf5",
-                        border: "1.5px solid #6ee7b7",
-                        color: "#047857",
+                        background: successMessage.type === "error" || successMessage.type === "delete" ? "#fef2f2" : "#ecfdf5",
+                        border: successMessage.type === "error" || successMessage.type === "delete" ? "1.5px solid #fca5a5" : "1.5px solid #6ee7b7",
+                        color: successMessage.type === "error" || successMessage.type === "delete" ? "#b91c1c" : "#047857",
                         borderRadius: "10px",
                         padding: "10px 18px",
                         fontSize: "13px",
                         fontWeight: 600,
-                        boxShadow: "0 8px 24px rgba(16,185,129,0.25)",
+                        boxShadow: successMessage.type === "error" || successMessage.type === "delete" ? "0 8px 24px rgba(239,68,68,0.25)" : "0 8px 24px rgba(16,185,129,0.25)",
                         animation: "toastIn 0.25s ease",
                     }}
                 >
-                    {successMessage}
+                    {typeof successMessage === "object" ? successMessage.text : successMessage}
                 </div>
             )}
 
@@ -381,7 +370,7 @@ export default function Employee() {
                     display: "flex",
                     alignItems: "flex-end",
                     justifyContent: "space-between",
-                    marginBottom: "16px",
+                    marginBottom: "8px",
                     paddingLeft: "10px",
                     paddingRight: "10px",
                     flexWrap: "wrap",
@@ -389,7 +378,6 @@ export default function Employee() {
                 }}
             >
                 <div className="flex flex-col gap-1">
-                    <label className="text-xs font-medium text-gray-500">Nama Employee</label>
                     <AutocompleteInput
                         value={searchTerm}
                         onChange={setSearchTerm}
@@ -516,10 +504,7 @@ export default function Employee() {
                                     {col.label}
                                 </th>
                             ))}
-                            <th className="p-3 font-medium border border-gray-300 text-center">Action</th>
-                            {deleteMode && (
-                                <th className="p-3 font-medium border border-gray-300 text-center">Pilih</th>
-                            )}
+                            <th className="p-3 font-medium border border-gray-300 text-center">Edit</th>
                         </tr>
                     </thead>
 
@@ -540,7 +525,7 @@ export default function Employee() {
                                     key={row.id}
                                     className={`hover:bg-gray-50 ${deleteMode && selectedIds.has(row.id) ? "bg-red-50" : ""}`}
                                 >
-                                    <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
+                                    <td className="p-3 text-gray-700 border border-gray-300 text-center">
                                         {startEntry + idx}
                                     </td>
                                     {columns.map((col) => (
@@ -553,20 +538,11 @@ export default function Employee() {
                                             <button
                                                 type="button"
                                                 onClick={() => handleEditClick(row)}
-                                                className="bg-blue-600 hover:bg-blue-700 text-white p-1.5 rounded-md"
+                                                className="text-black p-1.5 rounded-md"
                                                 style={{ padding: "5px 5px" }}
                                                 title="Edit"
                                             >
                                                 <FaEdit className="text-xs" />
-                                            </button>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDeleteClick(row)}
-                                                className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-md"
-                                                style={{ padding: "5px 5px" }}
-                                                title="Hapus"
-                                            >
-                                                <FaTrash className="text-xs" />
                                             </button>
                                         </div>
                                     </td>
@@ -591,7 +567,7 @@ export default function Employee() {
             {filteredRows.length > 0 && (
                 <div
                     className="flex items-center justify-between mt-4 text-sm text-gray-500"
-                    style={{ marginLeft: "10px", marginRight: "10px", marginTop: "10px", marginBottom: "10px" }}
+                    style={{ marginLeft: "10px", marginRight: "10px", marginTop: "8px", marginBottom: "0px" }}
                 >
                     <span>Showing {startEntry} to {endEntry} of {total} entries</span>
 
@@ -702,41 +678,6 @@ export default function Employee() {
                                 </button>
                             </div>
                         </form>
-                    </div>
-                </div>
-            )}
-
-            {rowToDelete && (
-                <div
-                    style={{
-                        position: "fixed", inset: 0, zIndex: 50, display: "flex", alignItems: "center",
-                        justifyContent: "center", background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)",
-                    }}
-                >
-                    <div style={{ background: "#fff", borderRadius: "20px", boxShadow: "0 20px 60px rgba(0,0,0,0.2)", width: "100%", maxWidth: "380px", animation: "slideDown 0.25s ease" }}>
-                        <div style={{ padding: "20px 20px 15px" }}>
-                            <h3 style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 700, color: "#1e1b4b" }}>Hapus Data</h3>
-                            <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>Apakah anda yakin ingin menghapus data ini?</p>
-                        </div>
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", padding: "16px 24px 24px", borderTop: "1px solid #f1f5f9" }}>
-                            <button
-                                type="button"
-                                onClick={handleDeleteCancel}
-                                style={{ border: "1.5px solid #e5e7eb", borderRadius: "10px", padding: "8px 20px", fontSize: "13px", color: "#6b7280", background: "#fff", cursor: "pointer", fontWeight: 500 }}
-                            >
-                                Batal
-                            </button>
-                            <button
-                                type="button"
-                                onClick={handleDeleteConfirm}
-                                style={{
-                                    background: "linear-gradient(135deg, #ef4444, #dc2626)", border: "none", borderRadius: "10px",
-                                    padding: "8px 20px", fontSize: "13px", color: "#fff", cursor: "pointer", fontWeight: 600
-                                }}
-                            >
-                                Ya, Hapus
-                            </button>
-                        </div>
                     </div>
                 </div>
             )}
@@ -862,7 +803,7 @@ export default function Employee() {
                                 <button
                                     type="submit"
                                     style={{
-                                        background: "linear-gradient(135deg, #2563eb, #1d4ed8)", border: "none", borderRadius: "10px",
+                                        background: "linear-gradient(135deg, #5f6369)", border: "none", borderRadius: "10px",
                                         padding: "8px 20px", fontSize: "13px", color: "#fff", cursor: "pointer", fontWeight: 600,
                                     }}
                                 >

@@ -5,19 +5,19 @@ import GLAccountChart from "../components/dashboard/charts/GLAccountChart";
 import CostCenterChart from "../components/dashboard/charts/CostCenterChart";
 import TopCostCenterChart from "../components/dashboard/charts/TopCostCenterChart";
 import TrendChart from "../components/dashboard/charts/TrendChart";
-// import {
-//   getSummary,
-//   getGLAccount,
-//   getCostCenters,
-//   getTopCostCenters,
-//   getTrend,
-// } from "../api/dashboard";
-// import { uploadSAP } from "../api/upload";
-// import {
-//   exportPDF,
-//   exportExcel,
-// } from "../api/export";
-// import { deleteTransactions } from "../api/dashboard";
+import {
+  getSummary,
+  getGLAccount,
+  getCostCenters,
+  getTopCostCenters,
+  getTrend,
+} from "../api/dashboard";
+import { uploadSAP } from "../api/upload";
+import {
+  exportPDF,
+  exportExcel,
+} from "../api/export";
+import { deleteTransactions } from "../api/dashboard";
 
 export default function Dashboard() {
 
@@ -153,9 +153,6 @@ export default function Dashboard() {
   };
 
   // Import SAP
-  // NOTE: tidak pakai alert() lagi. Jika sukses, return pesan (string) yang
-  // akan ditampilkan FilterDashboard sebagai toast hijau. Jika gagal, throw
-  // error supaya FilterDashboard menangkapnya dan menampilkan toast gagal.
   const handleImport = async (file) => {
     if (!file) return;
 
@@ -331,6 +328,7 @@ export default function Dashboard() {
 
         <TrendChart
           data={dashboardData.trendData}
+          totalExpense={dashboardData.kpi.total_expense}
           loading={loading}
           filterPeriod={trendPeriod}
           onChangePeriod={handleTrendPeriodChange}

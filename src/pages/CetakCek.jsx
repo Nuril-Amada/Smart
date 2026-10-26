@@ -14,8 +14,9 @@ import MandiriCheck from "../components/cetakcek/MandiriCheck";
 import BCACheck from "../components/cetakcek/BCACheck";
 import SinarmasCheck from "../components/cetakcek/SinarmasCheck";
 import MaybankCheck from "../components/cetakcek/MaybankCheck";
-// import { getChecks, createCheck, deleteCheck, exportCheck } from "../api/check";
-// import { getVendors } from "../api/vendor";
+import GenericCheck from "../components/cetakcek/GenericCheck";
+import { getChecks, createCheck, deleteCheck, exportCheck } from "../api/check";
+import { getVendors } from "../api/vendor";
 
 // Peta nama bank (sesuai value pada <select> di CheckForm) ke komponennya
 const BANK_COMPONENTS = {
@@ -176,7 +177,7 @@ function exportToClientExcel(rows) {
       <td>${r.tanggal || ""}</td>
       <td>${r.bank || ""}</td>
       <td>${r.nomorCek || "-"}</td>
-      <td>${r.nominal || 0}</td>
+      <td style="mso-number-format:'\#\,\#\#0';">${r.nominal || 0}</td>
       <td>${r.vendor || ""}</td>
       <td>${r.nomorRekening || "-"}</td>
       <td>${r.jenisCek || ""}</td>
@@ -228,6 +229,31 @@ export default function CetakCek() {
       console.error("Gagal fetch history cek:", err);
     }
   };
+
+  // Custom banks state
+  const [customBanks, setCustomBanks] = useState(() => {
+    try {
+      const raw = localStorage.getItem("navicash_custom_bank_layouts");
+      return raw ? JSON.parse(raw) || [] : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        const raw = localStorage.getItem("navicash_custom_bank_layouts");
+        setCustomBanks(raw ? JSON.parse(raw) || [] : []);
+      } catch (e) { }
+    };
+    window.addEventListener("navicash_custom_banks_updated", handleUpdate);
+    return () => window.removeEventListener("navicash_custom_banks_updated", handleUpdate);
+  }, []);
+
+  const allBankOptions = useMemo(() => {
+    return [...BANK_OPTIONS, ...customBanks.map((b) => b.bankName)];
+  }, [customBanks]);
 
   useEffect(() => {
     fetchHistory();
@@ -316,7 +342,7 @@ export default function CetakCek() {
   const activePreviewForm = form.bank ? form : (lastSavedForm || form);
 
   // Komponen bank yang aktif sesuai pilihan activePreviewForm.bank, untuk preview
-  const SelectedCheck = activePreviewForm.bank ? BANK_COMPONENTS[activePreviewForm.bank] : null;
+  const BuiltinCheck = activePreviewForm.bank ? BANK_COMPONENTS[activePreviewForm.bank] : null;
 
   // Validasi field wajib, dipakai bareng oleh Simpan & Cetak
   const validateForm = (formData = form) => {
@@ -527,9 +553,20 @@ export default function CetakCek() {
       if (dateFrom && item.tanggal < dateFrom) return false;
       if (dateTo && item.tanggal > dateTo) return false;
       if (filterBank) {
-        const cleanFilter = filterBank.replace(/^Bank\s+/i, "").toLowerCase();
-        const cleanItemBank = (item.bank || item.bank_type || "").replace(/^Bank\s+/i, "").toLowerCase();
-        if (cleanItemBank !== cleanFilter) return false;
+        const f = filterBank.replace(/^Bank\s+/i, "").toLowerCase().trim();
+        const b1 = (item.bank || "").replace(/^Bank\s+/i, "").toLowerCase().trim();
+        const b2 = (item.bank_type || "").replace(/^Bank\s+/i, "").toLowerCase().trim();
+
+        const matchSingle = (b) => {
+          if (!b) return false;
+          if (f.includes("maybank") && b.includes("maybank")) return true;
+          if (f.includes("mandiri") && b.includes("mandiri")) return true;
+          if (f.includes("bca") && b.includes("bca")) return true;
+          if (f.includes("sinarmas") && b.includes("sinarmas")) return true;
+          return b === f || b.includes(f) || f.includes(b);
+        };
+
+        if (!matchSingle(b1) && !matchSingle(b2)) return false;
       }
       return true;
     });
@@ -697,6 +734,7 @@ export default function CetakCek() {
           vendorSuggestions={vendorSuggestions}
           bankPenerimaSuggestions={bankPenerimaSuggestions}
           nomorRekeningSuggestions={nomorRekeningSuggestions}
+          bankOptions={allBankOptions}
         />
       </div>
 
@@ -711,7 +749,7 @@ export default function CetakCek() {
           )}
         </div>
         <div className="p-6 flex justify-center overflow-x-auto bg-gray-50/50">
-          {!SelectedCheck ? (
+          {!activePreviewForm.bank ? (
             <div
               className="rounded-2xl border-2 border-dashed border-gray-300 bg-white flex flex-col items-center justify-center p-8 text-center"
               style={{ width: "21cm", height: "9.5cm" }}
@@ -722,7 +760,11 @@ export default function CetakCek() {
             </div>
           ) : (
             <div ref={checkPreviewRef}>
-              <SelectedCheck form={activePreviewForm} />
+              {BuiltinCheck ? (
+                <BuiltinCheck form={activePreviewForm} />
+              ) : (
+                <GenericCheck form={activePreviewForm} customBanks={customBanks} />
+              )}
             </div>
           )}
         </div>
@@ -818,7 +860,7 @@ export default function CetakCek() {
               style={{ padding: "1px 5px" }}
             >
               <option value="">Semua Bank</option>
-              {BANK_OPTIONS.map((bank) => (
+              {allBankOptions.map((bank) => (
                 <option key={bank} value={bank}>
                   {bank}
                 </option>

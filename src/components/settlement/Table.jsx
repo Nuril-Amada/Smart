@@ -7,14 +7,14 @@ import {
   FaPlus
 } from "react-icons/fa";
 
-// import {
-//   getSettlementList,
-//   createReimbursement,
-//   deleteReimbursement,
-//   toggleSettlementCheck,
-//   updateReimbursement,
-// } from "../../api/settlement";
-// import { generatePPCNumber } from "../../api/advance";
+import {
+  getSettlementList,
+  createReimbursement,
+  deleteReimbursement,
+  toggleSettlementCheck,
+  updateReimbursement,
+} from "../../api/settlement";
+import { generatePPCNumber } from "../../api/advance";
 
 // STYLE
 const SOURCE_STYLE = {
@@ -35,7 +35,7 @@ function formatDate(date) {
 
 function formatRupiah(amount) {
   return new Intl.NumberFormat("id-ID", {
-    style: "currency",
+    style: "decimal",
     currency: "IDR",
     minimumFractionDigits: 0,
   }).format(Number(amount || 0));
@@ -136,9 +136,17 @@ function AutocompleteInput({
   );
 }
 
+const getTodayDateString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 // INITIAL FORM
 const initialForm = {
-  settlement_date: "",
+  settlement_date: getTodayDateString(),
   ppc_no: "",
   employee_name: "",
   cost_center: "",
@@ -147,7 +155,18 @@ const initialForm = {
 };
 
 // COMPONENT
-export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate }) {
+export default function Table({
+  startDate,
+  endDate,
+  refreshKey,
+  onSummaryUpdate,
+  filterUser,
+  setFilterUser,
+  filterCostCenter,
+  setFilterCostCenter,
+  filterStatus,
+  setFilterStatus
+}) {
 
   // TABLE
   const [rows, setRows] = useState([]);
@@ -158,11 +177,6 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
   const [page, setPage] = useState(1);
   const perPage = 10;
 
-  // FILTER
-  const [filterUser, setFilterUser] = useState("");
-  const [filterCostCenter, setFilterCostCenter] =
-    useState("");
-  const [filterStatus, setFilterStatus] = useState("All Source");
   const userInputRef = useRef(null);
   const ccInputRef = useRef(null);
 
@@ -172,8 +186,15 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
   const [manualError, setManualError] = useState("");
   const [manualForm, setManualForm] = useState(initialForm);
 
-  // NOTIFIKASI SUKSES (toast) — sama seperti pada Employee.jsx
-  const [successMessage, setSuccessMessage] = useState("");
+  // NOTIFIKASI TOAST (sukses, delete, error)
+  const [successMessage, setSuccessMessage] = useState(null);
+
+  const showToast = (msg, type = "success") => {
+    setSuccessMessage({ text: msg, type });
+    setTimeout(() => {
+      setSuccessMessage(null);
+    }, 3000);
+  };
 
   // SAP CHECKBOX — state disimpan di backend via is_checked
   const toggleSap = async (row) => {
@@ -338,6 +359,27 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
   };
 
 
+  const handleManualOpen = async () => {
+    const today = getTodayDateString();
+    let ppcNo = "";
+    try {
+      const response = await generatePPCNumber(today);
+      ppcNo = response.ppc_no;
+    } catch (error) {
+      console.error("Gagal generate PPC Number", error);
+    }
+    setManualForm({
+      settlement_date: today,
+      ppc_no: ppcNo,
+      employee_name: "",
+      cost_center: "",
+      description: "",
+      settlement_amount: "",
+    });
+    setManualError("");
+    setManualInputOpen(true);
+  };
+
   const handleManualClose = () => {
     setManualInputOpen(false);
     setManualForm(initialForm);
@@ -366,10 +408,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
 
       handleManualClose();
       loadData();
-      setSuccessMessage("Reimbursement berhasil ditambahkan.");
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 3000);
+      showToast("Reimbursement berhasil ditambahkan.", "success");
 
     } catch (err) {
       console.error(err);
@@ -403,18 +442,34 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
       setDeleting(true);
       setDeleteError("");
 
-      await Promise.all(checkedRows.map((r) => deleteReimbursement(r.id)));
+      const chunkSize = 20;
+      const results = [];
+      for (let i = 0; i < checkedRows.length; i += chunkSize) {
+        const chunk = checkedRows.slice(i, i + chunkSize);
+        const chunkResults = await Promise.allSettled(
+          chunk.map((r) => deleteReimbursement(r.id))
+        );
+        results.push(...chunkResults);
+      }
+
+      // Cek apakah ada error kritis selain 404 (sudah terhapus)
+      const criticalErrors = results.filter(
+        (res) =>
+          res.status === "rejected" &&
+          res.reason?.response?.status !== 404
+      );
+
+      if (criticalErrors.length > 0 && criticalErrors.length === checkedRows.length) {
+        throw criticalErrors[0].reason;
+      }
+
       setDeleteBatchOpen(false);
       loadData();
-      setSuccessMessage("Data terpilih berhasil dihapus.");
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 3000);
-
+      showToast(`${checkedRows.length} data terpilih berhasil dihapus.`, "delete");
     } catch (err) {
       setDeleteError(
         err.response?.data?.detail ||
-        "Gagal menghapus data."
+        "Gagal menghapus data di server."
       );
     } finally {
       setDeleting(false);
@@ -460,10 +515,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
       });
       handleEditClose();
       loadData();
-      setSuccessMessage("Data berhasil diperbarui.");
-      setTimeout(() => {
-        setSuccessMessage("");
-      }, 3000);
+      showToast("Data berhasil diperbarui.", "success");
     } catch (err) {
       const detail = err?.response?.data?.detail;
       setEditError(Array.isArray(detail) ? detail.map(d => d.msg).join(", ") : (detail || "Gagal menyimpan perubahan."));
@@ -566,18 +618,30 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
             left: "50%",
             transform: "translate(-50%, 0)",
             zIndex: 100,
-            background: "#ecfdf5",
-            border: "1.5px solid #6ee7b7",
-            color: "#047857",
+            background:
+              successMessage.type === "error" || successMessage.type === "delete"
+                ? "#fef2f2"
+                : "#ecfdf5",
+            border:
+              successMessage.type === "error" || successMessage.type === "delete"
+                ? "1.5px solid #fca5a5"
+                : "1.5px solid #6ee7b7",
+            color:
+              successMessage.type === "error" || successMessage.type === "delete"
+                ? "#b91c1c"
+                : "#047857",
             borderRadius: "10px",
             padding: "10px 18px",
             fontSize: "13px",
             fontWeight: 600,
-            boxShadow: "0 8px 24px rgba(16,185,129,0.25)",
+            boxShadow:
+              successMessage.type === "error" || successMessage.type === "delete"
+                ? "0 8px 24px rgba(239,68,68,0.25)"
+                : "0 8px 24px rgba(16,185,129,0.25)",
             animation: "toastIn 0.25s ease",
           }}
         >
-          {successMessage}
+          {typeof successMessage === "object" ? successMessage.text : successMessage}
         </div>
       )}
 
@@ -633,7 +697,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
 
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium text-gray-500 text-center">
-            Source
+            Tipe
           </label>
           <select
             value={filterStatus}
@@ -644,7 +708,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
             className="border border-gray-200 rounded-lg text-sm px-3 py-2 text-gray-700 min-w-[160px] focus:outline-none focus:ring-2 focus:ring-gray-200"
             style={{ marginBottom: "10px", padding: "1px 5px" }}
           >
-            <option value="All Source">All Source</option>
+            <option value="All Source">Semua Tipe</option>
             <option value="Reimbursement">Reimbursement</option>
             <option value="Settlement">Settlement</option>
           </select>
@@ -655,7 +719,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
         <div className="flex items-center gap-2" style={{ marginBottom: "10px", marginRight: "20px" }}>
           <button
             type="button"
-            onClick={() => setManualInputOpen(true)}
+            onClick={handleManualOpen}
             className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white text-sm font-medium rounded-lg transition-colors"
             style={{ padding: "5px 10px" }}
           >
@@ -679,16 +743,16 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
 
       {/* ================= TABLE ================= */}
       <div className="overflow-x-auto" style={{ marginLeft: "10px", marginRight: "10px" }}>
-        <table className="w-full text-sm border border-gray-300 text-left">
+        <table className="w-full text-sm border border-gray-300 ">
           <thead>
             <tr className="text-xs uppercase tracking-wide bg-gray-50 text-center">
               <th className="p-3 font-medium border border-gray-300">Tanggal</th>
               <th className="p-3 font-medium border border-gray-300">No PPC</th>
               <th className="p-3 font-medium border border-gray-300">Nama User</th>
               <th className="p-3 font-medium border border-gray-300">Cost Center</th>
-              <th className="p-3 font-medium border border-gray-300">Description</th>
-              <th className="p-3 font-medium border border-gray-300">Amount</th>
-              <th className="p-3 font-medium border border-gray-300">Source</th>
+              <th className="p-3 font-medium border border-gray-300">Deskripsi</th>
+              <th className="p-3 font-medium border border-gray-300">Jumlah (IDR)</th>
+              <th className="p-3 font-medium border border-gray-300">Tipe</th>
               <th className="p-3 font-medium border border-gray-300">SAP</th>
             </tr>
           </thead>
@@ -717,14 +781,14 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                     <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300" style={{ paddingLeft: "10px" }}>
                       {formatDate(row.tanggal)}
                     </td>
-                    <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.no_ppc}</td>
-                    <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.nama_user}</td>
-                    <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.cost_center}</td>
-                    <td className="p-3 text-gray-700 border border-gray-300" style={{ paddingLeft: "10px" }}>{row.description}</td>
-                    <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300" style={{ paddingLeft: "10px" }}>
+                    <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.no_ppc}</td>
+                    <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.nama_user}</td>
+                    <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.cost_center}</td>
+                    <td className="p-3 text-gray-700 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>{row.description}</td>
+                    <td className="p-3 text-gray-700 whitespace-nowrap border border-gray-300 text-right" style={{ paddingRight: "10px" }}>
                       {formatRupiah(row.settlement_amount)}
                     </td>
-                    <td className="p-3 border border-gray-300" style={{ paddingLeft: "10px" }}>
+                    <td className="p-3 border border-gray-300 text-left" style={{ paddingLeft: "10px" }}>
                       <span
                         className={`px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap ${SOURCE_STYLE[
                           row.source
@@ -813,8 +877,8 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
       {/* MODAL EDIT ROW (Settlement) */}
       {rowToEdit && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
-            <div className="flex items-center justify-between border-b border-gray-200" style={{ padding: "8px 24px 8px", marginRight: "20px" }}>
+          <div className="bg-white shadow-2xl w-full max-w-md max-h-[80vh] overflow-y-auto" style={{ borderRadius: "20px" }}>
+            <div className="flex items-center justify-between border-b border-gray-200" style={{ padding: "5px 24px 5px", marginRight: "20px" }}>
               <div style={{ marginLeft: "20px" }}>
                 <h3 className="text-lg font-semibold text-gray-700">Edit Settlement</h3>
                 <p className="text-xs text-gray-400 mt-0.5">PPC No: <span className="font-mono font-semibold text-gray-600">{rowToEdit.no_ppc}</span></p>
@@ -822,9 +886,9 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
               <button type="button" onClick={handleEditClose} className="text-gray-400 hover:text-gray-600"><FaTimes /></button>
             </div>
 
-            <form onSubmit={handleEditSubmit} className="px-6 py-5 flex flex-col gap-4" style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "10px", marginTop: "10px" }}>
+            <form onSubmit={handleEditSubmit} className="px-6 py-5 flex flex-col gap-4" style={{ marginRight: "20px", marginLeft: "20px", marginBottom: "5px", marginTop: "5px" }}>
               <div>
-                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Nama User</label>
+                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Nama User</label>
                 <input
                   type="text"
                   name="employee_name"
@@ -835,7 +899,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                 />
               </div>
               <div>
-                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Tanggal Settlement</label>
+                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Tanggal Settlement</label>
                 <input
                   type="date"
                   name="settlement_date"
@@ -846,7 +910,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                 />
               </div>
               <div>
-                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Cost Center</label>
+                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Cost Center</label>
                 <input
                   type="text"
                   name="cost_center"
@@ -857,7 +921,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                 />
               </div>
               <div>
-                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "6px" }}>Description</label>
+                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Description</label>
                 <textarea
                   name="description"
                   value={editForm.description}
@@ -868,7 +932,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                 />
               </div>
               <div>
-                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "8px" }}>Settlement Amount</label>
+                <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>Settlement Amount</label>
                 <input
                   type="number"
                   name="settlement_amount"
@@ -933,12 +997,12 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                 style={{
                   marginRight: "20px",
                   marginLeft: "20px",
-                  marginBottom: "10px",
-                  marginTop: "10px",
+                  marginBottom: "5px",
+                  marginTop: "5px",
                 }}
               >
                 <div>
-                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                     Settlement Date
                   </label>
 
@@ -953,7 +1017,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                     PPC Number
                   </label>
                   <input
@@ -968,7 +1032,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                     Nama User
                   </label>
 
@@ -983,7 +1047,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                     Cost Center
                   </label>
 
@@ -998,7 +1062,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                     Description
                   </label>
 
@@ -1013,7 +1077,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                 </div>
 
                 <div>
-                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "3px" }}>
+                  <label className="block text-[13px] font-semibold text-gray-700" style={{ marginBottom: "2px" }}>
                     Settlement Amount
                   </label>
 
@@ -1071,7 +1135,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                 <h3 style={{ margin: "0 0 8px", fontSize: "16px", fontWeight: 700, color: "#1e1b4b" }}>
                   Hapus Data Terpilih
                 </h3>
-                <p style={{ margin: 0, fontSize: "13px", color: "#6b7280", lineHeight: "1.6" }}>
+                <p style={{ margin: 0, fontSize: "13px", color: "#6b7280" }}>
                   Apakah Anda yakin ingin menghapus{" "}
                   <span style={{ fontWeight: 700, color: "#dc2626" }}>
                     {checkedRows.length} data
@@ -1080,7 +1144,7 @@ export default function Table({ startDate, endDate, refreshKey, onSummaryUpdate 
                   <span style={{ fontWeight: 700, color: "#dc2626" }}>
                     {formatRupiah(checkedRows.reduce((sum, r) => sum + (r.settlement_amount || 0), 0))}
                   </span>
-                  ?
+                  {" "} ?
                 </p>
 
                 {deleteError && (

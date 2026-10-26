@@ -12,7 +12,7 @@ const MARGIN_LEFT_CM = 0.6;
 const MARGIN_RIGHT_CM = 0.6;
 
 // ===== Posisi vertikal tiap garis =====
-const LINE_TANGGAL_TOP_CM = 1.2;
+const LINE_TANGGAL_TOP_CM = 1.35;
 const LINE_TANGGAL_BOX_HEIGHT_CM = 0.5;
 const LINE_TANGGAL_WIDTH_CM = 5.5;
 
@@ -22,19 +22,14 @@ const LABEL_GAP_ABOVE_LINE_CM = 0.4;
 // Jarak antar garis (garis kedua -> garis ketiga)
 const LINE_SPACING_CM = 0.6;
 
-// NOTE (asumsi): jarak vertikal dari garis tanggal ke garis kedua tidak
-// disebutkan secara eksplisit di spek, jadi dipakai 2.0cm supaya ada ruang
-// yang cukup untuk label "tinggi bacaan" (0.5cm) di atas garis kedua.
-const LINE2_TOP_CM = 1.8;
-const LINE3_TOP_CM = LINE2_TOP_CM + LINE_SPACING_CM; // 2.6
+const LINE2_TOP_CM = 2.1;
+const LINE3_TOP_CM = 2.5;
 
 // Posisi garis keempat & kotak nominal ditentukan dari kotak nominal:
-// jarak garis ketiga ke ujung atas kotak = 0.1cm, tinggi kotak = 0.6cm,
-// dan garis keempat sejajar dengan sisi bawah kotak (seperti pola umum).
 const KOTAK_NOMINAL_HEIGHT_CM = 0.6;
-const KOTAK_NOMINAL_GAP_FROM_LINE3_CM = 0.1;
-const KOTAK_NOMINAL_TOP_CM = LINE3_TOP_CM + KOTAK_NOMINAL_GAP_FROM_LINE3_CM; // 2.7
-const LINE4_TOP_CM = LINE3_TOP_CM + LINE_SPACING_CM;
+const KOTAK_NOMINAL_GAP_FROM_LINE3_CM = 0.3;
+const KOTAK_NOMINAL_TOP_CM = 2.8;
+const LINE4_TOP_CM = 3.2;
 
 // ===== Panjang garis =====
 const LINE23_WIDTH_CM = 16.5;
@@ -43,12 +38,12 @@ const LINE4_WIDTH_CM = 10.3;
 // ===== Kotak nominal =====
 const KOTAK_NOMINAL_WIDTH_CM = 5.5;
 const KOTAK_NOMINAL_GAP_CM = 0.7; // jarak dari ujung garis 4 ke kotak nominal
-const KOTAK_NOMINAL_LEFT_CM = MARGIN_LEFT_CM + LINE4_WIDTH_CM + KOTAK_NOMINAL_GAP_CM; // 11.7
+const KOTAK_NOMINAL_LEFT_CM = MARGIN_LEFT_CM + LINE4_WIDTH_CM + KOTAK_NOMINAL_GAP_CM - 1.0; // 10.7
 
 // Padding horizontal di dalam kotak nominal. Sisi kiri dibikin lebih lebar
 // supaya angka nominal nggak nempel/nabrak garis kiri kotak pas di-print
 // (padding lama 0.15cm kelihatan mepet banget di hasil cetak).
-const KOTAK_NOMINAL_PADDING_LEFT_CM = 1.6;
+const KOTAK_NOMINAL_PADDING_LEFT_CM = 1.0;
 const KOTAK_NOMINAL_PADDING_RIGHT_CM = 0.15;
 
 // ===== Lebar label italic (uppercase) =====
@@ -59,7 +54,7 @@ const LABEL_UANG_SEJUMLAH_WIDTH_CM = 5.3;
 // ===== Area teks isi (content) di dalam tiap garis =====
 // Garis 2: mulai setelah label "Atas penyerahan..." & berhenti sebelum label "atau pembawa *)"
 const LINE2_CONTENT_LEFT_CM = LABEL_ATAS_PENYERAHAN_WIDTH_CM + 0.2; // 6.2
-const LINE2_CONTENT_STOP_BEFORE_LABEL_CM = LABEL_ATAU_PEMBAWA_WIDTH_CM + 0.7; // 2.4
+const LINE2_CONTENT_STOP_BEFORE_LABEL_CM = LABEL_ATAU_PEMBAWA_WIDTH_CM + 0.3; // 2.4
 const LINE2_CONTENT_WIDTH_CM =
     LINE23_WIDTH_CM - LINE2_CONTENT_LEFT_CM - LINE2_CONTENT_STOP_BEFORE_LABEL_CM; // 7.9
 

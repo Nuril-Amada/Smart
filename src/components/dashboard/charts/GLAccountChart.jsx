@@ -119,9 +119,8 @@ export default function GLAccountChart({
                       whiteSpace: "normal",
                     }}
                   >
-
                     <p className="font-medium text-gray-700 text-[14px]">
-                      Cost Center : {label}
+                      GL Account : {label}
                     </p>
 
                     <p className="text-gray-600 mt-1 text-[14px]">

@@ -79,7 +79,7 @@ export default function SummaryCard({ data = {} }) {
                         {/* wrapper ini yang bikin konten (icon + text) selalu
                             center secara vertikal di dalam card, terlepas dari
                             tinggi card (yang mengikuti card terpanjang di grid row) */}
-                        <div className="flex items-center gap-3 flex-1" style={{ marginLeft: "10px", marginTop: "10px", marginBottom: "10px" }}>
+                        <div className="flex items-center gap-3 flex-1" style={{ marginLeft: "10px", marginTop: "10px", marginBottom: "10px", marginRight: "3px" }}>
                             {/* Icon */}
                             <div
                                 className={`w-12 h-12 rounded-full flex items-center justify-center text-lg shrink-0 ${item.iconBg} ${item.iconColor}`}
