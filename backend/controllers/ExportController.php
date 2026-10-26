@@ -193,10 +193,14 @@ class ExportController {
         foreach ($rows as $r) {
             $sDate = $r['settlement_date'] instanceof DateTime ? $r['settlement_date']->format('d/m/Y') : date('d/m/Y', strtotime($r['settlement_date']));
             $isChecked = (!empty($r['is_checked']) && $r['is_checked']) ? 'Ya' : 'Tidak';
+
+            $rawSource = strtoupper(trim($r['source'] ?? ''));
+            $tipeLabel = ($rawSource === 'ADVANCE' || $rawSource === 'SETTLEMENT') ? 'Settlement' : (($rawSource === 'REIMBURSEMENT') ? 'Reimbursement' : ($r['source'] ?? '-'));
+
             $dataRows[] = [
                 $sDate,
                 $r['ppc_no'],
-                strtoupper($r['source'] ?? '-'),
+                $tipeLabel,
                 $r['employee_name'],
                 $r['cost_center'],
                 $r['description'],
@@ -364,7 +368,7 @@ class ExportController {
                 $r['transaction_type'],
                 $bankLabel,
                 $r['vendor_name'],
-                $r['vendor_account_number'],
+                (string)$r['vendor_account_number'],
                 (float)$r['amount'],
                 'IDR'
             ];
@@ -394,7 +398,7 @@ class ExportController {
         $dataRows = [];
 
         foreach ($rows as $r) {
-            $bankAcc = is_numeric($r['bank_account_no']) ? (int)$r['bank_account_no'] : (string)$r['bank_account_no'];
+            $bankAcc = (string)$r['bank_account_no'];
             $dataRows[] = [
                 (string)$r['vendor_name'],
                 (string)$r['bank_name'],

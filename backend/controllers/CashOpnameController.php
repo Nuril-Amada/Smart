@@ -154,16 +154,20 @@ class CashOpnameController {
 
         $totalA = 0.0;
         foreach ($settlementRows as $r) {
-            $totalA += isset($r['jumlah']) ? (float)$r['jumlah'] : 0.0;
+            $val = isset($r['jumlah']) ? (float)$r['jumlah'] : 0.0;
+            $totalA += round($val, 2, PHP_ROUND_HALF_UP);
         }
+        $totalA = round($totalA, 2, PHP_ROUND_HALF_UP);
 
         $totalB = 0.0;
         foreach ($advanceRows as $r) {
-            $totalB += isset($r['jumlah']) ? (float)$r['jumlah'] : 0.0;
+            $val = isset($r['jumlah']) ? (float)$r['jumlah'] : 0.0;
+            $totalB += round($val, 2, PHP_ROUND_HALF_UP);
         }
+        $totalB = round($totalB, 2, PHP_ROUND_HALF_UP);
 
-        $totalAB = $totalA + $totalB;
-        $saldoAkhir = $saldoAwal - $totalAB;
+        $totalAB = round($totalA + $totalB, 2, PHP_ROUND_HALF_UP);
+        $saldoAkhir = round($saldoAwal - $totalAB, 2, PHP_ROUND_HALF_UP);
 
         $aksi = isset($body['aksi']) && !empty($body['aksi']) ? $body['aksi'] : 'Simpan';
         $settlementRowsJson = json_encode($settlementRows);
@@ -221,16 +225,20 @@ class CashOpnameController {
 
         $totalA = 0.0;
         foreach ($settlementRows as $r) {
-            $totalA += isset($r['jumlah']) ? (float)$r['jumlah'] : 0.0;
+            $val = isset($r['jumlah']) ? (float)$r['jumlah'] : 0.0;
+            $totalA += round($val, 2, PHP_ROUND_HALF_UP);
         }
+        $totalA = round($totalA, 2, PHP_ROUND_HALF_UP);
 
         $totalB = 0.0;
         foreach ($advanceRows as $r) {
-            $totalB += isset($r['jumlah']) ? (float)$r['jumlah'] : 0.0;
+            $val = isset($r['jumlah']) ? (float)$r['jumlah'] : 0.0;
+            $totalB += round($val, 2, PHP_ROUND_HALF_UP);
         }
+        $totalB = round($totalB, 2, PHP_ROUND_HALF_UP);
 
-        $totalAB = $totalA + $totalB;
-        $saldoAkhir = $saldoAwal - $totalAB;
+        $totalAB = round($totalA + $totalB, 2, PHP_ROUND_HALF_UP);
+        $saldoAkhir = round($saldoAwal - $totalAB, 2, PHP_ROUND_HALF_UP);
 
         $aksi = isset($body['aksi']) && !empty($body['aksi']) ? $body['aksi'] : 'Simpan';
         $settlementRowsJson = json_encode($settlementRows);

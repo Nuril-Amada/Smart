@@ -54,6 +54,9 @@ class SimpleXlsxWriter {
                     $strVal = (string)$val;
                     if (strpos($strVal, '.') !== false) {
                         $pRow[] = ['type' => 'num', 'style' => 3, 'val' => (float)$strVal];
+                    } elseif (strlen(ltrim($strVal, '-')) > 11) {
+                        // Angka dengan > 11 digit (mis. nomor rekening) disimpan sebagai teks
+                        $pRow[] = ['type' => 'str', 'style' => 2, 'val' => $getStringIndex($strVal)];
                     } else {
                         // Numeric string (like document_no / gl_account as numeric) -> Left Aligned
                         $pRow[] = ['type' => 'num', 'style' => 4, 'val' => (float)$strVal];

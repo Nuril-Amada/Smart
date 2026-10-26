@@ -211,6 +211,26 @@
         "responses": { "200": { "description": "Success" } }
       }
     },
+    "/check-layouts": {
+      "get": {
+        "tags": ["Check"],
+        "summary": "Ambil Master Layout Format Cek Bank (Builtin & Custom)",
+        "responses": { "200": { "description": "Success" } }
+      },
+      "post": {
+        "tags": ["Check"],
+        "summary": "Simpan / Update Layout Format Cek Bank",
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
+    "/check-layouts/{bankName}": {
+      "delete": {
+        "tags": ["Check"],
+        "summary": "Hapus Layout Format Cek Bank Custom",
+        "parameters": [{ "name": "bankName", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "responses": { "200": { "description": "Success" } }
+      }
+    },
     "/reminders/overdue-list": {
       "get": {
         "tags": ["Reminders"],

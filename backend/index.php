@@ -9,9 +9,20 @@ ini_set('display_errors', 'Off');
 
 // ---- Logger Request Navicash ----
 function navicash_log(string $level, string $message): void {
+    $logDir = 'C:/server/Apache24/logs';
+    if (!is_dir($logDir)) {
+        $logDir = 'C:/Apache24/logs';
+    }
+    if (!is_dir($logDir)) {
+        $logDir = __DIR__ . '/logs';
+        if (!is_dir($logDir)) {
+            @mkdir($logDir, 0777, true);
+        }
+    }
+    $logFile = $logDir . '/navicash_api.log';
     $timestamp = date('Y-m-d H:i:s');
     $line = "[$timestamp][$level] $message" . PHP_EOL;
-    file_put_contents('C:/Apache24/logs/navicash_api.log', $line, FILE_APPEND | LOCK_EX);
+    @file_put_contents($logFile, $line, FILE_APPEND | LOCK_EX);
 }
 
 // Set CORS headers
@@ -207,6 +218,15 @@ try {
     } else if (matchRoute('/check/{id}', $path, $m) && $method === 'DELETE') {
         $controller = new CheckController();
         $response = $controller->deleteCheck((int)$m[1]);
+    } else if ($path === '/check-layouts' && $method === 'GET') {
+        $controller = new CheckController();
+        $response = $controller->getCheckLayouts();
+    } else if ($path === '/check-layouts' && $method === 'POST') {
+        $controller = new CheckController();
+        $response = $controller->saveCheckLayout($inputBody);
+    } else if (matchRoute('/check-layouts/{bankName}', $path, $m) && $method === 'DELETE') {
+        $controller = new CheckController();
+        $response = $controller->deleteCheckLayout(urldecode($m[1]));
 
     // -------------------------------------------------------------
     // ADVANCE (PPC)

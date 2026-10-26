@@ -202,4 +202,180 @@ class CheckController {
 
         return ["message" => "Cek berhasil dihapus."];
     }
+
+    private function initLayoutsTable() {
+        try {
+            $this->db->exec("
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[bank_check_layouts]') AND type in (N'U'))
+                BEGIN
+                    CREATE TABLE [dbo].[bank_check_layouts] (
+                        [id] INT IDENTITY(1,1) PRIMARY KEY,
+                        [bank_name] VARCHAR(100) NOT NULL UNIQUE,
+                        [tanggal_x] DECIMAL(6,2) DEFAULT 0.00,
+                        [tanggal_y] DECIMAL(6,2) DEFAULT 0.00,
+                        [vendor_x] DECIMAL(6,2) DEFAULT 0.00,
+                        [vendor_y] DECIMAL(6,2) DEFAULT 0.00,
+                        [terbilang1_x] DECIMAL(6,2) DEFAULT 0.00,
+                        [terbilang1_y] DECIMAL(6,2) DEFAULT 0.00,
+                        [terbilang2_x] DECIMAL(6,2) DEFAULT 0.00,
+                        [terbilang2_y] DECIMAL(6,2) DEFAULT 0.00,
+                        [nominal_x] DECIMAL(6,2) DEFAULT 0.00,
+                        [nominal_y] DECIMAL(6,2) DEFAULT 0.00,
+                        [width_cm] DECIMAL(6,2) DEFAULT 17.80,
+                        [height_cm] DECIMAL(6,2) DEFAULT 7.00,
+                        [is_custom] TINYINT DEFAULT 0,
+                        [updated_at] DATETIME DEFAULT GETDATE()
+                    );
+                END
+                ELSE
+                BEGIN
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[bank_check_layouts]') AND name = 'width_cm')
+                        ALTER TABLE [dbo].[bank_check_layouts] ADD [width_cm] DECIMAL(6,2) DEFAULT 17.80;
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[bank_check_layouts]') AND name = 'height_cm')
+                        ALTER TABLE [dbo].[bank_check_layouts] ADD [height_cm] DECIMAL(6,2) DEFAULT 7.00;
+                    IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'[dbo].[bank_check_layouts]') AND name = 'is_custom')
+                        ALTER TABLE [dbo].[bank_check_layouts] ADD [is_custom] TINYINT DEFAULT 0;
+                END
+            ");
+
+            // Seed or update initial default bank positions if needed
+            $defaults = [
+                ['bank_name' => 'Bank Mandiri', 'tglX' => 11.50, 'tglY' => 1.55, 'vX' => 5.10, 'vY' => 2.25, 't1X' => 4.80, 't1Y' => 2.95, 't2X' => 3.10, 't2Y' => 3.65, 'nomX' => 12.60, 'nomY' => 3.15, 'width' => 17.80, 'height' => 7.00],
+                ['bank_name' => 'Bank BCA', 'tglX' => 11.30, 'tglY' => 1.50, 'vX' => 6.40, 'vY' => 2.20, 't1X' => 6.10, 't1Y' => 3.00, 't2X' => 1.70, 't2Y' => 3.80, 'nomX' => 13.40, 'nomY' => 3.80, 'width' => 17.70, 'height' => 7.00],
+                ['bank_name' => 'Bank Sinarmas', 'tglX' => 11.60, 'tglY' => 1.35, 'vX' => 6.80, 'vY' => 2.10, 't1X' => 6.10, 't1Y' => 2.50, 't2X' => 1.10, 't2Y' => 3.20, 'nomX' => 11.70, 'nomY' => 2.80, 'width' => 17.70, 'height' => 7.00],
+                ['bank_name' => 'Maybank Indonesia', 'tglX' => 11.60, 'tglY' => 1.70, 'vX' => 5.60, 'vY' => 2.40, 't1X' => 5.10, 't1Y' => 3.00, 't2X' => 3.90, 't2Y' => 3.65, 'nomX' => 13.40, 'nomY' => 3.30, 'width' => 17.80, 'height' => 7.00],
+            ];
+
+            foreach ($defaults as $d) {
+                $check = $this->db->prepare("SELECT vendor_y, terbilang1_x FROM bank_check_layouts WHERE bank_name = :b");
+                $check->execute([':b' => $d['bank_name']]);
+                $row = $check->fetch();
+                if (!$row) {
+                    $ins = $this->db->prepare("INSERT INTO bank_check_layouts (bank_name, tanggal_x, tanggal_y, vendor_x, vendor_y, terbilang1_x, terbilang1_y, terbilang2_x, terbilang2_y, nominal_x, nominal_y, width_cm, height_cm, is_custom, updated_at) VALUES (:b, :tglX, :tglY, :vX, :vY, :t1X, :t1Y, :t2X, :t2Y, :nomX, :nomY, :w, :h, 0, GETDATE())");
+                    $ins->execute([':b' => $d['bank_name'], ':tglX' => $d['tglX'], ':tglY' => $d['tglY'], ':vX' => $d['vX'], ':vY' => $d['vY'], ':t1X' => $d['t1X'], ':t1Y' => $d['t1Y'], ':t2X' => $d['t2X'], ':t2Y' => $d['t2Y'], ':nomX' => $d['nomX'], ':nomY' => $d['nomY'], ':w' => $d['width'], ':h' => $d['height']]);
+                } else {
+                    // Force update old seed layout positions if they match previous seed values (e.g. vY == 2.00 for Mandiri)
+                    $vY = (float)($row['vendor_y'] ?? 0);
+                    $t1X = (float)($row['terbilang1_x'] ?? 0);
+                    if ($vY == 2.00 || $t1X == 4.80 || $t1X == 4.60 || $vY == 0.00) {
+                        $upd = $this->db->prepare("UPDATE bank_check_layouts SET tanggal_x = :tglX, tanggal_y = :tglY, vendor_x = :vX, vendor_y = :vY, terbilang1_x = :t1X, terbilang1_y = :t1Y, terbilang2_x = :t2X, terbilang2_y = :t2Y, nominal_x = :nomX, nominal_y = :nomY, width_cm = :w, height_cm = :h WHERE bank_name = :b");
+                        $upd->execute([':b' => $d['bank_name'], ':tglX' => $d['tglX'], ':tglY' => $d['tglY'], ':vX' => $d['vX'], ':vY' => $d['vY'], ':t1X' => $d['t1X'], ':t1Y' => $d['t1Y'], ':t2X' => $d['t2X'], ':t2Y' => $d['t2Y'], ':nomX' => $d['nomX'], ':nomY' => $d['nomY'], ':w' => $d['width'], ':h' => $d['height']]);
+                    }
+                }
+            }
+        } catch (Exception $e) {
+            // Log or ignore if table exists
+        }
+    }
+
+    public function getCheckLayouts() {
+        $this->initLayoutsTable();
+        try {
+            $stmt = $this->db->query("SELECT * FROM bank_check_layouts");
+            $rows = $stmt->fetchAll();
+            $result = [];
+            foreach ($rows as $r) {
+                $result[$r['bank_name']] = [
+                    "bank_name" => $r['bank_name'],
+                    "tanggalX" => (float)$r['tanggal_x'],
+                    "tanggalY" => (float)$r['tanggal_y'],
+                    "vendorX" => (float)$r['vendor_x'],
+                    "vendorY" => (float)$r['vendor_y'],
+                    "terbilang1X" => (float)$r['terbilang1_x'],
+                    "terbilang1Y" => (float)$r['terbilang1_y'],
+                    "terbilang2X" => (float)$r['terbilang2_x'],
+                    "terbilang2Y" => (float)$r['terbilang2_y'],
+                    "nominalX" => (float)$r['nominal_x'],
+                    "nominalY" => (float)$r['nominal_y'],
+                    "widthCm" => isset($r['width_cm']) ? (float)$r['width_cm'] : 17.80,
+                    "heightCm" => isset($r['height_cm']) ? (float)$r['height_cm'] : 7.00,
+                    "isCustom" => isset($r['is_custom']) ? (int)$r['is_custom'] : 0,
+                ];
+            }
+            return $result;
+        } catch (Exception $e) {
+            return [];
+        }
+    }
+
+    public function saveCheckLayout($body) {
+        $this->initLayoutsTable();
+        $bankName = isset($body['bank_name']) ? trim($body['bank_name']) : '';
+        if (empty($bankName)) {
+            http_response_code(400);
+            return ["detail" => "Nama bank wajib diisi."];
+        }
+
+        $tglX = isset($body['tanggalX']) ? (float)$body['tanggalX'] : 0.0;
+        $tglY = isset($body['tanggalY']) ? (float)$body['tanggalY'] : 0.0;
+        $vX = isset($body['vendorX']) ? (float)$body['vendorX'] : 0.0;
+        $vY = isset($body['vendorY']) ? (float)$body['vendorY'] : 0.0;
+        $t1X = isset($body['terbilang1X']) ? (float)$body['terbilang1X'] : 0.0;
+        $t1Y = isset($body['terbilang1Y']) ? (float)$body['terbilang1Y'] : 0.0;
+        $t2X = isset($body['terbilang2X']) ? (float)$body['terbilang2X'] : 0.0;
+        $t2Y = isset($body['terbilang2Y']) ? (float)$body['terbilang2Y'] : 0.0;
+        $nomX = isset($body['nominalX']) ? (float)$body['nominalX'] : 0.0;
+        $nomY = isset($body['nominalY']) ? (float)$body['nominalY'] : 0.0;
+        $widthCm = isset($body['widthCm']) ? (float)$body['widthCm'] : (isset($body['width_cm']) ? (float)$body['width_cm'] : 17.80);
+        $heightCm = isset($body['heightCm']) ? (float)$body['heightCm'] : (isset($body['height_cm']) ? (float)$body['height_cm'] : 7.00);
+        $isCustom = isset($body['isCustom']) ? (int)$body['isCustom'] : (isset($body['is_custom']) ? (int)$body['is_custom'] : 0);
+
+        $checkStmt = $this->db->prepare("SELECT 1 FROM bank_check_layouts WHERE bank_name = :bank_name");
+        $checkStmt->execute([':bank_name' => $bankName]);
+        $exists = $checkStmt->fetch();
+
+        $params = [
+            ':bank_name' => $bankName,
+            ':tglX' => $tglX,
+            ':tglY' => $tglY,
+            ':vX' => $vX,
+            ':vY' => $vY,
+            ':t1X' => $t1X,
+            ':t1Y' => $t1Y,
+            ':t2X' => $t2X,
+            ':t2Y' => $t2Y,
+            ':nomX' => $nomX,
+            ':nomY' => $nomY,
+            ':widthCm' => $widthCm,
+            ':heightCm' => $heightCm,
+            ':isCustom' => $isCustom,
+        ];
+
+        if ($exists) {
+            $stmt = $this->db->prepare("
+                UPDATE bank_check_layouts
+                SET tanggal_x = :tglX, tanggal_y = :tglY,
+                    vendor_x = :vX, vendor_y = :vY,
+                    terbilang1_x = :t1X, terbilang1_y = :t1Y,
+                    terbilang2_x = :t2X, terbilang2_y = :t2Y,
+                    nominal_x = :nomX, nominal_y = :nomY,
+                    width_cm = :widthCm, height_cm = :heightCm,
+                    is_custom = :isCustom,
+                    updated_at = GETDATE()
+                WHERE bank_name = :bank_name
+            ");
+        } else {
+            $stmt = $this->db->prepare("
+                INSERT INTO bank_check_layouts (bank_name, tanggal_x, tanggal_y, vendor_x, vendor_y, terbilang1_x, terbilang1_y, terbilang2_x, terbilang2_y, nominal_x, nominal_y, width_cm, height_cm, is_custom, updated_at)
+                VALUES (:bank_name, :tglX, :tglY, :vX, :vY, :t1X, :t1Y, :t2X, :t2Y, :nomX, :nomY, :widthCm, :heightCm, :isCustom, GETDATE())
+            ");
+        }
+
+        $stmt->execute($params);
+
+        return [
+            "message" => "Master ukuran format cek untuk {$bankName} berhasil disimpan ke database server.",
+            "data" => $this->getCheckLayouts()
+        ];
+    }
+
+    public function deleteCheckLayout($bankName) {
+        $this->initLayoutsTable();
+        $stmt = $this->db->prepare("DELETE FROM bank_check_layouts WHERE bank_name = :bank_name");
+        $stmt->execute([':bank_name' => $bankName]);
+        return [
+            "message" => "Format layout cek bank {$bankName} berhasil dihapus dari database.",
+            "data" => $this->getCheckLayouts()
+        ];
+    }
 }
