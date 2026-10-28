@@ -80,7 +80,7 @@ Finance/
    DB_PORT=1433   # Sesuaikan port SQL Server Anda (default: 1433)
    DB_NAME=navicash_db
    DB_USER=navicash_user
-   DB_PASSWORD=navicash123
+   DB_PASSWORD=[Password]
    ```
 4. Jalankan server development PHP:
    ```bash
